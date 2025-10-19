@@ -59,5 +59,37 @@ namespace NB.Service.EmployeeService
                         };
             return await query.FirstOrDefaultAsync();
         }
+
+        public async Task<EmployeeDto?> GetByUserId(int id)
+        {
+            var query = from emp in GetQueryable()
+                        where emp.UserId == id
+                        select new EmployeeDto()
+                        {
+                            EmployeeId = emp.EmployeeId,
+                            UserId = emp.UserId,
+                            FullName = emp.FullName,
+                            Phone = emp.Phone,
+                            HireDate = emp.HireDate,
+                            Status = emp.Status
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<EmployeeDto?> GetByPhone(string phone)
+        {
+            var query = from emp in GetQueryable()
+                        where emp.Phone != null && emp.Phone.Equals(phone)
+                        select new EmployeeDto()
+                        {
+                            EmployeeId = emp.EmployeeId,
+                            UserId = emp.UserId,
+                            FullName = emp.FullName,
+                            Phone = emp.Phone,
+                            HireDate = emp.HireDate,
+                            Status = emp.Status
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
     }
 }

@@ -1,9 +1,11 @@
 ﻿using Autofac;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NB.API.Modules;
 using NB.Model.Entities;
 using NB.Repository.Common;
 using NB.Service.EmployeeService;
+using AutoMapper;
 using NB.Service.WarehouseService;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +26,10 @@ builder.Services.AddScoped<IWarehouseService, WarehouseService>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
 //builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
+
+// Replace the following line:  
+// builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());  
+
 //{
 //    //containerBuilder.RegisterModule<EFModule>();
 //    containerBuilder.RegisterModule<RepositoryModule>();
@@ -34,6 +40,10 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddDbContext<NutriBarnContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<DbContext, NutriBarnContext>();
+
+//Register AutoMapper
+builder.Services.AddAutoMapper(cfg => cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
