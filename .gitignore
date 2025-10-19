@@ -11,3 +11,11 @@
 /.vs/NutriBarn/v17
 /.vs/NutriBarn/DesignTimeBuild
 /.vs/ProjectEvaluation
+
+
+/NB.Model/bin/Debug
+/NB.Repository/bin/Debug
+/NB.Services/bin/Debug/net8.0
+/NB.API/bin/Debug
+.vs/NutriBarn/config/applicationhost.config
+NB.API/appsettings.json
