@@ -41,7 +41,6 @@ namespace NB.Service.Common
             return entity;
         }
 
-
         public virtual async Task CreateAsync(T entity)
         {
             _repository.Add(entity);
@@ -113,8 +112,6 @@ namespace NB.Service.Common
         {
             return await _repository.AnyAsync(predicate);
         }
-
-
 
         public void Delete(Expression<Func<T, bool>> filter)
         {

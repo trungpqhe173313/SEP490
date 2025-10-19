@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace NB.Service.Dto
 {
-    class ApiResponse<T>
+    public class ApiResponse<T>
     {
         public bool Success { get; set; } = true;
         public int StatusCode { get; set; } = 200;
