@@ -25,6 +25,11 @@ namespace NB.Service.Common
             return await _repository.GetByIdAsync(guid);
         }
 
+        public async Task<T?> GetByIdAsync(int? id)
+        {
+            return await _repository.GetByIdAsync(id);
+        }
+
         public async Task<T> GetByIdOrThrowAsync(Guid? guid)
         {
             var entity = await _repository.GetByIdAsync(guid);
