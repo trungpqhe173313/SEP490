@@ -13,5 +13,7 @@ namespace NB.Service.EmployeeService
     {
         Task<PagedList<EmployeeDto>> GetData(EmployeeSearch search);
         Task<EmployeeDto?> GetDto(int id);
+        Task<EmployeeDto?> GetByUserId(int id);
+        Task<EmployeeDto?> GetByPhone(string phone);
     }
 }
