@@ -34,6 +34,7 @@ namespace NB.Repository.Common
         {
             return _dbset.AsQueryable<T>();
         }
+
         public IQueryable<T> Where(Expression<Func<T, bool>> predicate)
         {
             return _dbset.Where(predicate);
@@ -58,7 +59,6 @@ namespace NB.Repository.Common
         {
             await _entities.SaveChangesAsync();
         }
-
 
         public void DeleteRange(IEnumerable<T> entities)
         {
