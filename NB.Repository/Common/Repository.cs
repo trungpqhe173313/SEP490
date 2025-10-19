@@ -93,5 +93,10 @@ namespace NB.Repository.Common
             IEnumerable<T> query = _dbset.Where(predicate).AsEnumerable();
             return query;
         }
+
+        public async Task<T?> GetByIdAsync(int? id)
+        {
+            return await _dbset.FindAsync(id);
+        }
     }
 }

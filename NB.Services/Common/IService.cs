@@ -11,6 +11,7 @@ namespace NB.Service.Common
     public interface IService<T> where T : class
     {
         Task<T?> GetByIdAsync(Guid? id);
+        Task<T?> GetByIdAsync(int? id);
         Task<T> GetByIdOrThrowAsync(Guid? guid);
         Task CreateAsync(T entity);
         Task CreateAsync(IEnumerable<T> entities);
