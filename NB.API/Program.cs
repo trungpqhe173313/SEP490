@@ -5,6 +5,7 @@ using NB.API.Modules;
 using NB.Model.Entities;
 using NB.Repository.Common;
 using NB.Service.EmployeeService;
+using NB.Service.WarehouseService;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
