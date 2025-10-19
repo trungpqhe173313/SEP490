@@ -6,6 +6,7 @@ using NB.Model.Entities;
 using NB.Repository.Common;
 using NB.Service.EmployeeService;
 using AutoMapper;
+using NB.Service.WarehouseService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +22,7 @@ builder.Services.AddSwaggerGen();
 
 // Đăng ký service
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<IWarehouseService, WarehouseService>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
 //builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
