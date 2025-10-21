@@ -1,4 +1,4 @@
-using NB.Model.Entities;
+﻿using NB.Service.Dto;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,8 +7,7 @@ using System.Threading.Tasks;
 
 namespace NB.Service.WarehouseService.Dto
 {
-    public class WarehouseDto : Warehouse
+    public class WarehouseSearch : SearchBase
     {
-      
     }
 }
