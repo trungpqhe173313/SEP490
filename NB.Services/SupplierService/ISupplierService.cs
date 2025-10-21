@@ -6,9 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Service.EmployeeService.Dto
+namespace NB.Service.SupplierService
 {
-    public class EmployeeDto : Employee
+    public interface ISupplierService : IService<Supplier>
     {
     }
 }

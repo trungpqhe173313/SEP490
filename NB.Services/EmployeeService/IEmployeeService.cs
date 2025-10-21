@@ -1,5 +1,5 @@
 ﻿using NB.Model.Entities;
-using NB.Repository.EmployeeRepository.Dto;
+using NB.Service.EmployeeService.Dto;
 using NB.Service.Common;
 using System;
 using System.Collections.Generic;
