@@ -5,7 +5,7 @@ using NB.API.Modules;
 using NB.Model.Entities;
 using NB.Repository.Common;
 using NB.Service.EmployeeService;
-using AutoMapper;
+using NB.Service.Core.Mapper;
 using NB.Service.WarehouseService;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -43,6 +43,7 @@ builder.Services.AddScoped<DbContext, NutriBarnContext>();
 
 //Register AutoMapper
 builder.Services.AddAutoMapper(cfg => cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
+builder.Services.AddScoped<IMapper, Mapper>();
 
 var app = builder.Build();
 
