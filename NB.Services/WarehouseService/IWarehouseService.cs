@@ -12,5 +12,9 @@ namespace NB.Service.WarehouseService
     public interface IWarehouseService : IService<Warehouse>
     {
         Task<PagedList<WarehouseProductDto>> GetProducts(WarehouseProductSearch search);
+        Task<WarehouseDto?> GetDto(int id);
+        Task<Warehouse> Create(Warehouse warehouse);
+        Task<Warehouse> Update(int id, Warehouse warehouse);
+        Task<bool> Delete(int id);
     }
 }
