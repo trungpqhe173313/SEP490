@@ -5,9 +5,9 @@ namespace NB.API.Controllers
     [Route("api/supplier")]
     public class SupplierController : Controller
     {
-        public IActionResult Index()
-        {
-            return View();
-        }
+        //public IActionResult Index()
+        //{
+        //    return View();
+        //}
     }
 }

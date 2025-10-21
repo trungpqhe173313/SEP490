@@ -5,9 +5,9 @@ namespace NB.API.Controllers
     [Route("api/customer")]
     public class CustomerController : Controller
     {
-        public IActionResult Index()
-        {
-            return View();
-        }
+        //public IActionResult Index()
+        //{
+        //    return View();
+        //}
     }
 }
