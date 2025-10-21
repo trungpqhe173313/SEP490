@@ -5,9 +5,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Repository.WarehouseRepository.Dto
+namespace NB.Service.WarehouseService.Dto
 {
     public class WarehouseDto : Warehouse
     {
+      
     }
 }

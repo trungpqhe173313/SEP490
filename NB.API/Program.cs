@@ -7,6 +7,9 @@ using NB.Repository.Common;
 using NB.Service.EmployeeService;
 using NB.Service.Core.Mapper;
 using NB.Service.WarehouseService;
+using NB.Service.InventoryService;
+using NB.Service.SupplierService;
+using NB.Service.ProductService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +26,9 @@ builder.Services.AddSwaggerGen();
 // Đăng ký service
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IWarehouseService, WarehouseService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
 //builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
