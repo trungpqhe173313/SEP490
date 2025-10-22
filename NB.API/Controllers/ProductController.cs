@@ -74,7 +74,7 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("CreateProduct")]
-        public async Task<IActionResult> Create(int inventoryId, int warehouseId, [FromBody] ProductCreateVM model)
+        public async Task<IActionResult> Create([FromBody] ProductCreateVM model)
         {
             if (!ModelState.IsValid)
             {
@@ -83,11 +83,6 @@ namespace NB.API.Controllers
 
             try
             {
-                //Kiểm tra Inventory 
-                if (await _inventoryService.IsInventoryExist(inventoryId))
-                {
-                    return BadRequest(ApiResponse<object>.Fail($"Inventory ID {inventoryId} đã tồn tại) "));
-                }
 
                 // Tạo Product
                 var newProductEntity = new ProductDto
@@ -106,7 +101,7 @@ namespace NB.API.Controllers
                 // Tạo Inventory
                 var newInventoryEntity = new InventoryDto
                 {
-                    WarehouseId = warehouseId,
+                    WarehouseId = model.WarehouseId,
                     ProductId = newProductEntity.ProductId,
                     Quantity = model.StockQuantity,
                     LastUpdated = DateTime.UtcNow

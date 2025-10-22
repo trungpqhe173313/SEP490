@@ -8,6 +8,7 @@ namespace NB.Service.ProductService.ViewModels
 {
     public class ProductCreateVM
     {
+        public int WarehouseId { get; set; }
         public int CategoryId { get; set; }
         public string Code { get; set; } = null!;
         public string ProductName { get; set; } = null!;
