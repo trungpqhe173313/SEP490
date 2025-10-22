@@ -4,6 +4,7 @@ using NB.Service.Common;
 using NB.Service.Dto;
 using NB.Service.InventoryService; 
 using NB.Service.ProductService;
+using NB.Service.ProductService.Dto;
 using NB.Service.ProductService.ViewModels;
 
 namespace NB.API.Controllers
@@ -25,43 +26,44 @@ namespace NB.API.Controllers
             _logger = logger;
         }
 
-        [HttpGet("GetData")]
-        public async Task<IActionResult> GetData(int warehouseId, int productId)
+        [HttpGet("GetProductsByWarehouse/{warehouseId}")]
+        public async Task<IActionResult> GetData(int warehouseId)
         {
             try
             {
-                // 1. Lấy tổng số lượng sản phẩm (ProductService)
-                var productEntity = await _productService.GetProductById(productId);
+                // 1. LOGIC: Lấy tất cả Inventory thuộc về WarehouseId, có kèm Product detail (Service)
+                var inventories = await _inventoryService.GetInventoriesWithProductByWarehouseId(warehouseId);
 
-                if (productEntity == null)
+                if (!inventories.Any())
                 {
-                    return NotFound(ApiResponse<object>.Fail($"Không tìm thấy Sản phẩm với ID: {productId}", 404));
+                    return NotFound(ApiResponse<object>.Fail($"Không tìm thấy sản phẩm nào trong kho ID: {warehouseId}", 404));
                 }
 
-                int totalProductStock = productEntity.StockQuantity ?? 0;
+                // 2. LOGIC: Ánh xạ dữ liệu sang DTOs (Controller xử lý)
+                var productList = inventories
+                    .Where(i => i.Product != null) // Đảm bảo Product đã được load
+                    .Select(i => new ProductInWarehouseDto
+                    {
+                        // Thông tin từ Inventory
+                        InventoryId = i.InventoryId,
+                        QuantityInStock = i.Quantity ?? 0,
+                        LastUpdated = i.LastUpdated,
 
-                // Lấy số lượng tồn kho (InventoryService)
-                int quantityInWarehouse = await _inventoryService.GetInventoryQuantity(warehouseId, productId);
+                        // Thông tin từ Product
+                        ProductId = i.ProductId,
+                        ProductName = i.Product.ProductName,
+                        Code = i.Product.Code,
+                        Price = i.Product.Price
+                    })
+                    .ToList();
 
-                // Tính toán số lượng còn khả dụng (Controller/Logic Layer)
-                int availableQuantity = totalProductStock - quantityInWarehouse;
-
-                // Trả về kết quả
-                var result = new
-                {
-                    WarehouseId = warehouseId,
-                    ProductId = productId,
-                    TotalSystemStock = totalProductStock,
-                    QuantityAllocatedInWarehouse = quantityInWarehouse,
-                    AvailableQuantity = availableQuantity
-                };
-
-                return Ok(ApiResponse<object>.Ok(result));
+                // 3. Trả về Danh sách DTO
+                return Ok(ApiResponse<List<ProductInWarehouseDto>>.Ok(productList));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi tính số lượng khả dụng cho Kho {WarehouseId} và Sản phẩm {ProductId}", warehouseId, productId);
-                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi tính toán số lượng khả dụng."));
+                _logger.LogError(ex, "Lỗi khi lấy danh sách sản phẩm cho Kho {WarehouseId}", warehouseId);
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi lấy danh sách sản phẩm."));
             }
         }
 

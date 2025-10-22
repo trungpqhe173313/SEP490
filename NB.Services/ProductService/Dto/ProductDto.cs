@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Service.ProductService
+namespace NB.Service.ProductService.Dto
 {
     public class ProductDto : Product
     {
