@@ -35,7 +35,7 @@ namespace NB.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi lấy dữ liệu danh mục");
+                _logger.LogError(ex, "Lỗi khi lấy dữ liệu nhân viên");
                 return BadRequest(ApiResponse<PagedList<EmployeeDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
             }
         }
@@ -48,13 +48,13 @@ namespace NB.API.Controllers
                 var result = await _employeeService.GetDto(id);
                 if (result == null)
                 {
-                    return NotFound(ApiResponse<EmployeeDto>.Fail("Không tìm thấy danh mục", 404));
+                    return NotFound(ApiResponse<EmployeeDto>.Fail("Không tìm thấy nhân viên", 404));
                 }
                 return Ok(ApiResponse<EmployeeDto>.Ok(result));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi lấy danh mục với Id: {Id}", id);
+                _logger.LogError(ex, "Lỗi khi lấy nhân viên với Id: {Id}", id);
                 return BadRequest(ApiResponse<EmployeeDto>.Fail("Có lỗi xảy ra"));
             }
         }
