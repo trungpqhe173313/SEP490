@@ -22,7 +22,6 @@ namespace NB.Service.ProductService
                         where p.Id == id
                         select new ProductDto
                         {
-                            Id = p.Id,
                             Name = p.Name,
                             Code = p.Code,
                             Price = p.Price,
@@ -32,5 +31,6 @@ namespace NB.Service.ProductService
                         };
             return await Task.FromResult(query.FirstOrDefault());
         }
+
     }
 }
