@@ -15,5 +15,7 @@ namespace NB.Service.ProductService
        
         Task<ProductDto?> GetProductById(int id);
 
+
+
     }
 }

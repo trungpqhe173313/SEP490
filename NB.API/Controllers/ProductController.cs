@@ -1,8 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using NB.Model.Entities;
 using NB.Service.Common;
+using NB.Service.Core.Mapper;
 using NB.Service.Dto;
-using NB.Service.InventoryService; 
+using NB.Service.EmployeeService.ViewModels;
+using NB.Service.InventoryService;
+using NB.Service.InventoryService.Dto;
 using NB.Service.ProductService;
 using NB.Service.ProductService.Dto;
 using NB.Service.ProductService.ViewModels;
@@ -26,38 +29,41 @@ namespace NB.API.Controllers
             _logger = logger;
         }
 
-        [HttpGet("GetProductsByWarehouse/{warehouseId}")]
-        public async Task<IActionResult> GetData(int warehouseId)
+        [HttpGet("GetData")]
+        public async Task<IActionResult> GetData()
         {
             try
             {
-                // 1. LOGIC: Lấy tất cả Inventory thuộc về WarehouseId, có kèm Product detail (Service)
-                var inventories = await _inventoryService.GetInventoriesWithProductByWarehouseId(warehouseId);
+                // Tạo list các inventory có Product khác null
+                var productList = await _inventoryService.GetData();
+
+                //Trả về Danh sách DTO
+                return Ok(ApiResponse<List<Inventory>>.Ok(productList));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách sản phẩm cho Kho");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi lấy danh sách sản phẩm."));
+            }
+        }
+
+        [HttpGet("GetProductsByWarehouse/{warehouseId}")]
+        public async Task<IActionResult> GetDataByWarehouse(int warehouseId)
+        {
+            try
+            {
+                // Lấy tất cả Inventory thuộc về WarehouseId
+                var inventories = await _inventoryService.GetByWarehouseId(warehouseId);
 
                 if (!inventories.Any())
                 {
                     return NotFound(ApiResponse<object>.Fail($"Không tìm thấy sản phẩm nào trong kho ID: {warehouseId}", 404));
                 }
 
-                // 2. LOGIC: Ánh xạ dữ liệu sang DTOs (Controller xử lý)
-                var productList = inventories
-                    .Where(i => i.Product != null) // Đảm bảo Product đã được load
-                    .Select(i => new ProductInWarehouseDto
-                    {
-                        // Thông tin từ Inventory
-                        InventoryId = i.InventoryId,
-                        QuantityInStock = i.Quantity ?? 0,
-                        LastUpdated = i.LastUpdated,
+                // Tạo list các inventory có Product khác null
+                var productList = await _inventoryService.GetFromList(inventories);
 
-                        // Thông tin từ Product
-                        ProductId = i.ProductId,
-                        ProductName = i.Product.ProductName,
-                        Code = i.Product.Code,
-                        Price = i.Product.Price
-                    })
-                    .ToList();
-
-                // 3. Trả về Danh sách DTO
+                //Trả về Danh sách DTO
                 return Ok(ApiResponse<List<ProductInWarehouseDto>>.Ok(productList));
             }
             catch (Exception ex)
@@ -68,7 +74,7 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("CreateProduct")]
-        public async Task<IActionResult> Create(int inventoryId, int warehouseId,[FromBody] ProductCreateVM model)
+        public async Task<IActionResult> Create(int inventoryId, int warehouseId, [FromBody] ProductCreateVM model)
         {
             if (!ModelState.IsValid)
             {
@@ -77,50 +83,52 @@ namespace NB.API.Controllers
 
             try
             {
-                //Kiểm tra Inventory có tồn tại trong Warehouse hay không
-                if (model.InventoryId.HasValue)
+                //Kiểm tra Inventory 
+                if (await _inventoryService.IsInventoryExist(inventoryId))
                 {
-                    var inventory = await _inventoryService.GetInventoryByWarehouseAndInventoryId(
-                        warehouseId, inventoryId);
-
-                    if (inventory == null)
-                    {
-                        return BadRequest(ApiResponse<object>.Fail($"Inventory ID {inventoryId} không thuộc Warehouse ID {warehouseId}."));
-                    }
+                    return BadRequest(ApiResponse<object>.Fail($"Inventory ID {inventoryId} đã tồn tại) "));
                 }
 
-                // 2. Tạo product
-                var newProductEntity = new Product
+                // Tạo Product
+                var newProductEntity = new ProductDto
                 {
                     CategoryId = model.CategoryId,
                     Code = model.Code,
                     ProductName = model.ProductName,
+                    SupplierId = model.SupplierId,
                     Price = model.Price,
                     StockQuantity = model.StockQuantity,
+                    Weight = model.Weight,
                     CreatedAt = DateTime.UtcNow
-                    //Sản phẩm được tạo có ProductId = 0 trước khi lưu.
                 };
+                await _productService.CreateAsync(newProductEntity);
 
-                await _productService.CreateAsync(newProductEntity); // Service thực hiện CRUD
-
-                // Tạo entity và gọi service
-                // ProductId được gán sau khi CreateAsync hoàn tất 
-                var newInventoryEntity = new Inventory
+                // Tạo Inventory
+                var newInventoryEntity = new InventoryDto
                 {
-                    WarehouseId = model.WarehouseId,
-                    ProductId = newProductEntity.ProductId, // Lấy ID mới
+                    WarehouseId = warehouseId,
+                    ProductId = newProductEntity.ProductId,
                     Quantity = model.StockQuantity,
                     LastUpdated = DateTime.UtcNow
                 };
+                await _inventoryService.CreateAsync(newInventoryEntity);
 
-                await _inventoryService.CreateAsync(newInventoryEntity); 
+                var productOutputDto = new ProductOutputVM
+                {
+                    ProductName = newProductEntity.ProductName,
+                    Code = newProductEntity.Code,
+                    SupplierId = newProductEntity.SupplierId,
+                    CategoryId = newProductEntity.CategoryId,
+                    Price = newProductEntity.Price,
+                    StockQuantity = newProductEntity.StockQuantity,
+                    CreatedAt = newProductEntity.CreatedAt
+                };
 
-                return Ok(ApiResponse<Product>.Ok(newProductEntity));
+                return Ok(ApiResponse<ProductOutputVM>.Ok(productOutputDto)); 
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi tạo sản phẩm mới");
-                return BadRequest(ApiResponse<Product>.Fail(ex.Message));
+                return BadRequest(ApiResponse<ProductOutputVM>.Fail(ex.Message));
             }
         }
 
