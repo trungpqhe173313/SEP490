@@ -19,5 +19,7 @@ namespace NB.Service.InventoryService
         Task<Inventory?> GetByWarehouseAndProductId(int warehouseId, int productId);
 
         Task<List<Inventory>> GetAllInventoriesByProductId(int productId);
+
+        Task<List<Inventory>> GetInventoriesWithProductByWarehouseId(int warehouseId);
     }
 }

@@ -1,6 +1,7 @@
 ﻿using NB.Model.Entities;
 using NB.Repository.Common;
 using NB.Service.Common;
+using NB.Service.ProductService.Dto;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,9 +16,21 @@ namespace NB.Service.ProductService
         {
         }
 
-        public async Task<Product?> GetProductById(int id)
+        public async Task<ProductDto?> GetProductById(int id)
         {            
-            return await base.GetByIdAsync(id);
+            var query = from p in GetQueryable()
+                        where p.Id == id
+                        select new ProductDto
+                        {
+                            Id = p.Id,
+                            Name = p.Name,
+                            Code = p.Code,
+                            Price = p.Price,
+                            StockQuantity = p.StockQuantity,
+                            CreatedAt = p.CreatedAt,
+                            UpdatedAt = p.UpdatedAt
+                        };
+            return await Task.FromResult(query.FirstOrDefault());
         }
     }
 }
