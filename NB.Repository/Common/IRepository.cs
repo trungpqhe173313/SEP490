@@ -11,6 +11,7 @@ namespace NB.Repository.Common
     public interface IRepository<T> where T : class
     {
         Task<T?> GetByIdAsync(Guid? id);
+        Task<T?> GetByIdAsync(int? id);
 
         IEnumerable<T> GetAll();
 

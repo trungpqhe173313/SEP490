@@ -15,4 +15,9 @@
     <ProjectReference Include="..\NB.Repository\NB.Repository.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="UserService\Dto\" />
+    <Folder Include="UserService\ViewModels\" />
+  </ItemGroup>
+
 </Project>
