@@ -1,13 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using NB.Model.Entities;
 using NB.Repository.Common;
-using NB.Repository.EmployeeRepository.Dto;
+using NB.Service.EmployeeService.Dto;
 using NB.Service.Common;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NB.Service.EmployeeService
 {
@@ -48,6 +43,38 @@ namespace NB.Service.EmployeeService
         {
             var query = from emp in GetQueryable()
                         where emp.EmployeeId == id
+                        select new EmployeeDto()
+                        {
+                            EmployeeId = emp.EmployeeId,
+                            UserId = emp.UserId,
+                            FullName = emp.FullName,
+                            Phone = emp.Phone,
+                            HireDate = emp.HireDate,
+                            Status = emp.Status
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<EmployeeDto?> GetByUserId(int id)
+        {
+            var query = from emp in GetQueryable()
+                        where emp.UserId == id
+                        select new EmployeeDto()
+                        {
+                            EmployeeId = emp.EmployeeId,
+                            UserId = emp.UserId,
+                            FullName = emp.FullName,
+                            Phone = emp.Phone,
+                            HireDate = emp.HireDate,
+                            Status = emp.Status
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<EmployeeDto?> GetByPhone(string phone)
+        {
+            var query = from emp in GetQueryable()
+                        where emp.Phone != null && emp.Phone.Equals(phone)
                         select new EmployeeDto()
                         {
                             EmployeeId = emp.EmployeeId,

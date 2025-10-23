@@ -1,5 +1,5 @@
 using NB.Model.Entities;
-using NB.Repository.WarehouseRepository.Dto;
+using NB.Service.WarehouseService.Dto;
 using NB.Service.Common;
 using System;
 using System.Collections.Generic;
@@ -11,6 +11,9 @@ namespace NB.Service.WarehouseService
 {
     public interface IWarehouseService : IService<Warehouse>
     {
-        Task<PagedList<WarehouseProductDto>> GetProducts(WarehouseProductSearch search);
+        Task<List<WarehouseDto?>> GetData();
+        Task<WarehouseDto?> GetByWarehouseId(int id);
+        Task<WarehouseDto?> GetByWarehouseStatus(string status);
+
     }
 }

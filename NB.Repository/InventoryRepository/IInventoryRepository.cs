@@ -1,14 +1,14 @@
 ﻿using NB.Model.Entities;
-using NB.Service.Common;
+using NB.Repository.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Service.EmployeeService.Dto
+namespace NB.Repository.InventoryRepository
 {
-    public class EmployeeDto : Employee
+    public interface IInventoryRepository : IRepository<Inventory>
     {
     }
 }

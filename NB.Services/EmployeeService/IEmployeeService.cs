@@ -1,5 +1,5 @@
 ﻿using NB.Model.Entities;
-using NB.Repository.EmployeeRepository.Dto;
+using NB.Service.EmployeeService.Dto;
 using NB.Service.Common;
 using System;
 using System.Collections.Generic;
@@ -13,5 +13,7 @@ namespace NB.Service.EmployeeService
     {
         Task<PagedList<EmployeeDto>> GetData(EmployeeSearch search);
         Task<EmployeeDto?> GetDto(int id);
+        Task<EmployeeDto?> GetByUserId(int id);
+        Task<EmployeeDto?> GetByPhone(string phone);
     }
 }

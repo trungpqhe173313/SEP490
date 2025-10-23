@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NB.Model.Entities;
 using NB.Repository.Common;
-using NB.Repository.WarehouseRepository.Dto;
+using NB.Service.WarehouseService.Dto;
 using NB.Service.Common;
 using System;
 using System.Collections.Generic;
@@ -11,38 +11,61 @@ using System.Threading.Tasks;
 
 namespace NB.Service.WarehouseService
 {
-    public class WarehouseService : Service<Warehouse>, IWarehouseService
+    public class WarehouseService : Service<Warehouse>,IWarehouseService
     {
-        private readonly IRepository<Inventory> _inventoryRepository;
-
-        public WarehouseService(
-            IRepository<Warehouse> repository,
-            IRepository<Inventory> inventoryRepository) : base(repository)
+        public WarehouseService(IRepository<Warehouse> repository) : base(repository)
         {
-            _inventoryRepository = inventoryRepository;
         }
 
-        public async Task<PagedList<WarehouseProductDto>> GetProducts(WarehouseProductSearch search)
+        public async Task<List<WarehouseDto?>> GetData()
         {
-            var query = from inv in _inventoryRepository.GetQueryable()
-                        select new WarehouseProductDto()
+            var query = from warehouse in GetQueryable()
+                        select new WarehouseDto()
                         {
-                            ProductId = inv.Product.ProductId,
-                            Code = inv.Product.Code,
-                            ProductName = inv.Product.ProductName,
-                            Unit = inv.Product.Unit,
-                            Price = inv.Product.Price,
-                            StockQuantity = inv.Product.StockQuantity,
-                            IsAvailable = inv.Product.IsAvailable,
-                            WarehouseId = inv.Warehouse.WarehouseId,
-                            WarehouseName = inv.Warehouse.WarehouseName,
-                            WarehouseLocation = inv.Warehouse.Location,
-                            Quantity = inv.Quantity,
-                            LastUpdated = inv.LastUpdated
+                            WarehouseId = warehouse.WarehouseId,
+                            WarehouseName = warehouse.WarehouseName,
+                            Location = warehouse.Location,
+                            Capacity = warehouse.Capacity,
+                            Status = warehouse.Status,
+                            Note = warehouse.Note,
+                            CreatedAt = warehouse.CreatedAt
                         };
+            query = query.OrderByDescending(w => w.WarehouseId);
+            return await query.ToListAsync();
+        }
 
-            query = query.OrderByDescending(p => p.ProductId);
-            return await PagedList<WarehouseProductDto>.CreateAsync(query, search);
+        public async Task<WarehouseDto?> GetByWarehouseId(int search)
+        {
+            var query = from warehouse in GetQueryable()
+                        where warehouse.WarehouseId == search
+                        select new WarehouseDto()
+                        {
+                            WarehouseId = warehouse.WarehouseId,
+                            WarehouseName = warehouse.WarehouseName,
+                            Location = warehouse.Location,
+                            Capacity = warehouse.Capacity,
+                            Status = warehouse.Status,
+                            Note = warehouse.Note,
+                            CreatedAt = warehouse.CreatedAt
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<WarehouseDto?> GetByWarehouseStatus(string status)
+        {
+            var query = from warehouse in GetQueryable()
+                        where warehouse.Status == status
+                        select new WarehouseDto()
+                        {
+                            WarehouseId = warehouse.WarehouseId,
+                            WarehouseName = warehouse.WarehouseName,
+                            Location = warehouse.Location,
+                            Capacity = warehouse.Capacity,
+                            Status = warehouse.Status,
+                            Note = warehouse.Note,
+                            CreatedAt = warehouse.CreatedAt
+                        };
+            return await query.FirstOrDefaultAsync();
         }
     }
 }

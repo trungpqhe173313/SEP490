@@ -1,31 +1,70 @@
 ﻿using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NB.API.Modules;
 using NB.Model.Entities;
 using NB.Repository.Common;
 using NB.Service.EmployeeService;
+using NB.Service.Core.Mapper;
 using NB.Service.WarehouseService;
+using NB.Service.InventoryService;
+using NB.Service.SupplierService;
+using NB.Service.ProductService;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
+
+//  Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost",
+        policy =>
+        {
+            policy
+                .WithOrigins("https://localhost:3000") // frontend origin
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
+});
+
 // Add services to the container.
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
-{
-    //containerBuilder.RegisterModule<EFModule>();
-    containerBuilder.RegisterModule<RepositoryModule>();
-    containerBuilder.RegisterModule<ServiceModule>();
-});
+//builder.Services.AddDbContext<NutriBarnContext>(options =>
+//    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Đăng ký service
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<IWarehouseService, WarehouseService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+
+//builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
+
+// Replace the following line:  
+// builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());  
+
+//{
+//    //containerBuilder.RegisterModule<EFModule>();
+//    containerBuilder.RegisterModule<RepositoryModule>();
+//    containerBuilder.RegisterModule<ServiceModule>();
+//});
 
 
 builder.Services.AddDbContext<NutriBarnContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<DbContext, NutriBarnContext>();
+
+//Register AutoMapper
+builder.Services.AddAutoMapper(cfg => cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
+builder.Services.AddScoped<IMapper, Mapper>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -36,6 +75,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Enable CORS BEFORE authorization and MapControllers
+app.UseCors("AllowLocalhost");
 
 app.UseAuthorization();
 
