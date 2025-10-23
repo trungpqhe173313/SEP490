@@ -8,7 +8,7 @@ using NB.Service.WarehouseService.ViewModels;
 
 namespace NB.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/warehouses")]
     public class WarehouseController : Controller
     {
         private readonly IWarehouseService _warehouseService;

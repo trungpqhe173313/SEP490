@@ -8,7 +8,7 @@ using NB.Service.SupplierService.Dto;
 
 namespace NB.API.Controllers
 {
-    [Route("api/supplier")]
+    [Route("api/suppliers")]
     public class SupplierController : Controller
     {
         private readonly ISupplierService _supplierService;

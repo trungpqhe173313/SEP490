@@ -2,7 +2,7 @@
 
 namespace NB.API.Controllers
 {
-    [Route("api/customer")]
+    [Route("api/customers")]
     public class CustomerController : Controller
     {
         //public IActionResult Index()

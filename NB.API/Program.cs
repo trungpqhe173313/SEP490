@@ -13,6 +13,20 @@ using NB.Service.ProductService;
 
 var builder = WebApplication.CreateBuilder(args);
 
+//  Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost",
+        policy =>
+        {
+            policy
+                .WithOrigins("https://localhost:3000") // frontend origin
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
+});
+
 // Add services to the container.
 
 builder.Services.AddControllers();
@@ -61,6 +75,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Enable CORS BEFORE authorization and MapControllers
+app.UseCors("AllowLocalhost");
 
 app.UseAuthorization();
 

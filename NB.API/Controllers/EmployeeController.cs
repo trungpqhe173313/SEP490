@@ -9,7 +9,7 @@ using NB.Service.Core.Mapper;
 
 namespace NB.API.Controllers
 {
-    [Route("api/employee")]
+    [Route("api/employees")]
     public class EmployeeController : Controller
     {
         private readonly IEmployeeService _employeeService;
