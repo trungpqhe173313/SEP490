@@ -12,7 +12,7 @@ using NB.Service.ProductService.ViewModels;
 
 namespace NB.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/products")]
     public class ProductController : Controller
     {
         private readonly IProductService _productService;
