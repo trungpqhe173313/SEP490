@@ -15,23 +15,21 @@ public partial class User
 
     public string FullName { get; set; } = null!;
 
-    public string Role { get; set; } = null!;
+    public string? Image { get; set; }
 
-    public int? IsActive { get; set; }
+    public bool? IsActive { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? LastLogin { get; set; }
 
-    public virtual ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
-
     public virtual ICollection<Contract> Contracts { get; set; } = new List<Contract>();
 
-    public virtual ICollection<CustomerProductPrice> CustomerProductPrices { get; set; } = new List<CustomerProductPrice>();
+    public virtual ICollection<CustomerPrice> CustomerPrices { get; set; } = new List<CustomerPrice>();
 
-    public virtual Employee? Employee { get; set; }
+    public virtual ICollection<Payroll> Payrolls { get; set; } = new List<Payroll>();
 
-    public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
-    public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public virtual ICollection<Worklog> Worklogs { get; set; } = new List<Worklog>();
 }

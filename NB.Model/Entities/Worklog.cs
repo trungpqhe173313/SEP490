@@ -17,11 +17,13 @@ public partial class Worklog
 
     public int? TransactionId { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public string? Note { get; set; }
 
-    public virtual Employee Employee { get; set; } = null!;
+    public DateTime? WorkDate { get; set; }
 
-    public virtual JobType Job { get; set; } = null!;
+    public virtual User Employee { get; set; } = null!;
+
+    public virtual Job Job { get; set; } = null!;
 
     public virtual Transaction? Transaction { get; set; }
 }

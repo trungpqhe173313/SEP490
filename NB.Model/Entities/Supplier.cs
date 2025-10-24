@@ -13,11 +13,11 @@ public partial class Supplier
 
     public string? Phone { get; set; }
 
-    public int? IsVerified { get; set; }
+    public bool? IsActive { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
-    public virtual ICollection<Product> Products { get; set; } = new List<Product>();
+    public virtual ICollection<Contract> Contracts { get; set; } = new List<Contract>();
 
-    public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
+    public virtual ICollection<Product> Products { get; set; } = new List<Product>();
 }

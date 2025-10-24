@@ -5,6 +5,7 @@ using NB.Service.Core.Mapper;
 using NB.Service.Dto;
 using NB.Service.SupplierService;
 using NB.Service.SupplierService.Dto;
+using NB.Service.SupplierService.ViewModels;
 
 namespace NB.API.Controllers
 {
@@ -56,6 +57,34 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi lấy dữ liệu nhà cung cấp với Id: {Id}", id);
                 return BadRequest(ApiResponse<SupplierDto>.Fail("Có lỗi xảy ra"));
+            }
+        }
+
+        [HttpPost("Create")]
+        public async Task<IActionResult> Create([FromBody] SupplierCreateVM model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<Supplier>.Fail("Dữ liệu không hợp lệ"));
+            }
+            try
+            {
+                var exsitingEmail = await _supplierService.GetByEmail(model.Email);
+                if (exsitingEmail != null)
+                {
+                    return BadRequest(ApiResponse<Supplier>.Fail("Email nhà cung cấp đã tồn tại"));
+                }
+
+                var entity = _mapper.Map<SupplierCreateVM, Supplier>(model);
+                entity.CreatedAt = DateTime.Now;
+
+                await _supplierService.CreateAsync(entity);
+                return Ok(ApiResponse<Supplier>.Ok(entity));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi tạo nhà cung cấp");
+                return BadRequest(ApiResponse<Supplier>.Fail("Có lỗi xảy ra khi tạo nhà cung cấp"));
             }
         }
     }
