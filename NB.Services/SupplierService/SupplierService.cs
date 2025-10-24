@@ -26,7 +26,7 @@ namespace NB.Service.SupplierService
                             SupplierName = sup.SupplierName,
                             Phone = sup.Phone,
                             Email = sup.Email,
-                            IsVerified = sup.IsVerified,
+                            IsActive = sup.IsActive,
                             CreatedAt = sup.CreatedAt
                         };
             if (search != null)
@@ -59,7 +59,7 @@ namespace NB.Service.SupplierService
                             SupplierName = sup.SupplierName,
                             Phone = sup.Phone,
                             Email = sup.Email,
-                            IsVerified = sup.IsVerified,
+                            IsActive = sup.IsActive,
                             CreatedAt = sup.CreatedAt
                         };
             return await query.FirstOrDefaultAsync();
@@ -77,7 +77,7 @@ namespace NB.Service.SupplierService
                             SupplierName = sup.SupplierName,
                             Phone = sup.Phone,
                             Email = sup.Email,
-                            IsVerified = sup.IsVerified,
+                            IsActive = sup.IsActive,
                             CreatedAt = sup.CreatedAt
                         };
             return await query.SingleOrDefaultAsync();
