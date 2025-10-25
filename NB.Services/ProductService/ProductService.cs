@@ -10,27 +10,27 @@ using System.Threading.Tasks;
 
 namespace NB.Service.ProductService
 {
-    public class ProductService : Service<Product>, IProductService
+    public class ProductService : Service<Product>
     {
         public ProductService(IRepository<Product> serviceProvider) : base(serviceProvider)
         {
         }
 
-        public async Task<ProductDto?> GetProductById(int id)
-        {            
-            var query = from p in GetQueryable()
-                        where p.Id == id
-                        select new ProductDto
-                        {
-                            Name = p.Name,
-                            Code = p.Code,
-                            Price = p.Price,
-                            StockQuantity = p.StockQuantity,
-                            CreatedAt = p.CreatedAt,
-                            UpdatedAt = p.UpdatedAt
-                        };
-            return await Task.FromResult(query.FirstOrDefault());
-        }
+        //public async Task<ProductDto?> GetProductById(int id)
+        //{            
+        //    var query = from p in GetQueryable()
+        //                where p.Id == id
+        //                select new ProductDto
+        //                {
+        //                    Name = p.Name,
+        //                    Code = p.Code,
+        //                    Price = p.Price,
+        //                    StockQuantity = p.StockQuantity,
+        //                    CreatedAt = p.CreatedAt,
+        //                    UpdatedAt = p.UpdatedAt
+        //                };
+        //    return await Task.FromResult(query.FirstOrDefault());
+        //}
 
     }
 }
