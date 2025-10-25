@@ -3,7 +3,6 @@ using NB.Model.Entities;
 using NB.Service.Common;
 using NB.Service.Core.Mapper;
 using NB.Service.Dto;
-using NB.Service.EmployeeService.ViewModels;
 using NB.Service.InventoryService;
 using NB.Service.InventoryService.Dto;
 using NB.Service.ProductService;
@@ -129,7 +128,7 @@ namespace NB.API.Controllers
         }
 
 
-        [HttpPut("UpdateProduct/{id}")]
+        [HttpPut("UpdateProduct/")]
         public async Task<IActionResult> Update([FromBody] ProductUpdateVM model)
         {
             if (!ModelState.IsValid)
@@ -139,39 +138,54 @@ namespace NB.API.Controllers
 
             try
             {
+                if(await _productService.GetById(model.ProductId) == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {model.ProductId} không tồn tại."));
+                }
+
+                if(await _inventoryService.GetByWarehouseId(model.WarehouseId) == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail($"Không tồn tại Warehouse {model.WarehouseId}."));
+                }
                 // Kiểm tra Product có thuộc warehouse không
-                bool isInWarehouse = await _inventoryService.IsProductInWarehouse(model.ProductId, model.WarehouseId);
+                bool isInWarehouse = await _inventoryService.IsProductInWarehouse(model.WarehouseId, model.ProductId);
                 if (!isInWarehouse)
                 {
                     return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {model.ProductId} không thuộc Warehouse ID {model.WarehouseId}."));
                 }
-
-                // Lấy entity Product và cập nhật
+                if (model.CategoryId <= 0)
+                {
+                    return NotFound(ApiResponse<object>.Fail($"Category ID {model.CategoryId} không hợp lệ."));
+                }
+                var targetInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, model.ProductId);
                 var productEntity = await _productService.GetByIdAsync(model.ProductId);
 
+                productEntity.Code = model.Code;
+                productEntity.ProductName = model.ProductName;
+                productEntity.ImageUrl = model.ImageUrl;
+                productEntity.Description = model.Description;
+                productEntity.IsAvailable = model.IsAvailable;
+                productEntity.CategoryId = model.CategoryId;
+                productEntity.WeightPerUnit = model.WeightPerUnit;
+                productEntity.UpdatedAt = DateTime.UtcNow;
+
                 await _productService.UpdateAsync(productEntity);
+
+                targetInventory.LastUpdated = DateTime.UtcNow;
+                targetInventory.Quantity = model.Quantity;
+
+                await _inventoryService.UpdateAsync(targetInventory);
+
+                // Chuẩn bị dữ liệu trả về
                 ProductDto result = new ProductDto();
-
-                result.ProductId = productEntity.ProductId;
                 result.Code = model.Code;
-                result.CategoryId = model.CategoryId;
                 result.ProductName = model.ProductName;
-                result.Description = model.Description;
-                result.WeightPerUnit = model.WeightPerUnit;
                 result.ImageUrl = model.ImageUrl;
+                result.Description = model.Description;
                 result.IsAvailable = model.IsAvailable;
-
-
-                // Lấy các Inventory thuộc Warehouse có id truyền vào và có ProductId tương ứng
-                var targetInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, model.ProductId);
-
-                if (targetInventory != null)
-                {
-                    // Cập nhật các trường cần thiết (ví dụ: LastUpdated)
-                    targetInventory.LastUpdated = DateTime.UtcNow;
-
-                    await _inventoryService.UpdateAsync(targetInventory);
-                }
+                result.CategoryId = model.CategoryId;
+                result.WeightPerUnit = model.WeightPerUnit;
+                result.UpdatedAt = DateTime.UtcNow;
 
                 return Ok(ApiResponse<ProductDto>.Ok(result));
             }
@@ -182,6 +196,7 @@ namespace NB.API.Controllers
             }
         }
 
+        [HttpDelete("DeleteProduct/{id}")]
         public async Task<IActionResult> Delete(int id)
         {
             try

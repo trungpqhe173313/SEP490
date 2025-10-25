@@ -16,7 +16,7 @@ namespace NB.Service.ProductService
         {
         }
 
-        public async Task<ProductDto?> GetProductById(int id)
+        public async Task<ProductDto?> GetById(int id)
         {            
             var query = from p in GetQueryable()
                         where p.ProductId == id
