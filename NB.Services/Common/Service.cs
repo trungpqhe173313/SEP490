@@ -136,5 +136,10 @@ namespace NB.Service.Common
                 await _repository.SaveAsync();
             }
         }
+
+        public IEnumerable<T> GetAll()
+        {
+            return _repository.GetAll();
+        }
     }
 }

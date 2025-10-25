@@ -17,7 +17,7 @@ namespace NB.Service.SupplierService
         {
         }
 
-        public Task<PagedList<SupplierDto>> GetData(SupplierSearch search)
+        public async Task<PagedList<SupplierDto>> GetData(SupplierSearch search)
         {
             var query = from sup in GetQueryable()
                         select new SupplierDto()
@@ -43,10 +43,13 @@ namespace NB.Service.SupplierService
                 {
                     query = query.Where(s => s.Phone != null && s.Phone.Contains(search.Phone));
                 }
+                if (search.IsActive.HasValue)
+                {
+                    query = query.Where(s => s.IsActive == search.IsActive);
+                }
             }
-
-            query = query.OrderByDescending(s => s.SupplierId);
-            return PagedList<SupplierDto>.CreateAsync(query, search);
+            query = query.OrderByDescending(s => s.CreatedAt);
+            return await PagedList<SupplierDto>.CreateAsync(query, search);
         }
 
         public async Task<SupplierDto?> GetBySupplierId(int id)
@@ -80,7 +83,7 @@ namespace NB.Service.SupplierService
                             IsActive = sup.IsActive,
                             CreatedAt = sup.CreatedAt
                         };
-            return await query.SingleOrDefaultAsync();
+            return await query.FirstOrDefaultAsync();
         }
     }
 }

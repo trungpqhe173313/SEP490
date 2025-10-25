@@ -12,6 +12,7 @@ namespace NB.Service.Common
     {
         Task<T?> GetByIdAsync(Guid? id);
         Task<T?> GetByIdAsync(int? id);
+        IEnumerable<T> GetAll();
         Task<T> GetByIdOrThrowAsync(Guid? guid);
         Task CreateAsync(T entity);
         Task CreateAsync(IEnumerable<T> entities);
