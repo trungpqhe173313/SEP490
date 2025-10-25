@@ -26,6 +26,8 @@ namespace NB.Service.ProductService.ViewModels
         public decimal? WeightPerUnit { get; set; }
         [Required(ErrorMessage = "Giá sản phẩm là bắt buộc")]
 
+        public decimal? Quantity { get; set; }
+
         public DateTime? UpdatedAt { get; set; }
 
     }
