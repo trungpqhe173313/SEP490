@@ -13,8 +13,9 @@ namespace NB.Service.ProductService.ViewModels
         public string Code { get; set; } = null!;
         public string ProductName { get; set; } = null!;
         public string Description { get; set; } = null!;
-        public int? StockQuantity { get; set; }
+        public decimal? Quantity { get; set; }
 
+        public string ImageUrl { get; set; } = null!;
         public decimal Weight { get; set; }
 
         public int SupplierId { get; set; }
