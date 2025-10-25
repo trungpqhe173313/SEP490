@@ -16,21 +16,24 @@ namespace NB.Service.ProductService
         {
         }
 
-        //public async Task<ProductDto?> GetProductById(int id)
-        //{            
-        //    var query = from p in GetQueryable()
-        //                where p.Id == id
-        //                select new ProductDto
-        //                {
-        //                    Name = p.Name,
-        //                    Code = p.Code,
-        //                    Price = p.Price,
-        //                    StockQuantity = p.StockQuantity,
-        //                    CreatedAt = p.CreatedAt,
-        //                    UpdatedAt = p.UpdatedAt
-        //                };
-        //    return await Task.FromResult(query.FirstOrDefault());
-        //}
+        public async Task<ProductDto?> GetById(int id)
+        {            
+            var query = from p in GetQueryable()
+                        where p.ProductId == id
+                        select new ProductDto
+                        {
+                            ProductName = p.ProductName,
+                            Code = p.Code,
+                            CategoryId = p.CategoryId,
+                            ImageUrl = p.ImageUrl,
+                            Description = p.Description,
+                            WeightPerUnit = p.WeightPerUnit,
+                            IsAvailable = p.IsAvailable,
+                            CreatedAt = p.CreatedAt,
+                            UpdatedAt = p.UpdatedAt
+                        };
+            return await Task.FromResult(query.FirstOrDefault());
+        }
 
     }
 }
