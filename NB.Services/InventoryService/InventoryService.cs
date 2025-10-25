@@ -25,7 +25,7 @@ namespace NB.Service.InventoryService
                          i => i.WarehouseId == warehouseId 
                          && i.ProductId == productId)
                         select i.Quantity;
-            return await query.FirstOrDefaultAsync() ?? 0;
+            return (int)(await query.FirstOrDefaultAsync() ?? 0);
         }
         public async Task<Inventory?> GetByWarehouseIdAndInventoryId(int warehouseId, int inventoryId)
         {
@@ -113,7 +113,7 @@ namespace NB.Service.InventoryService
                         ProductId = i.ProductId,
                         ProductName = i.Product.ProductName,
                         Code = i.Product.Code,
-                        Price = i.Product.Price
+                        WeightPerUnit = i.Product.WeightPerUnit,
                     })
                     .ToList();
             return query.ToList();

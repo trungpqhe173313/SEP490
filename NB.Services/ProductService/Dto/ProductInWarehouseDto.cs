@@ -12,10 +12,10 @@ namespace NB.Service.ProductService.Dto
         public int ProductId { get; set; }
         public string ProductName { get; set; } = null!;
         public string Code { get; set; } = null!;
-        public decimal? Price { get; set; }
+        public decimal? WeightPerUnit { get; set; }
 
         // Thông tin tồn kho (từ Inventory)
-        public int QuantityInStock { get; set; }
+        public decimal QuantityInStock { get; set; }
         public int InventoryId { get; set; }
         public DateTime? LastUpdated { get; set; }
     }

@@ -91,9 +91,8 @@ namespace NB.API.Controllers
                     Code = model.Code,
                     ProductName = model.ProductName,
                     SupplierId = model.SupplierId,
-                    Price = model.Price,
-                    StockQuantity = model.StockQuantity,
-                    Weight = model.Weight,
+                    Description = model.Description,
+                    WeightPerUnit = model.Weight,
                     CreatedAt = DateTime.UtcNow
                 };
                 await _productService.CreateAsync(newProductEntity);
@@ -110,12 +109,14 @@ namespace NB.API.Controllers
 
                 var productOutputDto = new ProductOutputVM
                 {
+                    ProductId = newProductEntity.ProductId,
                     ProductName = newProductEntity.ProductName,
                     Code = newProductEntity.Code,
+                    Description = newProductEntity.Description,
                     SupplierId = newProductEntity.SupplierId,
                     CategoryId = newProductEntity.CategoryId,
-                    Price = newProductEntity.Price,
-                    StockQuantity = newProductEntity.StockQuantity,
+                    WeightPerUnit = newProductEntity.WeightPerUnit,
+                    Quantity = newInventoryEntity.Quantity,
                     CreatedAt = newProductEntity.CreatedAt
                 };
 
@@ -129,7 +130,7 @@ namespace NB.API.Controllers
 
 
         [HttpPut("UpdateProduct/{id}")]
-        public async Task<IActionResult> Update(int warehouseId, int productId, [FromBody] ProductUpdateVM model)
+        public async Task<IActionResult> Update([FromBody] ProductUpdateVM model)
         {
             if (!ModelState.IsValid)
             {
@@ -139,30 +140,30 @@ namespace NB.API.Controllers
             try
             {
                 // Kiểm tra Product có thuộc warehouse không
-                bool isInWarehouse = await _inventoryService.IsProductInWarehouse(productId, warehouseId);
+                bool isInWarehouse = await _inventoryService.IsProductInWarehouse(model.ProductId, model.WarehouseId);
                 if (!isInWarehouse)
                 {
-                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {productId} không thuộc Warehouse ID {model.WarehouseId}."));
+                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {model.ProductId} không thuộc Warehouse ID {model.WarehouseId}."));
                 }
 
                 // Lấy entity Product và cập nhật
-                var productEntity = await _productService.GetByIdAsync(productId);
+                var productEntity = await _productService.GetByIdAsync(model.ProductId);
 
                 await _productService.UpdateAsync(productEntity);
                 ProductDto result = new ProductDto();
 
-                result.ProductId = model.ProductId;
-                result.CategoryId = model.CategoryId;
+                result.ProductId = productEntity.ProductId;
                 result.Code = model.Code;
-                result.IsAvailable = model.IsAvailable;
+                result.CategoryId = model.CategoryId;
                 result.ProductName = model.ProductName;
-                result.Price = model.Price;
-                result.StockQuantity = model.StockQuantity;
-                result.CreatedAt = model.UpdatedAt;
-                
+                result.Description = model.Description;
+                result.WeightPerUnit = model.WeightPerUnit;
+                result.ImageUrl = model.ImageUrl;
+                result.IsAvailable = model.IsAvailable;
+
 
                 // Lấy các Inventory thuộc Warehouse có id truyền vào và có Product được chọn
-                var targetInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, warehouseId);
+                var targetInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, model.ProductId);
 
                 if (targetInventory != null)
                 {
@@ -176,7 +177,7 @@ namespace NB.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi cập nhật sản phẩm với Id: {Id}", productId);
+                _logger.LogError(ex, "Lỗi khi cập nhật sản phẩm với Id: {Id}", model.ProductId);
                 return BadRequest(ApiResponse<ProductDto>.Fail(ex.Message));
             }
         }
