@@ -162,7 +162,7 @@ namespace NB.API.Controllers
                 result.IsAvailable = model.IsAvailable;
 
 
-                // Lấy các Inventory thuộc Warehouse có id truyền vào và có Product được chọn
+                // Lấy các Inventory thuộc Warehouse có id truyền vào và có ProductId tương ứng
                 var targetInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, model.ProductId);
 
                 if (targetInventory != null)
@@ -179,6 +179,27 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi cập nhật sản phẩm với Id: {Id}", model.ProductId);
                 return BadRequest(ApiResponse<ProductDto>.Fail(ex.Message));
+            }
+        }
+
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                var product = await _productService.GetByIdAsync(id);
+                if (product == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy sản phẩm", 404));
+                }
+
+                product.IsAvailable = false;
+                await _productService.UpdateAsync(product);
+                return Ok(ApiResponse<object>.Ok("Xóa sản phẩm thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa sản phẩm với Id: {Id}", id);
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi xóa sản phẩm"));
             }
         }
     }
