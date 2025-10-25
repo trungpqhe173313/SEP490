@@ -17,7 +17,7 @@ public partial class ProductionOrder
 
     public DateTime? CreatedAt { get; set; }
 
-    public virtual ICollection<ProductionInput> ProductionInputs { get; set; } = new List<ProductionInput>();
+    public virtual ICollection<Finishproduct> Finishproducts { get; set; } = new List<Finishproduct>();
 
-    public virtual ICollection<ProductionOutput> ProductionOutputs { get; set; } = new List<ProductionOutput>();
+    public virtual ICollection<Material> Materials { get; set; } = new List<Material>();
 }

@@ -12,7 +12,7 @@ namespace NB.Service.ProductService.ViewModels
         public int CategoryId { get; set; }
         public string Code { get; set; } = null!;
         public string ProductName { get; set; } = null!;
-        public decimal? Price { get; set; }
+        public string Description { get; set; } = null!;
         public int? StockQuantity { get; set; }
 
         public decimal Weight { get; set; }

@@ -19,11 +19,13 @@ public partial class Warehouse
 
     public DateTime? CreatedAt { get; set; }
 
+    public virtual ICollection<Finishproduct> Finishproducts { get; set; } = new List<Finishproduct>();
+
     public virtual ICollection<Inventory> Inventories { get; set; } = new List<Inventory>();
 
-    public virtual ICollection<ProductionInput> ProductionInputs { get; set; } = new List<ProductionInput>();
+    public virtual ICollection<Material> Materials { get; set; } = new List<Material>();
 
-    public virtual ICollection<ProductionOutput> ProductionOutputs { get; set; } = new List<ProductionOutput>();
+    public virtual ICollection<StockAdjustment> StockAdjustments { get; set; } = new List<StockAdjustment>();
 
-    public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public virtual ICollection<StockBatch> StockBatches { get; set; } = new List<StockBatch>();
 }

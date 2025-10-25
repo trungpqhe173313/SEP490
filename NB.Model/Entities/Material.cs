@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace NB.Model.Entities;
 
-public partial class ProductionInput
+public partial class Material
 {
     public int Id { get; set; }
 
@@ -16,6 +16,8 @@ public partial class ProductionInput
     public int Quantity { get; set; }
 
     public DateTime? CreatedAt { get; set; }
+
+    public DateTime? LastUpdated { get; set; }
 
     public virtual Product Product { get; set; } = null!;
 

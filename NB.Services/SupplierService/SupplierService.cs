@@ -26,7 +26,7 @@ namespace NB.Service.SupplierService
                             SupplierName = sup.SupplierName,
                             Phone = sup.Phone,
                             Email = sup.Email,
-                            IsVerified = sup.IsVerified,
+                            IsActive = sup.IsActive,
                             CreatedAt = sup.CreatedAt
                         };
             if (search != null)
@@ -59,10 +59,28 @@ namespace NB.Service.SupplierService
                             SupplierName = sup.SupplierName,
                             Phone = sup.Phone,
                             Email = sup.Email,
-                            IsVerified = sup.IsVerified,
+                            IsActive = sup.IsActive,
                             CreatedAt = sup.CreatedAt
                         };
             return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<SupplierDto?> GetByEmail(string email)
+        {
+            var query = from sup in GetQueryable()
+                        where sup.Email
+                        .ToLower()
+                        .Equals(email.ToLower())
+                        select new SupplierDto()
+                        {
+                            SupplierId = sup.SupplierId,
+                            SupplierName = sup.SupplierName,
+                            Phone = sup.Phone,
+                            Email = sup.Email,
+                            IsActive = sup.IsActive,
+                            CreatedAt = sup.CreatedAt
+                        };
+            return await query.SingleOrDefaultAsync();
         }
     }
 }

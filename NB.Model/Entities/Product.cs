@@ -15,41 +15,31 @@ public partial class Product
 
     public string ProductName { get; set; } = null!;
 
+    public string ImageUrl { get; set; } = null!;
+
     public decimal? WeightPerUnit { get; set; }
 
-    public int? StockQuantity { get; set; }
+    public string? Description { get; set; }
 
-    public int? IsAvailable { get; set; }
+    public bool? IsAvailable { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
 
-    public int? Id { get; set; }
-
-    public string? Name { get; set; }
-
-    public string? Unit { get; set; }
-
-    public decimal? Price { get; set; }
-
-    public decimal? Weight { get; set; }
-
-    public int? ProductBaseId { get; set; }
-
     public virtual Category Category { get; set; } = null!;
 
-    public virtual ICollection<CustomerProductPrice> CustomerProductPrices { get; set; } = new List<CustomerProductPrice>();
+    public virtual ICollection<CustomerPrice> CustomerPrices { get; set; } = new List<CustomerPrice>();
+
+    public virtual ICollection<Finishproduct> Finishproducts { get; set; } = new List<Finishproduct>();
 
     public virtual ICollection<Inventory> Inventories { get; set; } = new List<Inventory>();
 
-    public virtual ICollection<ProductPrice> ProductPrices { get; set; } = new List<ProductPrice>();
+    public virtual ICollection<Material> Materials { get; set; } = new List<Material>();
 
-    public virtual ICollection<ProductionInput> ProductionInputs { get; set; } = new List<ProductionInput>();
+    public virtual ICollection<StockAdjustment> StockAdjustments { get; set; } = new List<StockAdjustment>();
 
-    public virtual ICollection<ProductionOutput> ProductionOutputs { get; set; } = new List<ProductionOutput>();
-
-    public virtual ICollection<PurchaseOrderDetail> PurchaseOrderDetails { get; set; } = new List<PurchaseOrderDetail>();
+    public virtual ICollection<StockBatch> StockBatches { get; set; } = new List<StockBatch>();
 
     public virtual Supplier Supplier { get; set; } = null!;
 
