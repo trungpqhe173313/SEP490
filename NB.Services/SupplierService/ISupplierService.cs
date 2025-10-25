@@ -13,5 +13,6 @@ namespace NB.Service.SupplierService
     {
         Task<PagedList<SupplierDto>> GetData(SupplierSearch search);
         Task<SupplierDto?> GetBySupplierId(int id);  
+        Task<SupplierDto?> GetByEmail(string email);
     }
 }

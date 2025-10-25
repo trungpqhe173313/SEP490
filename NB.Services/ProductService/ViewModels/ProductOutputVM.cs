@@ -9,18 +9,17 @@ namespace NB.Service.ProductService.ViewModels
     public class ProductOutputVM
     {
         public int ProductId { get; set; }
-
-        // Khóa ngoại
         public int SupplierId { get; set; }
         public int CategoryId { get; set; }
 
-        // Thông tin cơ bản của sản phẩm
+        public string? Description { get; set; }
+
+        public decimal? Quantity { get; set; }
+
+        public decimal? WeightPerUnit { get; set; }
+
         public string Code { get; set; } = null!;
         public string ProductName { get; set; } = null!;
-        public decimal? Price { get; set; }
-        public int? StockQuantity { get; set; }
-
-        public decimal weightPerUnit { get; set; }
 
         // Thời gian tạo
         public DateTime? CreatedAt { get; set; }

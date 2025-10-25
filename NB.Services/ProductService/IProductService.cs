@@ -13,7 +13,7 @@ namespace NB.Service.ProductService
     public interface IProductService : IService<Product>
     {
        
-        Task<ProductDto?> GetProductById(int id);
+        Task<ProductDto?> GetById(int id);
 
 
 
