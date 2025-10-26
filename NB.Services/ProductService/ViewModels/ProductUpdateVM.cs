@@ -9,6 +9,8 @@ namespace NB.Service.ProductService.ViewModels
 {
     public class ProductUpdateVM
     {
+        [Required(ErrorMessage = "Mã nhà kho là bắt buộc")]
+        public int WarehouseId { get; set; }
         public string Code { get; set; } = null!;
         [Required(ErrorMessage = "Mã danh mục là bắt buộc")]
         public string ImageUrl { get; set; } = null!;
