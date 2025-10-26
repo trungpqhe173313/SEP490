@@ -158,8 +158,8 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpPut("UpdateEmployee")]
-        public async Task<IActionResult> UpdateEmployee([FromBody] UserEditVM model)
+        [HttpPut("UpdateEmployee/{id}")]
+        public async Task<IActionResult> UpdateEmployee(int id,[FromBody] UserEditVM model)
         {
             if (!ModelState.IsValid)
             {
@@ -167,7 +167,7 @@ namespace NB.API.Controllers
             }
             try
             {
-                var entity = await _userService.GetByIdAsync(model.UserId);
+                var entity = await _userService.GetByIdAsync(id);
 
 
                 // Kiểm tra email da ton tai chua
@@ -197,12 +197,12 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpDelete("DeleteEmployee/{userId}")]
-        public async Task<IActionResult> DeleteEmployee(int userId)
+        [HttpDelete("DeleteEmployee/{id}")]
+        public async Task<IActionResult> DeleteEmployee(int id)
         {
             try
             {
-                var entity = await _userService.GetByIdAsync(userId);
+                var entity = await _userService.GetByIdAsync(id);
                 if (entity == null)
                 {
                     return NotFound(ApiResponse<object>.Fail("Không tìm thấy nhân viên"));
@@ -213,7 +213,7 @@ namespace NB.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi xóa nhân viên với UserId: {userId}", userId);
+                _logger.LogError(ex, "Lỗi khi xóa nhân viên với ID: {id}", id);
                 return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi xóa nhân viên"));
             }
         }
