@@ -26,6 +26,7 @@ namespace NB.Service.ProductService
                         {
                             ProductName = p.ProductName,
                             Code = p.Code,
+                            SupplierId = p.SupplierId,
                             CategoryId = p.CategoryId,
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
@@ -45,6 +46,7 @@ namespace NB.Service.ProductService
                         {
                             ProductName = p.ProductName,
                             Code = p.Code,
+                            SupplierId = p.SupplierId,
                             CategoryId = p.CategoryId,
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
@@ -76,6 +78,7 @@ namespace NB.Service.ProductService
                             ProductId = p.ProductId, 
                             ProductName = p.ProductName,
                             Code = p.Code,
+                            SupplierId = p.SupplierId,
                             CategoryId = p.CategoryId,
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,

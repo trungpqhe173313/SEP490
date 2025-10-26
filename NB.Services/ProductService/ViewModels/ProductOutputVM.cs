@@ -8,20 +8,17 @@ namespace NB.Service.ProductService.ViewModels
 {
     public class ProductOutputVM
     {
+        public int WarehouseId { get; set; }
         public int ProductId { get; set; }
+        public string Code { get; set; } = null!;
+        public string ProductName { get; set; } = null!;
         public int SupplierId { get; set; }
         public int CategoryId { get; set; }
-
         public string? Description { get; set; }
-
         public decimal? Quantity { get; set; }
 
         public decimal? WeightPerUnit { get; set; }
-
-        public string Code { get; set; } = null!;
-        public string ProductName { get; set; } = null!;
-
-        // Thời gian tạo
+       // Thời gian tạo
         public DateTime? CreatedAt { get; set; }
     }
 }
