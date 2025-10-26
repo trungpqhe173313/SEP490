@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace NB.Service.ProductService
 {
-    public class ProductService : Service<Product>, IProductService
+    public class ProductService : Service<Product>
     {
         public ProductService(IRepository<Product> serviceProvider) : base(serviceProvider)
         {

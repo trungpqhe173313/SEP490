@@ -7,11 +7,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Repository.EmployeeRepository
+namespace NB.Repository.UserRolerRepository
 {
-    class EmployeeRepository : Repository<Employee>, IEmployeeRepository
+    public class UserRolerRepository : Repository<UserRole>, IUserRolerRepository
     {
-        public EmployeeRepository(DbContext context) : base(context)
+        public UserRolerRepository(DbContext context) : base(context)
         {
         }
     }

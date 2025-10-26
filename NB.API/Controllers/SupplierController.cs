@@ -76,6 +76,7 @@ namespace NB.API.Controllers
                 }
 
                 var entity = _mapper.Map<SupplierCreateVM, Supplier>(model);
+                entity.IsActive = true;
                 entity.CreatedAt = DateTime.Now;
 
                 await _supplierService.CreateAsync(entity);
@@ -85,6 +86,41 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi tạo nhà cung cấp");
                 return BadRequest(ApiResponse<Supplier>.Fail("Có lỗi xảy ra khi tạo nhà cung cấp"));
+            }
+        }
+
+        [HttpPut("Update/{id}")]
+        public async Task<IActionResult> Update(int id, [FromBody] SupplierEditVM model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<Supplier>.Fail("Dữ liệu không hợp lệ"));
+            }
+            try
+            {
+                var existingSupplier = await _supplierService.GetBySupplierId(id);
+                if (existingSupplier == null)
+                {
+                    return NotFound(ApiResponse<Supplier>.Fail("Không tìm thấy nhà cung cấp", 404));
+                }
+                // Kiểm tra email có bị trùng không
+                if (!string.Equals(existingSupplier.Email, model.Email, StringComparison.OrdinalIgnoreCase))
+                {
+                    var exsitingEmail = await _supplierService.GetByEmail(model.Email);
+                    if (exsitingEmail != null)
+                    {
+                        return BadRequest(ApiResponse<Supplier>.Fail("Email nhà cung cấp đã tồn tại"));
+                    }
+                }
+                var entity = _mapper.Map<SupplierEditVM, Supplier>(model);
+                entity.SupplierId = id;
+                await _supplierService.UpdateAsync(entity);
+                return Ok(ApiResponse<Supplier>.Ok(entity));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật nhà cung cấp với Id: {Id}", id);
+                return BadRequest(ApiResponse<Supplier>.Fail("Có lỗi xảy ra khi cập nhật nhà cung cấp"));
             }
         }
     }

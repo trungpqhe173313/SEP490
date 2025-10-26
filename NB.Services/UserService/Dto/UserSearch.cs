@@ -1,19 +1,20 @@
 ﻿using NB.Service.Dto;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Service.SupplierService.Dto
+namespace NB.Service.UserService.Dto
 {
-    public class SupplierSearch : SearchBase
+    public class UserSearch : SearchBase
     {
-        public string? SupplierName { get; set; }
-
+        [AllowNull]
         public string? Email { get; set; }
-
-        public string? Phone { get; set; }
+        [AllowNull]
+        public string? FullName { get; set; }
+        [AllowNull]
         public bool? IsActive { get; set; }
     }
 }

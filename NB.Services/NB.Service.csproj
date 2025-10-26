@@ -16,8 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="UserService\Dto\" />
-    <Folder Include="UserService\ViewModels\" />
+    <Folder Include="RoleService\ViewModels\" />
   </ItemGroup>
 
 </Project>
