@@ -36,6 +36,10 @@ namespace NB.API.Controllers
 
                 
                 var pagedResult = PagedList<CategoryDto?>.CreateFromList(filteredCategories, search);
+                foreach(var category in pagedResult.Items)
+                {
+                    category.IsActive = category.IsActive;
+                }
 
                 return Ok(ApiResponse<PagedList<CategoryDto?>>.Ok(pagedResult));
             }
