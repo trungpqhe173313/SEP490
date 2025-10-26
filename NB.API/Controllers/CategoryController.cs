@@ -6,7 +6,7 @@ using NB.Service.Dto;
 
 namespace NB.API.Controllers
 {
-    [Route("api/controller")]
+    [Route("api/categories")]
     public class CategoryController : Controller
     {
         private readonly ICategoryService _categoryService;
