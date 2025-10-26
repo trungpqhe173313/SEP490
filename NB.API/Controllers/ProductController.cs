@@ -31,13 +31,14 @@ namespace NB.API.Controllers
         [HttpGet("GetData")]
         public async Task<IActionResult> GetData()
         {
+
             try
             {
                 // Tạo list các inventory có Product khác null
                 var productList = await _inventoryService.GetData();
 
                 //Trả về Danh sách DTO
-                return Ok(ApiResponse<List<Inventory>>.Ok(productList));
+                return Ok(ApiResponse<List<InventoryDto>>.Ok(productList));
             }
             catch (Exception ex)
             {
@@ -49,6 +50,10 @@ namespace NB.API.Controllers
         [HttpGet("GetProductsByWarehouse/{warehouseId}")]
         public async Task<IActionResult> GetDataByWarehouse(int warehouseId)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ"));
+            }
             try
             {
                 // Lấy tất cả Inventory thuộc về WarehouseId
@@ -86,12 +91,14 @@ namespace NB.API.Controllers
                 // Tạo Product
                 var newProductEntity = new ProductDto
                 {
+                    SupplierId = model.SupplierId,
                     CategoryId = model.CategoryId,
                     Code = model.Code,
+                    ImageUrl = model.ImageUrl,
                     ProductName = model.ProductName,
-                    SupplierId = model.SupplierId,
                     Description = model.Description,
                     WeightPerUnit = model.Weight,
+                    IsAvailable = true,
                     CreatedAt = DateTime.UtcNow
                 };
                 await _productService.CreateAsync(newProductEntity);
@@ -101,7 +108,7 @@ namespace NB.API.Controllers
                 {
                     WarehouseId = model.WarehouseId,
                     ProductId = newProductEntity.ProductId,
-                    Quantity = model.StockQuantity,
+                    Quantity = model.Quantity,
                     LastUpdated = DateTime.UtcNow
                 };
                 await _inventoryService.CreateAsync(newInventoryEntity);
@@ -171,7 +178,7 @@ namespace NB.API.Controllers
 
                 await _productService.UpdateAsync(productEntity);
 
-                targetInventory.LastUpdated = DateTime.UtcNow;
+                targetInventory.LastUpdated = model.UpdatedAt;
                 targetInventory.Quantity = model.Quantity;
 
                 await _inventoryService.UpdateAsync(targetInventory);
@@ -185,7 +192,7 @@ namespace NB.API.Controllers
                 result.IsAvailable = model.IsAvailable;
                 result.CategoryId = model.CategoryId;
                 result.WeightPerUnit = model.WeightPerUnit;
-                result.UpdatedAt = DateTime.UtcNow;
+                result.UpdatedAt = model.UpdatedAt;
 
                 return Ok(ApiResponse<ProductDto>.Ok(result));
             }
@@ -199,6 +206,10 @@ namespace NB.API.Controllers
         [HttpDelete("DeleteProduct/{id}")]
         public async Task<IActionResult> Delete(int id)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ"));
+            }
             try
             {
                 var product = await _productService.GetByIdAsync(id);

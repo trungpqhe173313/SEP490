@@ -6,9 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Repository.EmployeeRepository
+namespace NB.Repository.RoleRepository
 {
-    public interface IEmployeeRepository : IRepository<Employee>
+    public interface IRoleRepository : IRepository<Role>
     {
     }
 }
