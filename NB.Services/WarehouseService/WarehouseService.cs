@@ -13,7 +13,7 @@ namespace NB.Service.WarehouseService
 {
     public class WarehouseService : Service<Warehouse>,IWarehouseService
     {
-        public WarehouseService(IRepository<Warehouse> repository) : base(repository)
+        public WarehouseService(IRepository<Warehouse> serviceProvider) : base(serviceProvider)
         {
         }
 
