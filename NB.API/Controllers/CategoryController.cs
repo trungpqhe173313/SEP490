@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using NB.Service.CategoryService;
 using NB.Service.CategoryService.Dto;
+using NB.Service.Common;
 using NB.Service.Dto;
 
 namespace NB.API.Controllers
@@ -18,13 +19,25 @@ namespace NB.API.Controllers
             _logger = logger;
         }
 
-        [HttpGet("GetData")]
-        public async Task<IActionResult> GetData()
+        [HttpPost("GetData")]
+        public async Task<IActionResult> GetData([FromBody] CategorySearch search)
         {
             try
             {
-                var categories = await _categoryService.GetData();
-                return Ok(ApiResponse<List<CategoryDto?>>.Ok(categories));
+                var categoryList = await _categoryService.GetData();
+
+                
+                var filteredCategories = string.IsNullOrEmpty(search.CategoryName)
+                    ? categoryList
+                    : categoryList
+                        .Where(c => c.CategoryName != null &&
+                                   c.CategoryName.Contains(search.CategoryName, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                
+                var pagedResult = PagedList<CategoryDto?>.CreateFromList(filteredCategories, search);
+
+                return Ok(ApiResponse<PagedList<CategoryDto?>>.Ok(pagedResult));
             }
             catch (Exception ex)
             {

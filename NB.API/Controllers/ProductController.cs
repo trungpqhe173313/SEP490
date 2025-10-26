@@ -28,17 +28,26 @@ namespace NB.API.Controllers
             _logger = logger;
         }
 
-        [HttpGet("GetData")]
-        public async Task<IActionResult> GetData()
+        [HttpPost("GetData")]
+        public async Task<IActionResult> GetData([FromBody] InventorySearch search)
         {
-
             try
             {
-                // Tạo list các inventory có Product khác null
-                var productList = await _inventoryService.GetData();
+                var inventoryList = await _inventoryService.GetData();
+                var products = await _productService.GetByInventory(inventoryList);
 
-                //Trả về Danh sách DTO
-                return Ok(ApiResponse<List<InventoryDto>>.Ok(productList));
+           
+                var filteredProducts = string.IsNullOrEmpty(search.ProductName)
+                    ? products
+                    : products
+                        .Where(p => p.ProductName != null &&
+                                   p.ProductName.Contains(search.ProductName, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+               
+                var pagedResult = PagedList<ProductDto>.CreateFromList(filteredProducts, search);
+
+                return Ok(ApiResponse<PagedList<ProductDto>>.Ok(pagedResult));
             }
             catch (Exception ex)
             {

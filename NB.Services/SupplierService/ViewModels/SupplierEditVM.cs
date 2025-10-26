@@ -9,9 +9,6 @@ namespace NB.Service.SupplierService.ViewModels
 {
     public class SupplierEditVM
     {
-        [Required(ErrorMessage = "ID nhà cung cấp là bắt buộc")]
-        public int SupplierId { get; set; }
-
         public string? SupplierName { get; set; } = null!;
 
         public string? Email { get; set; } = null!;
