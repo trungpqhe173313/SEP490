@@ -20,6 +20,7 @@ namespace NB.API.Controllers
         private readonly IRoleService _roleService;
         private readonly ILogger<EmployeeController> _logger;
         private readonly IMapper _mapper;
+        private readonly string roleName = "Employee";
         public EmployeeController(
             IUserService userService,
             IUserRoleService userRoleService,
@@ -39,7 +40,6 @@ namespace NB.API.Controllers
         {
             try
             {
-                var roleName = "Employee";
                 var listUser = await _userService.GetAllUser(search) ?? new List<UserDto>();
                 var role = await _roleService.GetByRoleName(roleName);
                 var userRole = await _userRoleService.GetByRoleId(role.RoleId) ?? new List<UserRole>();
@@ -79,7 +79,7 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<UserDto>.Fail("Không tìm thấy nhân viên", 404));
                 }
-                result.RoleName = "Employee";
+                result.RoleName = roleName;
                 return Ok(ApiResponse<UserDto>.Ok(result));
             }
             catch (Exception ex)
@@ -99,7 +99,6 @@ namespace NB.API.Controllers
 
             try
             {
-                var roleName = "Employee";
                 // Kiểm tra email da ton tai chua
                 var existingEmail = await _userService.GetByEmail(model.Email);
                 if (existingEmail != null)
@@ -119,14 +118,6 @@ namespace NB.API.Controllers
                 var entity = _mapper.Map<UserCreateVM, User>(model);
                 entity.IsActive = true;
                 entity.CreatedAt = DateTime.Now;
-                //var entity = new Employee
-                //{
-                //    UserId = model.UserId,
-                //    FullName = model.FullName,
-                //    Phone = model.Phone,
-                //    HireDate = model.HireDate.Value,
-                //    Status = model.Status
-                //};
                 await _userService.CreateAsync(entity);
 
                 var role = await _roleService.GetByRoleName(roleName);

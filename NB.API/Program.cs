@@ -44,6 +44,9 @@ builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
     containerBuilder.RegisterModule<ServiceModule>();
 });
 
+//add DI
+builder.Services.AddScoped<IMapper, Mapper>();
+
 
 builder.Services.AddAutoMapper(cfg => cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
 
