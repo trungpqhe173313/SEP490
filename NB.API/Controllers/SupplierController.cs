@@ -98,13 +98,13 @@ namespace NB.API.Controllers
             }
             try
             {
-                var existingSupplier = await _supplierService.GetBySupplierId(id);
-                if (existingSupplier == null)
+                var entity = await _supplierService.GetBySupplierId(id);
+                if (entity == null)
                 {
                     return NotFound(ApiResponse<Supplier>.Fail("Không tìm thấy nhà cung cấp", 404));
                 }
                 // Kiểm tra email có bị trùng không
-                if (!string.Equals(existingSupplier.Email, model.Email, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(entity.Email, model.Email, StringComparison.OrdinalIgnoreCase))
                 {
                     var exsitingEmail = await _supplierService.GetByEmail(model.Email);
                     if (exsitingEmail != null)
@@ -112,8 +112,7 @@ namespace NB.API.Controllers
                         return BadRequest(ApiResponse<Supplier>.Fail("Email nhà cung cấp đã tồn tại"));
                     }
                 }
-                var entity = _mapper.Map<SupplierEditVM, Supplier>(model);
-                entity.SupplierId = id;
+                _mapper.Map(model, entity);
                 await _supplierService.UpdateAsync(entity);
                 return Ok(ApiResponse<Supplier>.Ok(entity));
             }
