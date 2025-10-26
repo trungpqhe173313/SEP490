@@ -10,7 +10,7 @@ namespace NB.API.Modules
             builder.RegisterAssemblyTypes(Assembly.Load("NB.Repository"))
                    .Where(t => t.Name.EndsWith("Repository"))
                    .AsImplementedInterfaces()
-                  .InstancePerRequest();
+                  .InstancePerLifetimeScope();
         }
     }
 }

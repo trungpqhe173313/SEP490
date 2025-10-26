@@ -8,9 +8,13 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
+	  <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.1.2" />
+	  <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.1.2" />
+	  <PackageReference Include="Microsoft.IdentityModel.Logging" Version="8.1.2" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\NB.Model\NB.Model.csproj" />
     <ProjectReference Include="..\NB.Repository\NB.Repository.csproj" />
   </ItemGroup>
 

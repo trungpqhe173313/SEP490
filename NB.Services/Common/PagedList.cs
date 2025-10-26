@@ -29,5 +29,22 @@ namespace NB.Service.Common
             var items = await query.Skip((search.PageIndex - 1) * search.PageSize).Take(search.PageSize).ToListAsync();
             return new PagedList<T>(items, search.PageIndex, search.PageSize, totalCount);
         }
+
+       
+        public static PagedList<T> CreateFromList(List<T> source, int pageIndex, int pageSize)
+        {
+            var totalCount = source.Count;
+            var items = source
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+            return new PagedList<T>(items, pageIndex, pageSize, totalCount);
+        }
+
+        
+        public static PagedList<T> CreateFromList(List<T> source, SearchBase search)
+        {
+            return CreateFromList(source, search.PageIndex, search.PageSize);
+        }
     }
 }
