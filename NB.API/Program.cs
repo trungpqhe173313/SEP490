@@ -24,7 +24,7 @@ builder.Services.AddCors(options =>
         policy =>
         {
             policy
-                .WithOrigins("https://localhost:3000") // frontend origin
+                .WithOrigins("http://localhost:3000") // frontend origin
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
@@ -35,6 +35,9 @@ builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Register custom mapper
+builder.Services.AddScoped<NB.Service.Core.Mapper.IMapper, NB.Service.Core.Mapper.Mapper>();
 
 
 builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
@@ -49,7 +52,6 @@ builder.Services.AddAutoMapper(cfg => cfg.AddMaps(AppDomain.CurrentDomain.GetAss
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -58,7 +60,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Enable CORS BEFORE authorization and MapControllers
 app.UseCors("AllowLocalhost");
 
 app.UseAuthorization();
