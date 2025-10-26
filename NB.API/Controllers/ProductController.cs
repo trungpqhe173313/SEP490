@@ -91,7 +91,7 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("CreateProduct")]
-        public async Task<IActionResult> Create(int warehouseId, [FromBody] ProductCreateVM model)
+        public async Task<IActionResult> Create([FromBody] ProductCreateVM model)
         {
             if (!ModelState.IsValid)
             {
@@ -119,7 +119,7 @@ namespace NB.API.Controllers
                 // Tạo Inventory
                 var newInventoryEntity = new InventoryDto
                 {
-                    WarehouseId = warehouseId,
+                    WarehouseId = model.WarehouseId,
                     ProductId = newProductEntity.ProductId,
                     Quantity = model.Quantity,
                     LastUpdated = DateTime.UtcNow
@@ -148,8 +148,8 @@ namespace NB.API.Controllers
         }
 
 
-        [HttpPut("UpdateProduct/")]
-        public async Task<IActionResult> Update(int warehouseId, int productId, [FromBody] ProductUpdateVM model)
+        [HttpPut("UpdateProduct/{Id}")]
+        public async Task<IActionResult> Update(int Id, [FromBody] ProductUpdateVM model)
         {
             if (!ModelState.IsValid)
             {
@@ -158,20 +158,20 @@ namespace NB.API.Controllers
 
             try
             {
-                if(await _productService.GetById(productId) == null)
+                if(await _productService.GetById(Id) == null)
                 {
-                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {productId} không tồn tại."));
+                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {Id} không tồn tại."));
                 }
 
-                if(await _inventoryService.GetByWarehouseId(warehouseId) == null)
+                if(await _inventoryService.GetByWarehouseId(model.WarehouseId) == null)
                 {
-                    return NotFound(ApiResponse<object>.Fail($"Không tồn tại Warehouse {warehouseId}."));
+                    return NotFound(ApiResponse<object>.Fail($"Không tồn tại Warehouse {model.WarehouseId}."));
                 }
                 // Kiểm tra Product có thuộc warehouse không
-                bool isInWarehouse = await _inventoryService.IsProductInWarehouse(warehouseId, productId);
+                bool isInWarehouse = await _inventoryService.IsProductInWarehouse(model.WarehouseId, Id);
                 if (!isInWarehouse)
                 {
-                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {productId} không thuộc Warehouse ID {warehouseId}."));
+                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {Id} không thuộc Warehouse ID {model.WarehouseId}."));
                 }
                 if (model.CategoryId <= 0)
                 {
@@ -188,8 +188,8 @@ namespace NB.API.Controllers
                     }
                 }
 
-                var targetInventory = await _inventoryService.GetByWarehouseAndProductId(warehouseId, productId);
-                var productEntity = await _productService.GetByIdAsync(productId);
+                var targetInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, Id);
+                var productEntity = await _productService.GetByIdAsync(Id);
 
                 productEntity.Code = model.Code;
                 productEntity.ProductName = model.ProductName;
@@ -211,6 +211,7 @@ namespace NB.API.Controllers
                 // Chuẩn bị dữ liệu trả về
                 ProductOutputVM result = new ProductOutputVM
                 {
+                    WarehouseId = model.WarehouseId,
                     ProductId = productEntity.ProductId,
                     ProductName = productEntity.ProductName,
                     Code = productEntity.Code,
@@ -219,14 +220,14 @@ namespace NB.API.Controllers
                     CategoryId = productEntity.CategoryId,
                     WeightPerUnit = productEntity.WeightPerUnit,
                     Quantity = targetInventory.Quantity,
-                    CreatedAt = productEntity.CreatedAt,                  
+                    CreatedAt = productEntity.CreatedAt,
                 };
 
                 return Ok(ApiResponse<ProductOutputVM>.Ok(result));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi cập nhật sản phẩm với Id: {Id}", productId);
+                _logger.LogError(ex, "Lỗi khi cập nhật sản phẩm với Id: {Id}", Id);
                 return BadRequest(ApiResponse<ProductDto>.Fail(ex.Message));
             }
         }
@@ -257,40 +258,5 @@ namespace NB.API.Controllers
             }
         }
     }
-    /*
-     * fail: NB.API.Controllers.ProductController[0]
-      L?i khi c?p nh?t s?n ph?m v?i Id: 31
-      Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
-       ---> Microsoft.Data.SqlClient.SqlException (0x80131904): The UPDATE statement conflicted with the FOREIGN KEY constraint "FK__Product__Supplie__2645B050". The conflict occurred in database "NutriBarn", table "dbo.Supplier", column 'SupplierID'.
-         at Microsoft.Data.SqlClient.SqlConnection.OnError(SqlException exception, Boolean breakConnection, Action`1 wrapCloseInAction)
-         at Microsoft.Data.SqlClient.SqlInternalConnection.OnError(SqlException exception, Boolean breakConnection, Action`1 wrapCloseInAction)
-         at Microsoft.Data.SqlClient.TdsParser.ThrowExceptionAndWarning(TdsParserStateObject stateObj, Boolean callerHasConnectionLock, Boolean asyncClose)
-         at Microsoft.Data.SqlClient.TdsParser.TryRun(RunBehavior runBehavior, SqlCommand cmdHandler, SqlDataReader dataStream, BulkCopySimpleResultSet bulkCopyHandler, TdsParserStateObject stateObj, Boolean& dataReady)
-         at Microsoft.Data.SqlClient.SqlDataReader.TryHasMoreRows(Boolean& moreRows)
-         at Microsoft.Data.SqlClient.SqlDataReader.TryReadInternal(Boolean setTimeout, Boolean& more)
-         at Microsoft.Data.SqlClient.SqlDataReader.ReadAsyncExecute(Task task, Object state)
-         at Microsoft.Data.SqlClient.SqlDataReader.InvokeAsyncCall[T](SqlDataReaderBaseAsyncCallContext`1 context)
-      --- End of stack trace from previous location ---
-         at Microsoft.EntityFrameworkCore.Update.AffectedCountModificationCommandBatch.ConsumeResultSetWithRowsAffectedOnlyAsync(Int32 commandIndex, RelationalDataReader reader, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.Update.AffectedCountModificationCommandBatch.ConsumeAsync(RelationalDataReader reader, CancellationToken cancellationToken)
-      ClientConnectionId:0772bb15-9f15-43b4-9af6-41fa1779da2c
-      Error Number:547,State:0,Class:16
-         --- End of inner exception stack trace ---
-         at Microsoft.EntityFrameworkCore.Update.AffectedCountModificationCommandBatch.ConsumeAsync(RelationalDataReader reader, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.SqlServer.Update.Internal.SqlServerModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
-         at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
-         at NB.Repository.Common.Repository`1.SaveAsync() in D:\Github\SEP490\NB.Repository\Common\Repository.cs:line 60
-         at NB.Service.Common.Service`1.UpdateAsync(T entity) in D:\Github\SEP490\NB.Services\Common\Service.cs:line 67
-         at NB.API.Controllers.ProductController.Update(Int32 warehouseId, Int32 productId, ProductUpdateVM model) in D:\Github\SEP490\NB.API\Controllers\ProductController.cs:line 189
-     */
+    
 }
