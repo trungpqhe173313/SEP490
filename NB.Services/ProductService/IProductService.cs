@@ -1,5 +1,6 @@
 ﻿using NB.Model.Entities;
 using NB.Service.Common;
+using NB.Service.InventoryService.Dto;
 using NB.Service.ProductService.Dto;
 using NB.Service.ProductService.ViewModels;
 using System;
@@ -15,7 +16,9 @@ namespace NB.Service.ProductService
        
         Task<ProductDto?> GetById(int id);
 
+        Task<List<ProductDto>> GetByIds(List<int> ids);
 
+        Task<List<ProductDto>> GetByInventory(List<InventoryDto> list);
 
     }
 }
