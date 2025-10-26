@@ -15,7 +15,7 @@ namespace NB.API.Modules
 
                       .AsImplementedInterfaces()
 
-                      .InstancePerRequest();
+                      .InstancePerLifetimeScope();
 
         }
 

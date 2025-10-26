@@ -20,36 +20,22 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("GetData")]
-        public async Task<IActionResult> GetData([FromBody] CategorySearch? search)
+        public async Task<IActionResult> GetData([FromBody] CategorySearch search)
         {
             try
             {
                 var categoryList = await _categoryService.GetData();
 
-                // Nếu search là null, trả về tất cả
-                if (search == null || string.IsNullOrEmpty(search.CategoryName))
-                {
-                    var allPaged = new PagedList<CategoryDto?>(
-                        items: categoryList,
-                        pageIndex: search.PageIndex,
-                        pageSize: search.PageSize,
-                        totalCount: categoryList.Count
-                    );
-                    return Ok(ApiResponse<PagedList<CategoryDto?>>.Ok(allPaged));
-                }
+                
+                var filteredCategories = string.IsNullOrEmpty(search.CategoryName)
+                    ? categoryList
+                    : categoryList
+                        .Where(c => c.CategoryName != null &&
+                                   c.CategoryName.Contains(search.CategoryName, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
 
-                // Lọc theo CategoryName
-                var filteredCategories = categoryList
-                    .Where(c => c.CategoryName != null &&
-                               c.CategoryName.Contains(search.CategoryName, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-                var pagedResult = new PagedList<CategoryDto?>(
-                    items: filteredCategories,
-                    pageIndex: search.PageIndex,
-                    pageSize: search.PageSize,
-                    totalCount: filteredCategories.Count
-                );
+                
+                var pagedResult = PagedList<CategoryDto?>.CreateFromList(filteredCategories, search);
 
                 return Ok(ApiResponse<PagedList<CategoryDto?>>.Ok(pagedResult));
             }

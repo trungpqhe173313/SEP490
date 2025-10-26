@@ -1,4 +1,5 @@
 ﻿using Autofac;
+using Autofac.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NB.API.Modules;
@@ -29,48 +30,22 @@ builder.Services.AddCors(options =>
                 .AllowCredentials();
         });
 });
-
-// Add services to the container.
+builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-//builder.Services.AddDbContext<NutriBarnContext>(options =>
-//    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Đăng ký service
-
-builder.Services.AddScoped<ICategoryService, CategoryService>();
-builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddScoped<IWarehouseService, WarehouseService>();
-builder.Services.AddScoped<IInventoryService, InventoryService>();
-builder.Services.AddScoped<ISupplierService, SupplierService>();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IRoleService, RoleService>();
-builder.Services.AddScoped<IUserRoleService, UserRoleService>();
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-
-//builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
-
-// Replace the following line:  
-// builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());  
-
-//{
-//    //containerBuilder.RegisterModule<EFModule>();
-//    containerBuilder.RegisterModule<RepositoryModule>();
-//    containerBuilder.RegisterModule<ServiceModule>();
-//});
+builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
+{
+    containerBuilder.RegisterModule<EFModule>();
+    containerBuilder.RegisterModule<RepositoryModule>();
+    containerBuilder.RegisterModule<ServiceModule>();
+});
 
 
-builder.Services.AddDbContext<NutriBarnContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-builder.Services.AddScoped<DbContext, NutriBarnContext>();
-
-//Register AutoMapper
 builder.Services.AddAutoMapper(cfg => cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
-builder.Services.AddScoped<IMapper, Mapper>();
 
 var app = builder.Build();
 

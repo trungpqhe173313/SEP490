@@ -15,11 +15,16 @@
 
   <ItemGroup>
     <PackageReference Include="Autofac" Version="8.4.0" />
-    <PackageReference Include="AutoMapper" Version="15.0.1" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+	      <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="10.0.0" />
+	  <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="10.0.0" />
+	  <PackageReference Include="AutoMapper" Version="15.1.0" />
+
+	  <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\NB.Model\NB.Model.csproj" />
+    <ProjectReference Include="..\NB.Repository\NB.Repository.csproj" />
     <ProjectReference Include="..\NB.Services\NB.Service.csproj" />
   </ItemGroup>
 
