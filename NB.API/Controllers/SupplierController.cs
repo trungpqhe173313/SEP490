@@ -60,8 +60,8 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpPost("Create")]
-        public async Task<IActionResult> Create([FromBody] SupplierCreateVM model)
+        [HttpPost("CreateSupplier")]
+        public async Task<IActionResult> CreateSupplier([FromBody] SupplierCreateVM model)
         {
             if (!ModelState.IsValid)
             {
@@ -89,8 +89,8 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpPut("Update/{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] SupplierEditVM model)
+        [HttpPut("UpdateSupplier/{id}")]
+        public async Task<IActionResult> UpdateSupplier(int id, [FromBody] SupplierEditVM model)
         {
             if (!ModelState.IsValid)
             {
@@ -121,6 +121,27 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi cập nhật nhà cung cấp với Id: {Id}", id);
                 return BadRequest(ApiResponse<Supplier>.Fail("Có lỗi xảy ra khi cập nhật nhà cung cấp"));
+            }
+        }
+
+        [HttpDelete("DeleteSupplier/{id}")]
+        public async Task<IActionResult> DeleteSupplier(int id)
+        {
+            try
+            {
+                var entity = await _supplierService.GetByIdAsync(id);
+                if (entity == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy nhà cung cấp"));
+                }
+                entity.IsActive = false;
+                await _supplierService.UpdateAsync(entity);
+                return Ok(ApiResponse<bool>.Ok(true));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa nhà cung cấp với ID: {id}", id);
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi xóa nhà cung cấp"));
             }
         }
     }
