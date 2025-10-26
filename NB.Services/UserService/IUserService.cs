@@ -16,5 +16,6 @@ namespace NB.Service.UserService
         Task<List<UserDto>?> GetAllUser(UserSearch search);
         Task<UserDto?> GetByEmail(string email);
         Task<UserDto?> GetByUsername(string username);
+        Task<bool> CheckPasswordAsync(UserDto user, string password);
     }
 }
