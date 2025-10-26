@@ -10,6 +10,8 @@ namespace NB.Service.UserService.ViewModels
 {
     public class UserEditVM
     {
+        [Required(ErrorMessage = "Mã người dùng là bắt buộc")]
+        public int UserId { get; set; }
         [AllowNull]
         public string? Username { get; set; }
         [AllowNull]
