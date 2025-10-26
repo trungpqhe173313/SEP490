@@ -33,29 +33,19 @@ namespace NB.API.Controllers
         {
             try
             {
-                // Lấy danh sách inventory
                 var inventoryList = await _inventoryService.GetData();
-
-                // Lấy products theo inventory 
                 var products = await _productService.GetByInventory(inventoryList);
 
-                // Lọc theo search (nếu có)
-                var filteredProducts = products;
-                if (!string.IsNullOrEmpty(search.ProductName))
-                {
-                    filteredProducts = products
+           
+                var filteredProducts = string.IsNullOrEmpty(search.ProductName)
+                    ? products
+                    : products
                         .Where(p => p.ProductName != null &&
                                    p.ProductName.Contains(search.ProductName, StringComparison.OrdinalIgnoreCase))
                         .ToList();
-                }
 
-                // Phân trang
-                var pagedResult = new PagedList<ProductDto>(
-                    items: filteredProducts,
-                    pageIndex: search.PageIndex,
-                    pageSize: search.PageSize,
-                    totalCount: filteredProducts.Count
-                );
+               
+                var pagedResult = PagedList<ProductDto>.CreateFromList(filteredProducts, search);
 
                 return Ok(ApiResponse<PagedList<ProductDto>>.Ok(pagedResult));
             }
