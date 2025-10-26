@@ -8,6 +8,7 @@ using NB.Service.InventoryService.Dto;
 using NB.Service.ProductService;
 using NB.Service.ProductService.Dto;
 using NB.Service.ProductService.ViewModels;
+using NB.Service.SupplierService;
 
 namespace NB.API.Controllers
 {
@@ -15,16 +16,19 @@ namespace NB.API.Controllers
     public class ProductController : Controller
     {
         private readonly IProductService _productService;
-        private readonly IInventoryService _inventoryService; 
+        private readonly IInventoryService _inventoryService;
+        private readonly ISupplierService _supplierService;
         private readonly ILogger<ProductController> _logger;
 
         public ProductController(
             IProductService productService,
-            IInventoryService inventoryService, 
+            IInventoryService inventoryService,
+            ISupplierService supplierService,
             ILogger<ProductController> logger)
         {
             _productService = productService;
-            _inventoryService = inventoryService; 
+            _inventoryService = inventoryService;
+            _supplierService = supplierService;
             _logger = logger;
         }
 
@@ -144,8 +148,8 @@ namespace NB.API.Controllers
         }
 
 
-        [HttpPut("UpdateProduct/")]
-        public async Task<IActionResult> Update([FromBody] ProductUpdateVM model)
+        [HttpPut("UpdateProduct/{Id}")]
+        public async Task<IActionResult> Update(int Id, [FromBody] ProductUpdateVM model)
         {
             if (!ModelState.IsValid)
             {
@@ -154,9 +158,9 @@ namespace NB.API.Controllers
 
             try
             {
-                if(await _productService.GetById(model.ProductId) == null)
+                if(await _productService.GetById(Id) == null)
                 {
-                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {model.ProductId} không tồn tại."));
+                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {Id} không tồn tại."));
                 }
 
                 if(await _inventoryService.GetByWarehouseId(model.WarehouseId) == null)
@@ -164,24 +168,36 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<object>.Fail($"Không tồn tại Warehouse {model.WarehouseId}."));
                 }
                 // Kiểm tra Product có thuộc warehouse không
-                bool isInWarehouse = await _inventoryService.IsProductInWarehouse(model.WarehouseId, model.ProductId);
+                bool isInWarehouse = await _inventoryService.IsProductInWarehouse(model.WarehouseId, Id);
                 if (!isInWarehouse)
                 {
-                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {model.ProductId} không thuộc Warehouse ID {model.WarehouseId}."));
+                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {Id} không thuộc Warehouse ID {model.WarehouseId}."));
                 }
                 if (model.CategoryId <= 0)
                 {
                     return NotFound(ApiResponse<object>.Fail($"Category ID {model.CategoryId} không hợp lệ."));
                 }
-                var targetInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, model.ProductId);
-                var productEntity = await _productService.GetByIdAsync(model.ProductId);
+
+                // Kiểm tra SupplierId có tồn tại không
+                if (model.SupplierId > 0)
+                {
+                    var supplier = await _supplierService.GetBySupplierId(model.SupplierId);
+                    if (supplier == null)
+                    {
+                        return NotFound(ApiResponse<object>.Fail($"Supplier ID {model.SupplierId} không tồn tại."));
+                    }
+                }
+
+                var targetInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, Id);
+                var productEntity = await _productService.GetByIdAsync(Id);
 
                 productEntity.Code = model.Code;
                 productEntity.ProductName = model.ProductName;
+                productEntity.CategoryId = model.CategoryId;
+                productEntity.SupplierId = model.SupplierId;
                 productEntity.ImageUrl = model.ImageUrl;
                 productEntity.Description = model.Description;
                 productEntity.IsAvailable = model.IsAvailable;
-                productEntity.CategoryId = model.CategoryId;
                 productEntity.WeightPerUnit = model.WeightPerUnit;
                 productEntity.UpdatedAt = DateTime.UtcNow;
 
@@ -193,21 +209,25 @@ namespace NB.API.Controllers
                 await _inventoryService.UpdateAsync(targetInventory);
 
                 // Chuẩn bị dữ liệu trả về
-                ProductDto result = new ProductDto();
-                result.Code = model.Code;
-                result.ProductName = model.ProductName;
-                result.ImageUrl = model.ImageUrl;
-                result.Description = model.Description;
-                result.IsAvailable = model.IsAvailable;
-                result.CategoryId = model.CategoryId;
-                result.WeightPerUnit = model.WeightPerUnit;
-                result.UpdatedAt = model.UpdatedAt;
+                ProductOutputVM result = new ProductOutputVM
+                {
+                    WarehouseId = model.WarehouseId,
+                    ProductId = productEntity.ProductId,
+                    ProductName = productEntity.ProductName,
+                    Code = productEntity.Code,
+                    Description = productEntity.Description,
+                    SupplierId = productEntity.SupplierId,
+                    CategoryId = productEntity.CategoryId,
+                    WeightPerUnit = productEntity.WeightPerUnit,
+                    Quantity = targetInventory.Quantity,
+                    CreatedAt = productEntity.CreatedAt,
+                };
 
-                return Ok(ApiResponse<ProductDto>.Ok(result));
+                return Ok(ApiResponse<ProductOutputVM>.Ok(result));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi cập nhật sản phẩm với Id: {Id}", model.ProductId);
+                _logger.LogError(ex, "Lỗi khi cập nhật sản phẩm với Id: {Id}", Id);
                 return BadRequest(ApiResponse<ProductDto>.Fail(ex.Message));
             }
         }
@@ -238,4 +258,5 @@ namespace NB.API.Controllers
             }
         }
     }
+    
 }
