@@ -6,7 +6,7 @@ using NB.Service.Dto;
 
 namespace NB.API.Controllers
 {
-    [Route("api/controller")]
+    [Route("api/categories")]
     public class CategoryController : Controller
     {
         private readonly ICategoryService _categoryService;
@@ -36,6 +36,10 @@ namespace NB.API.Controllers
 
                 
                 var pagedResult = PagedList<CategoryDto?>.CreateFromList(filteredCategories, search);
+                foreach(var category in pagedResult.Items)
+                {
+                    category.IsActive = category.IsActive;
+                }
 
                 return Ok(ApiResponse<PagedList<CategoryDto?>>.Ok(pagedResult));
             }
@@ -99,8 +103,8 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpPut("UpdateCategory")]
-        public async Task<IActionResult> UpdateCategory([FromBody] CategoryUpdateVM model)
+        [HttpPut("UpdateCategory/{Id}")]
+        public async Task<IActionResult> UpdateCategory(int Id,[FromBody] CategoryUpdateVM model)
         {
             if (!ModelState.IsValid)
             {
@@ -109,7 +113,7 @@ namespace NB.API.Controllers
             try
             {
                 
-                var category = await _categoryService.GetById(model.CategoryId);
+                var category = await _categoryService.GetById(Id);
                 if(category == null)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Không tồn tại danh mục với Id này"));
@@ -123,9 +127,11 @@ namespace NB.API.Controllers
 
                 var categoryUpdate = new CategoryDto
                 {
-                    CategoryName = model.CategoryName,
-                    Description = model.Description,
-                    IsActive = model.IsActive,
+                    CategoryId = category.CategoryId,
+                    CategoryName = category.CategoryName,
+                    Description = category.Description,
+                    IsActive = category.IsActive,
+                    CreatedAt = category.CreatedAt,
                     UpdateAt = model.UpdatedAt
                 };
 
@@ -133,7 +139,7 @@ namespace NB.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Lỗi khi cập nhật danh mục với ID: {model.CategoryId}");
+                _logger.LogError(ex, $"Lỗi khi cập nhật danh mục với ID: {Id}");
                 return BadRequest(ApiResponse<CategoryDto>.Fail("Có lỗi xảy ra khi cập nhật danh mục."));
             }
         }

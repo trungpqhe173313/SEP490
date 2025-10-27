@@ -8,7 +8,6 @@ namespace NB.Service.CategoryService.Dto
 {
     public class CategoryUpdateVM
     {
-        public int CategoryId { get; set; }
 
         public string CategoryName { get; set; } = null!;
 
