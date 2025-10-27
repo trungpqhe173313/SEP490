@@ -16,7 +16,7 @@ namespace NB.Service.ProductService.ViewModels
         public decimal? Quantity { get; set; }
 
         public string ImageUrl { get; set; } = null!;
-        public decimal Weight { get; set; }
+        public decimal WeightPerUnit { get; set; }
 
         public int SupplierId { get; set; }
     }

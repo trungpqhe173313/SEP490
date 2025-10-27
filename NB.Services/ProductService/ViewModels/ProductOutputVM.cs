@@ -8,6 +8,7 @@ namespace NB.Service.ProductService.ViewModels
 {
     public class ProductOutputVM
     {
+        public int WarehouseId { get; set; }
         public int ProductId { get; set; }
         public string Code { get; set; } = null!;
         public string ProductName { get; set; } = null!;
