@@ -110,7 +110,7 @@ namespace NB.API.Controllers
                     ImageUrl = model.ImageUrl,
                     ProductName = model.ProductName,
                     Description = model.Description,
-                    WeightPerUnit = model.Weight,
+                    WeightPerUnit = model.WeightPerUnit,
                     IsAvailable = true,
                     CreatedAt = DateTime.UtcNow
                 };
