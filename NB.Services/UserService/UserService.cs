@@ -34,6 +34,8 @@ namespace NB.Service.UserService
                         {
                             UserId = u.UserId,
                             FullName = u.FullName,
+                            //Username = u.Username,
+                            //Password = u.Password,
                             Email = u.Email,
                             Image = u.Image,
                             CreatedAt = u.CreatedAt,
@@ -62,6 +64,8 @@ namespace NB.Service.UserService
                         {
                             UserId = u.UserId,
                             FullName = u.FullName,
+                            Username = u.Username,
+                            Password = u.Password,
                             Email = u.Email,
                             Image = u.Image,
                             CreatedAt = u.CreatedAt,
@@ -78,6 +82,8 @@ namespace NB.Service.UserService
                         {
                             UserId = u.UserId,
                             FullName = u.FullName,
+                            Username = u.Username,
+                            Password = u.Password,
                             Email = u.Email,
                             Image = u.Image,
                             CreatedAt = u.CreatedAt,

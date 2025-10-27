@@ -3,11 +3,6 @@ using NB.Model.Entities;
 using NB.Repository.Common;
 using NB.Service.Common;
 using NB.Service.SupplierService.Dto;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NB.Service.SupplierService
 {
@@ -74,6 +69,22 @@ namespace NB.Service.SupplierService
                         where sup.Email
                         .ToLower()
                         .Equals(email.ToLower())
+                        select new SupplierDto()
+                        {
+                            SupplierId = sup.SupplierId,
+                            SupplierName = sup.SupplierName,
+                            Phone = sup.Phone,
+                            Email = sup.Email,
+                            IsActive = sup.IsActive,
+                            CreatedAt = sup.CreatedAt
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<SupplierDto?> GetByPhone(string phone)
+        {
+            var query = from sup in GetQueryable()
+                        where sup.Phone == phone
                         select new SupplierDto()
                         {
                             SupplierId = sup.SupplierId,

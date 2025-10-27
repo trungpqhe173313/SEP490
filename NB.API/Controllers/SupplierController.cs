@@ -69,10 +69,18 @@ namespace NB.API.Controllers
             }
             try
             {
+                //Kiểm tra email có bị trùng không
                 var exsitingEmail = await _supplierService.GetByEmail(model.Email);
                 if (exsitingEmail != null)
                 {
                     return BadRequest(ApiResponse<Supplier>.Fail("Email nhà cung cấp đã tồn tại"));
+                }
+
+                //Kiểm tra số điện thoại có bị trùng không
+                var exsitingPhone = await _supplierService.GetByPhone(model.Phone);
+                if (exsitingPhone != null)
+                {
+                    return BadRequest(ApiResponse<Supplier>.Fail("Số điện thoại nhà cung cấp đã tồn tại"));
                 }
 
                 var entity = _mapper.Map<SupplierCreateVM, Supplier>(model);
@@ -112,6 +120,16 @@ namespace NB.API.Controllers
                         return BadRequest(ApiResponse<Supplier>.Fail("Email nhà cung cấp đã tồn tại"));
                     }
                 }
+                // Kiểm tra số điện thoại có bị trùng không
+                if (!string.IsNullOrEmpty(model.Phone)
+                    && !string.Equals(entity.Phone, model.Phone, StringComparison.OrdinalIgnoreCase))
+                {
+                    var exsitingPhone = await _supplierService.GetByPhone(model.Phone);
+                    if (exsitingPhone != null)
+                    {
+                        return BadRequest(ApiResponse<Supplier>.Fail("Số điện thoại nhà cung cấp đã tồn tại"));
+                    }
+                }
                 _mapper.Map(model, entity);
                 await _supplierService.UpdateAsync(entity);
                 return Ok(ApiResponse<Supplier>.Ok(entity));
@@ -131,7 +149,7 @@ namespace NB.API.Controllers
                 var entity = await _supplierService.GetByIdAsync(id);
                 if (entity == null)
                 {
-                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy nhà cung cấp"));
+                    return NotFound(ApiResponse<Supplier>.Fail("Không tìm thấy nhà cung cấp"));
                 }
                 entity.IsActive = false;
                 await _supplierService.UpdateAsync(entity);
@@ -140,7 +158,7 @@ namespace NB.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi xóa nhà cung cấp với ID: {id}", id);
-                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi xóa nhà cung cấp"));
+                return BadRequest(ApiResponse<Supplier>.Fail("Có lỗi xảy ra khi xóa nhà cung cấp"));
             }
         }
     }
