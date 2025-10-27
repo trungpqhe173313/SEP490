@@ -25,6 +25,7 @@ namespace NB.Service.CategoryService
                             CategoryId = category.CategoryId,
                             CategoryName = category.CategoryName,
                             Description = category.Description,
+                            IsActive = category.IsActive,
                             CreatedAt = category.CreatedAt,
                             UpdateAt = category.UpdateAt
                         };
@@ -39,7 +40,8 @@ namespace NB.Service.CategoryService
                         {
                             CategoryId = category.CategoryId,
                             CategoryName = category.CategoryName,
-                            Description = category.Description,  
+                            Description = category.Description,
+                            IsActive = category.IsActive,
                             CreatedAt = category.CreatedAt,
                             UpdateAt = category.UpdateAt
                         };
@@ -55,6 +57,7 @@ namespace NB.Service.CategoryService
                             CategoryId = category.CategoryId,
                             CategoryName = category.CategoryName,
                             Description = category.Description,
+                            IsActive = category.IsActive,
                             CreatedAt = category.CreatedAt,
                             UpdateAt = category.UpdateAt
                         };
