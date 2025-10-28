@@ -126,9 +126,15 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<object>.Fail("Không tồn tại danh mục với Id này", 404));
                 }
+                var cateName = category.CategoryName.Trim().Replace(" ", "");
+                var existingCategory = await _categoryService.GetByName(cateName);
+                if ( existingCategory != null && existingCategory.CategoryId != Id)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Tên danh mục này đã được đăng kí", 400));
+                }
                 category.CategoryName = model.CategoryName.Replace(" ", "");
                 category.Description = model.Description;
-                category.IsActive = true;
+                category.IsActive = model.IsActive;
                 category.UpdateAt = model.UpdatedAt;
 
                 await _categoryService.UpdateAsync(category);
