@@ -8,14 +8,14 @@ namespace NB.Service.ProductService.ViewModels
         [Required(ErrorMessage = "Mã nhà kho là bắt buộc")]
         public int WarehouseId { get; set; }
 
-        [Required(ErrorMessage = "Tên danh mục là bắt buộc")]
-        public string CategoryName { get; set; } = null!;
-
         [Required(ErrorMessage = "Mã sản phẩm không được trống")]
         public string Code { get; set; } = null!;
 
-        [Required(ErrorMessage = "Tên nhà cung cấp là bắt buộc")]
-        public string SupplierName { get; set; } = null!;
+        [Required(ErrorMessage = "Danh mục là bắt buộc")]
+        public int CategoryId { get; set; } = null!;
+
+        [Required(ErrorMessage = "Nhà cung cấp là bắt buộc")]
+        public int SupplierId { get; set; }
 
         [Required(ErrorMessage = "Tên sản phẩm không được trống")]
         public string ProductName { get; set; } = null!;

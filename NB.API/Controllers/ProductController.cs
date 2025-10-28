@@ -112,20 +112,19 @@ namespace NB.API.Controllers
             {
                 return NotFound(ApiResponse<object>.Fail($"Không tồn tại Warehouse {model.WarehouseId}.", 404));
             }
-
-            // Validate và tìm Category theo name
-            var categoryName = model.CategoryName?.Trim();
-            if (string.IsNullOrWhiteSpace(categoryName))
+            // Validate Supplier 
+            var supplier = await _supplierService.GetBySupplierId(model.SupplierId);
+            if (model.SupplierId <= 0 || supplier  == null)
             {
-                return BadRequest(ApiResponse<object>.Fail("Tên danh mục không được để trống.", 400));
+                return BadRequest(ApiResponse<object>.Fail("Danh mục không được để trống.", 400));
             }
 
-            var category = await _categoryService.GetByName(categoryName);
-            if (category == null)
+            // Validate Category           
+            var category = await _categoryService.GetById(model.CategoryId);
+            if (model.CategoryId <= 0 || category == null)
             {
-                return NotFound(ApiResponse<object>.Fail($"Danh mục '{model.CategoryName}' không tồn tại.", 404));
+                return BadRequest(ApiResponse<object>.Fail("Danh mục không được để trống.", 400));
             }
-
             // Validate Code và kiểm tra trùng
             var code = model.Code?.Trim().Replace(" ", "");
             if (string.IsNullOrWhiteSpace(code))
@@ -135,7 +134,7 @@ namespace NB.API.Controllers
 
             if (await _productService.GetByCode(code) != null)
             {
-                return BadRequest(ApiResponse<object>.Fail($"Mã sản phẩm {code} đã tồn tại.", 400));
+                return BadRequest(ApiResponse<object>.Fail($"Mã sản phẩm {model.Code} đã tồn tại.", 400));
             }
 
             // Validate ProductName uniqueness
@@ -147,20 +146,7 @@ namespace NB.API.Controllers
 
             if (await _productService.GetByProductName(productName) != null)
             {
-                return BadRequest(ApiResponse<object>.Fail($"Tên sản phẩm '{productName}' đã tồn tại.", 400));
-            }
-
-            // Validate và tìm Supplier theo name
-            var supplierName = model.SupplierName?.Trim();
-            if (string.IsNullOrWhiteSpace(supplierName))
-            {
-                return BadRequest(ApiResponse<object>.Fail("Tên nhà cung cấp không được để trống.", 400));
-            }
-
-            var supplier = await _supplierService.GetByName(supplierName);
-            if (supplier == null)
-            {
-                return NotFound(ApiResponse<object>.Fail($"Nhà cung cấp '{model.SupplierName}' không tồn tại.", 404));
+                return BadRequest(ApiResponse<object>.Fail($"Tên sản phẩm '{model.ProductName}' đã tồn tại.", 400));
             }
 
             // Validate WeightPerUnit
@@ -248,7 +234,7 @@ namespace NB.API.Controllers
             var existingProductByCode = await _productService.GetByCode(newCode);
             if (existingProductByCode != null && existingProductByCode.ProductId != Id)
             {
-                return BadRequest(ApiResponse<object>.Fail($"Mã sản phẩm {newCode} đã tồn tại.", 400));
+                return BadRequest(ApiResponse<object>.Fail($"Mã sản phẩm {model.Code} đã tồn tại.", 400));
             }
 
             // Validate ProductName uniqueness
@@ -261,33 +247,19 @@ namespace NB.API.Controllers
             var existingProductByName = await _productService.GetByProductName(newProductName);
             if (existingProductByName != null && existingProductByName.ProductId != Id)
             {
-                return BadRequest(ApiResponse<object>.Fail($"Tên sản phẩm '{newProductName}' đã tồn tại.", 400));
+                return BadRequest(ApiResponse<object>.Fail($"Tên sản phẩm '{model.ProductName}' đã tồn tại.", 400));
             }
 
-            // Validate Supplier by name
-            var supplierName = model.SupplierName?.Trim();
-            if (string.IsNullOrWhiteSpace(supplierName))
+            // Validate Supplier 
+            if (model.SupplierId <= 0 || await _supplierService.GetBySupplierId(model.CategoryId) == null)
             {
-                return BadRequest(ApiResponse<object>.Fail("Tên nhà cung cấp không được để trống.", 400));
+                return BadRequest(ApiResponse<object>.Fail("Danh mục không được để trống.", 400));
             }
 
-            var supplier = await _supplierService.GetByName(supplierName);
-            if (supplier == null)
+            // Validate Category 
+            if (model.CategoryId <= 0 || await _categoryService.GetById(model.CategoryId) == null)
             {
-                return NotFound(ApiResponse<object>.Fail($"Nhà cung cấp '{model.SupplierName}' không tồn tại.", 404));
-            }
-
-            // Validate Category by name
-            var categoryName = model.CategoryName?.Trim();
-            if (string.IsNullOrWhiteSpace(categoryName))
-            {
-                return BadRequest(ApiResponse<object>.Fail("Tên danh mục không được để trống.", 400));
-            }
-
-            var category = await _categoryService.GetByName(categoryName);
-            if (category == null)
-            {
-                return NotFound(ApiResponse<object>.Fail($"Danh mục '{model.CategoryName}' không tồn tại.", 404));
+                return BadRequest(ApiResponse<object>.Fail("Danh mục không được để trống.", 400));
             }
 
             // Validate WeightPerUnit
@@ -330,16 +302,17 @@ namespace NB.API.Controllers
                     productEntity.ProductName = productNameToUpdate;
                     isProductChanged = true;
                 }
-
-                if (productEntity.CategoryId != category.CategoryId)
+                var newCategory = await _categoryService.GetById(model.CategoryId);
+                if (productEntity.CategoryId != newCategory.CategoryId)
                 {
-                    productEntity.CategoryId = category.CategoryId;
+                    productEntity.CategoryId = newCategory.CategoryId;
                     isProductChanged = true;
                 }
 
-                if (productEntity.SupplierId != supplier.SupplierId)
+                var newSupplier = await _supplierService.GetBySupplierId(model.SupplierId);
+                if (productEntity.SupplierId != newSupplier.SupplierId)
                 {
-                    productEntity.SupplierId = supplier.SupplierId;
+                    productEntity.SupplierId = newSupplier.SupplierId;
                     isProductChanged = true;
                 }
 
@@ -393,9 +366,9 @@ namespace NB.API.Controllers
                     Code = productEntity.Code,
                     Description = productEntity.Description,
                     SupplierId = productEntity.SupplierId,
-                    SupplierName = supplier.SupplierName,
+                    SupplierName = newSupplier.SupplierName,
                     CategoryId = productEntity.CategoryId,
-                    CategoryName = category.CategoryName,
+                    CategoryName = newCategory.CategoryName,
                     WeightPerUnit = productEntity.WeightPerUnit,
                     CreatedAt = productEntity.CreatedAt
                 };
