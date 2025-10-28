@@ -45,7 +45,15 @@ namespace NB.Service.UserService
             {
                 if (!string.IsNullOrEmpty(search.FullName))
                 {
-                    query = query.Where(u => u.FullName.Contains(search.FullName));
+                    var keyword = search.FullName.Trim();
+                    query = query.Where(u => EF.Functions.Collate(u.FullName, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
+                }
+                if (!string.IsNullOrEmpty(search.Email))
+                {
+                    var keyword = search.Email.Trim();
+                    query = query.Where(u => EF.Functions.Collate(u.Email, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
                 }
                 if (search.IsActive.HasValue)
                 {
@@ -75,7 +83,7 @@ namespace NB.Service.UserService
             return await query.FirstOrDefaultAsync();
         }
 
-        public Task<List<UserDto>?> GetAllUser(UserSearch search)
+        public async Task<List<UserDto>?> GetAllUser(UserSearch search)
         {
             var query = from u in GetQueryable()
                         select new UserDto
@@ -93,15 +101,24 @@ namespace NB.Service.UserService
             {
                 if (!string.IsNullOrEmpty(search.FullName))
                 {
-                    query = query.Where(u => u.FullName.Contains(search.FullName));
+                    var keyword = search.FullName.Trim();
+                    query = query.Where(u => EF.Functions.Collate(u.FullName, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
+                }
+                if (!string.IsNullOrEmpty(search.Email))
+                {
+                    var keyword = search.Email.Trim();
+                    query = query.Where(u => EF.Functions.Collate(u.Email, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
                 }
                 if (search.IsActive.HasValue)
                 {
                     query = query.Where(u => u.IsActive == search.IsActive);
                 }
             }
+
             query = query.OrderByDescending(u => u.CreatedAt);
-            return query.ToListAsync();
+            return await query.ToListAsync();
         }
 
         public async Task<UserDto?> GetByEmail(string email)
