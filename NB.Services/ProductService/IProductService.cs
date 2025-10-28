@@ -13,12 +13,22 @@ namespace NB.Service.ProductService
 {
     public interface IProductService : IService<Product>
     {
-       
+
         Task<ProductDto?> GetById(int id);
 
         Task<List<ProductDto>> GetByIds(List<int> ids);
 
         Task<List<ProductDto>> GetByInventory(List<InventoryDto> list);
+
+        Task<List<ProductDto>> GetData();
+
+        Task<List<ProductDetailDto>> GetDataWithDetails();
+
+        Task<List<ProductInWarehouseDto>> GetProductsByWarehouseId(int warehouseId);
+
+        Task<ProductDto?> GetByCode(string code);
+
+        Task<ProductDto?> GetByProductName(string productName);
 
     }
 }
