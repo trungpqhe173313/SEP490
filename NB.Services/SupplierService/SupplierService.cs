@@ -96,5 +96,24 @@ namespace NB.Service.SupplierService
                         };
             return await query.FirstOrDefaultAsync();
         }
+
+        public async Task<SupplierDto?> GetByName(string name)
+        {
+            // Chuẩn hóa tên tìm kiếm: loại bỏ khoảng trắng và chuyển về lowercase
+            var normalizedSearchName = name.Replace(" ", "").ToLower();
+
+            var query = from sup in GetQueryable()
+                        where sup.SupplierName.Replace(" ", "").ToLower() == normalizedSearchName
+                        select new SupplierDto()
+                        {
+                            SupplierId = sup.SupplierId,
+                            SupplierName = sup.SupplierName,
+                            Phone = sup.Phone,
+                            Email = sup.Email,
+                            IsActive = sup.IsActive,
+                            CreatedAt = sup.CreatedAt
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
     }
 }

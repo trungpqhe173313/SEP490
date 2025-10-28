@@ -13,9 +13,10 @@ namespace NB.Service.ProductService.ViewModels
         public string Code { get; set; } = null!;
         public string ProductName { get; set; } = null!;
         public int SupplierId { get; set; }
+        public string SupplierName { get; set; } = null!;
         public int CategoryId { get; set; }
+        public string CategoryName { get; set; } = null!;
         public string? Description { get; set; }
-        public decimal? Quantity { get; set; }
 
         public decimal? WeightPerUnit { get; set; }
        // Thời gian tạo

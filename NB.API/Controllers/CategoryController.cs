@@ -24,7 +24,7 @@ namespace NB.API.Controllers
         {
             try
             {
-                var categoryList = await _categoryService.GetData();
+                var categoryList = await _categoryService.GetDataWithProducts();
 
                 // Lọc danh mục dựa trên tên danh mục nếu được cung cấp
                 var filteredCategories = string.IsNullOrEmpty(search.CategoryName)
@@ -39,14 +39,9 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<object>.Fail("Không tìm thấy danh mục với tên tương tự.", 404));
                 }
 
+                var pagedResult = PagedList<CategoryDetailDto>.CreateFromList(filteredCategories, search);
 
-                var pagedResult = PagedList<CategoryDto?>.CreateFromList(filteredCategories, search);
-                foreach (var category in pagedResult.Items)
-                {
-                    category.IsActive = category.IsActive;
-                }
-
-                return Ok(ApiResponse<PagedList<CategoryDto?>>.Ok(pagedResult));
+                return Ok(ApiResponse<PagedList<CategoryDetailDto>>.Ok(pagedResult));
             }
             catch (Exception ex)
             {
@@ -55,7 +50,7 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpGet("GetById/{id}")]
+        [HttpGet("GetById/{Id}")]
         public async Task<IActionResult> GetById(int Id)
         {
             if (!ModelState.IsValid)
@@ -68,12 +63,12 @@ namespace NB.API.Controllers
             }
             try
             {
-                var category = await _categoryService.GetById(Id);
+                var category = await _categoryService.GetByIdWithProducts(Id);
                 if (category == null)
                 {
                     return NotFound(ApiResponse<object>.Fail($"Không tìm thấy danh mục với ID: {Id}", 404));
                 }
-                return Ok(ApiResponse<CategoryDto?>.Ok(category));
+                return Ok(ApiResponse<CategoryDetailDto?>.Ok(category));
             }
             catch (Exception ex)
             {

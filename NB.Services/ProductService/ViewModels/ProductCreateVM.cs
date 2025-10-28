@@ -5,18 +5,27 @@ namespace NB.Service.ProductService.ViewModels
 {
     public class ProductCreateVM
     {
+        [Required(ErrorMessage = "Mã nhà kho là bắt buộc")]
         public int WarehouseId { get; set; }
-        public int CategoryId { get; set; }
+
+        [Required(ErrorMessage = "Tên danh mục là bắt buộc")]
+        public string CategoryName { get; set; } = null!;
+
         [Required(ErrorMessage = "Mã sản phẩm không được trống")]
         public string Code { get; set; } = null!;
+
+        [Required(ErrorMessage = "Tên nhà cung cấp là bắt buộc")]
+        public string SupplierName { get; set; } = null!;
+
         [Required(ErrorMessage = "Tên sản phẩm không được trống")]
-        public int SupplierId { get; set; }
         public string ProductName { get; set; } = null!;
-        public string Description { get; set; } = null!;
-        public decimal? Quantity { get; set; }
 
+        public string? Description { get; set; }
+
+        [Required(ErrorMessage = "URL hình ảnh là bắt buộc")]
         public string ImageUrl { get; set; } = null!;
-        public decimal WeightPerUnit { get; set; }
 
+        [Required(ErrorMessage = "Trọng lượng trên đơn vị là bắt buộc")]
+        public decimal WeightPerUnit { get; set; }
     }
 }
