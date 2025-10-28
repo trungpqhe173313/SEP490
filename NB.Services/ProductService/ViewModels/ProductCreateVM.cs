@@ -9,10 +9,10 @@ namespace NB.Service.ProductService.ViewModels
         public int WarehouseId { get; set; }
 
         [Required(ErrorMessage = "Mã sản phẩm không được trống")]
-        public string Code { get; set; } = null!;
+        public string Code { get; set; } 
 
         [Required(ErrorMessage = "Danh mục là bắt buộc")]
-        public int CategoryId { get; set; } = null!;
+        public int CategoryId { get; set; } 
 
         [Required(ErrorMessage = "Nhà cung cấp là bắt buộc")]
         public int SupplierId { get; set; }

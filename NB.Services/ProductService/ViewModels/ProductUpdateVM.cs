@@ -12,7 +12,7 @@ namespace NB.Service.ProductService.ViewModels
         [Required(ErrorMessage = "Tên sản phẩm là bắt buộc")]
         public string ProductName { get; set; } = null!;
         [Required(ErrorMessage = "Tên nhà cung cấp là bắt buộc")]
-        public int SupplierId { get; set; } = null!;
+        public int SupplierId { get; set; } 
         [Required(ErrorMessage = "Tên danh mục là bắt buộc")]
         public int CategoryId { get; set; }
         public string Description { get; set; } = null!;
