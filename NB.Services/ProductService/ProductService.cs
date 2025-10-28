@@ -174,9 +174,6 @@ namespace NB.Service.ProductService
                         where i.WarehouseId == warehouseId
                         select new ProductInWarehouseDto
                         {
-                            // Thông tin từ Inventory
-                            InventoryId = i.InventoryId,
-                            LastUpdated = i.LastUpdated,
                             // Thông tin từ Product
                             ProductId = p.ProductId,
                             ProductName = p.ProductName,
@@ -189,6 +186,30 @@ namespace NB.Service.ProductService
                             CategoryName = c.CategoryName
                         };
             return await query.ToListAsync();
+        }
+
+        public async Task<ProductDto?> GetByProductName(string productName)
+        {
+            // Chuẩn hóa tên tìm kiếm: loại bỏ khoảng trắng và chuyển về lowercase
+            var normalizedSearchName = productName.Replace(" ", "").ToLower();
+
+            var query = from p in GetQueryable()
+                        where p.ProductName.Replace(" ", "").ToLower() == normalizedSearchName
+                        select new ProductDto
+                        {
+                            ProductId = p.ProductId,
+                            ProductName = p.ProductName,
+                            Code = p.Code,
+                            SupplierId = p.SupplierId,
+                            CategoryId = p.CategoryId,
+                            ImageUrl = p.ImageUrl,
+                            Description = p.Description,
+                            WeightPerUnit = p.WeightPerUnit,
+                            IsAvailable = p.IsAvailable,
+                            CreatedAt = p.CreatedAt,
+                            UpdatedAt = p.UpdatedAt
+                        };
+            return await query.FirstOrDefaultAsync();
         }
     }
 }
