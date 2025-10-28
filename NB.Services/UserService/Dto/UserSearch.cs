@@ -10,11 +10,8 @@ namespace NB.Service.UserService.Dto
 {
     public class UserSearch : SearchBase
     {
-        [AllowNull]
         public string? Email { get; set; }
-        [AllowNull]
         public string? FullName { get; set; }
-        [AllowNull]
         public bool? IsActive { get; set; }
     }
 }
