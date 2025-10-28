@@ -28,11 +28,16 @@ namespace NB.Service.SupplierService
             {
                 if (!string.IsNullOrEmpty(search.SupplierName))
                 {
-                    query = query.Where(s => s.SupplierName != null && s.SupplierName.ToLower().Contains(search.SupplierName.ToLower()));
+                    var keyword = search.SupplierName.Trim();
+                    query = query.Where(s => EF.Functions.Collate(s.SupplierName, "SQL_Latin1_General_CP1_CI_AI")
+                        .Contains(keyword));
                 }
+
                 if (!string.IsNullOrEmpty(search.Email))
                 {
-                    query = query.Where(s => s.Email != null && s.Email.Contains(search.Email));
+                    var keyword = search.Email.Trim();
+                    query = query.Where(s => EF.Functions.Collate(s.Email, "SQL_Latin1_General_CP1_CI_AI")
+                        .Contains(keyword));
                 }
                 if (!string.IsNullOrEmpty(search.Phone))
                 {
