@@ -14,8 +14,19 @@ namespace NB.Service.ProductService
 {
     public class ProductService : Service<Product>, IProductService
     {
-        public ProductService(IRepository<Product> serviceProvider) : base(serviceProvider)
+        private readonly IRepository<Supplier> _supplierRepository;
+        private readonly IRepository<Category> _categoryRepository;
+        private readonly IRepository<Inventory> _inventoryRepository;
+
+        public ProductService(
+            IRepository<Product> serviceProvider,
+            IRepository<Supplier> supplierRepository,
+            IRepository<Category> categoryRepository,
+            IRepository<Inventory> inventoryRepository) : base(serviceProvider)
         {
+            _supplierRepository = supplierRepository;
+            _categoryRepository = categoryRepository;
+            _inventoryRepository = inventoryRepository;
         }
 
         public async Task<ProductDto?> GetById(int id)
@@ -114,9 +125,10 @@ namespace NB.Service.ProductService
         public async Task<ProductDto?> GetByCode(string code)
         {
             var query = from p in GetQueryable()
-                        where p.Code == code
+                        where p.Code == code.Trim().Replace(" ", "")
                         select new ProductDto
                         {
+                            ProductId = p.ProductId,
                             ProductName = p.ProductName,
                             Code = p.Code,
                             SupplierId = p.SupplierId,
@@ -129,6 +141,54 @@ namespace NB.Service.ProductService
                             UpdatedAt = p.UpdatedAt
                         };
             return await Task.FromResult(query.FirstOrDefault());
+        }
+
+        public async Task<List<ProductDetailDto>> GetDataWithDetails()
+        {
+            var query = from p in GetQueryable()
+                        join s in _supplierRepository.GetQueryable() on p.SupplierId equals s.SupplierId
+                        join c in _categoryRepository.GetQueryable() on p.CategoryId equals c.CategoryId
+                        select new ProductDetailDto
+                        {
+                            ProductId = p.ProductId,
+                            Code = p.Code,
+                            ProductName = p.ProductName,
+                            ImageUrl = p.ImageUrl,
+                            WeightPerUnit = p.WeightPerUnit,
+                            Description = p.Description,
+                            IsAvailable = p.IsAvailable,
+                            CreatedAt = p.CreatedAt,
+                            UpdatedAt = p.UpdatedAt,
+                            SupplierName = s.SupplierName,
+                            CategoryName = c.CategoryName
+                        };
+            return await query.ToListAsync();
+        }
+
+        public async Task<List<ProductInWarehouseDto>> GetProductsByWarehouseId(int warehouseId)
+        {
+            var query = from i in _inventoryRepository.GetQueryable()
+                        join p in GetQueryable() on i.ProductId equals p.ProductId
+                        join s in _supplierRepository.GetQueryable() on p.SupplierId equals s.SupplierId
+                        join c in _categoryRepository.GetQueryable() on p.CategoryId equals c.CategoryId
+                        where i.WarehouseId == warehouseId
+                        select new ProductInWarehouseDto
+                        {
+                            // Thông tin từ Inventory
+                            InventoryId = i.InventoryId,
+                            LastUpdated = i.LastUpdated,
+                            // Thông tin từ Product
+                            ProductId = p.ProductId,
+                            ProductName = p.ProductName,
+                            Code = p.Code,
+                            WeightPerUnit = p.WeightPerUnit,
+                            Description = p.Description,
+                            ImageUrl = p.ImageUrl,
+                            // Thông tin từ Supplier và Category
+                            SupplierName = s.SupplierName,
+                            CategoryName = c.CategoryName
+                        };
+            return await query.ToListAsync();
         }
     }
 }
