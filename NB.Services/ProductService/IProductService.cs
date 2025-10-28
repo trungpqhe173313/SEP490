@@ -20,5 +20,9 @@ namespace NB.Service.ProductService
 
         Task<List<ProductDto>> GetByInventory(List<InventoryDto> list);
 
+        Task<List<ProductDto>> GetData();
+
+        Task<ProductDto?> GetByCode(string code);
+
     }
 }

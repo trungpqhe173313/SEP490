@@ -90,5 +90,45 @@ namespace NB.Service.ProductService
 
             return await query.ToListAsync(); 
         }
+
+        public async Task<List<ProductDto>> GetData()
+        {
+            var query = from p in GetQueryable()
+                        select new ProductDto
+                        {
+                            ProductId = p.ProductId,
+                            ProductName = p.ProductName,
+                            Code = p.Code,
+                            SupplierId = p.SupplierId,
+                            CategoryId = p.CategoryId,
+                            ImageUrl = p.ImageUrl,
+                            Description = p.Description,
+                            WeightPerUnit = p.WeightPerUnit,
+                            IsAvailable = p.IsAvailable,
+                            CreatedAt = p.CreatedAt,
+                            UpdatedAt = p.UpdatedAt
+                        };
+            return await query.ToListAsync();
+        }
+
+        public async Task<ProductDto?> GetByCode(string code)
+        {
+            var query = from p in GetQueryable()
+                        where p.Code == code
+                        select new ProductDto
+                        {
+                            ProductName = p.ProductName,
+                            Code = p.Code,
+                            SupplierId = p.SupplierId,
+                            CategoryId = p.CategoryId,
+                            ImageUrl = p.ImageUrl,
+                            Description = p.Description,
+                            WeightPerUnit = p.WeightPerUnit,
+                            IsAvailable = p.IsAvailable,
+                            CreatedAt = p.CreatedAt,
+                            UpdatedAt = p.UpdatedAt
+                        };
+            return await Task.FromResult(query.FirstOrDefault());
+        }
     }
 }

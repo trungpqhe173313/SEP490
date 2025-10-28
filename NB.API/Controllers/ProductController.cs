@@ -33,22 +33,22 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("GetData")]
-        public async Task<IActionResult> GetData([FromBody] InventorySearch search)
+        public async Task<IActionResult> GetData([FromBody] ProductSearch search)
         {
             try
             {
-                var inventoryList = await _inventoryService.GetData();
-                var products = await _productService.GetByInventory(inventoryList);
-
-           
+                var products = await _productService.GetData();
                 var filteredProducts = string.IsNullOrEmpty(search.ProductName)
                     ? products
                     : products
                         .Where(p => p.ProductName != null &&
-                                   p.ProductName.Contains(search.ProductName, StringComparison.OrdinalIgnoreCase))
+                                   p.ProductName.Contains(search.ProductName.Replace(" ", ""), StringComparison.OrdinalIgnoreCase))
                         .ToList();
+                if (filteredProducts.Count == 0)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy sản phẩm nào.", 404));
+                }
 
-               
                 var pagedResult = PagedList<ProductDto>.CreateFromList(filteredProducts, search);
 
                 return Ok(ApiResponse<PagedList<ProductDto>>.Ok(pagedResult));
@@ -56,37 +56,38 @@ namespace NB.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy danh sách sản phẩm cho Kho");
-                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi lấy danh sách sản phẩm."));
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi lấy danh sách sản phẩm.", 400));
             }
         }
 
         [HttpGet("GetProductsByWarehouse/{warehouseId}")]
-        public async Task<IActionResult> GetDataByWarehouse(int warehouseId)
+        public async Task<IActionResult> GetDataByWarehouse(int Id)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ"));
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+            if (Id <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail($"WarehouseId {Id} không hợp lệ", 400));
             }
             try
             {
-                // Lấy tất cả Inventory thuộc về WarehouseId
-                var inventories = await _inventoryService.GetByWarehouseId(warehouseId);
+                var inventories = await _inventoryService.GetByWarehouseId(Id);
 
                 if (!inventories.Any())
                 {
-                    return NotFound(ApiResponse<object>.Fail($"Không tìm thấy sản phẩm nào trong kho ID: {warehouseId}", 404));
+                    return NotFound(ApiResponse<object>.Fail($"Không tìm thấy sản phẩm nào trong kho ID: {Id}", 404));
                 }
 
-                // Tạo list các inventory có Product khác null
                 var productList = await _inventoryService.GetFromList(inventories);
 
-                //Trả về Danh sách DTO
                 return Ok(ApiResponse<List<ProductInWarehouseDto>>.Ok(productList));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi lấy danh sách sản phẩm cho Kho {WarehouseId}", warehouseId);
-                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi lấy danh sách sản phẩm."));
+                _logger.LogError(ex, "Lỗi khi lấy danh sách sản phẩm cho Kho {WarehouseId}", Id);
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi lấy danh sách sản phẩm.", 400));
             }
         }
 
@@ -95,20 +96,39 @@ namespace NB.API.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ"));
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
-
+            if (await _inventoryService.GetByWarehouseId(model.WarehouseId) == null)
+            {
+                return NotFound(ApiResponse<object>.Fail($"Không tồn tại Warehouse {model.WarehouseId}.", 404));
+            }
+            if (model.CategoryId <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail($"Category ID {model.CategoryId} không hợp lệ.", 400));
+            }
+            if (await _productService.GetByCode(model.Code.Replace(" ", "")) != null)
+            {
+                return BadRequest(ApiResponse<object>.Fail($"Mã sản phẩm {model.Code.Replace(" ", "")} đã tồn tại.", 400));
+            }
+            if (model.SupplierId <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail($"Supplier ID {model.SupplierId} không hợp lệ.", 400));
+            }
+            var supplier = await _supplierService.GetBySupplierId(model.SupplierId);
+            if (supplier == null)
+            {
+                return NotFound(ApiResponse<object>.Fail($"Supplier ID {model.SupplierId} không tồn tại.", 404));
+            }
             try
             {
 
-                // Tạo Product
                 var newProductEntity = new ProductDto
                 {
                     SupplierId = model.SupplierId,
                     CategoryId = model.CategoryId,
-                    Code = model.Code,
-                    ImageUrl = model.ImageUrl,
-                    ProductName = model.ProductName,
+                    Code = model.Code.Replace(" ", ""),
+                    ImageUrl = model.ImageUrl.Replace(" ", ""),
+                    ProductName = model.ProductName.Replace(" ", ""),
                     Description = model.Description,
                     WeightPerUnit = model.WeightPerUnit,
                     IsAvailable = true,
@@ -116,7 +136,6 @@ namespace NB.API.Controllers
                 };
                 await _productService.CreateAsync(newProductEntity);
 
-                // Tạo Inventory
                 var newInventoryEntity = new InventoryDto
                 {
                     WarehouseId = model.WarehouseId,
@@ -128,6 +147,7 @@ namespace NB.API.Controllers
 
                 var productOutputDto = new ProductOutputVM
                 {
+                    WarehouseId = model.WarehouseId,
                     ProductId = newProductEntity.ProductId,
                     ProductName = newProductEntity.ProductName,
                     Code = newProductEntity.Code,
@@ -139,11 +159,11 @@ namespace NB.API.Controllers
                     CreatedAt = newProductEntity.CreatedAt
                 };
 
-                return Ok(ApiResponse<ProductOutputVM>.Ok(productOutputDto)); 
+                return Ok(ApiResponse<ProductOutputVM>.Ok(productOutputDto));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<ProductOutputVM>.Fail(ex.Message));
+                return BadRequest(ApiResponse<ProductOutputVM>.Fail(ex.Message, 400));
             }
         }
 
@@ -153,49 +173,50 @@ namespace NB.API.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ"));
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
-
+            if (await _inventoryService.GetByWarehouseId(model.WarehouseId) == null)
+            {
+                return NotFound(ApiResponse<object>.Fail($"Không tồn tại Warehouse {model.WarehouseId}.", 404));
+            }
+            var existingProductByCode = await _productService.GetByCode(model.Code.Replace(" ", ""));
+            if (existingProductByCode != null && existingProductByCode.ProductId != Id)
+            {
+                return BadRequest(ApiResponse<object>.Fail($"Mã sản phẩm {model.Code.Replace(" ", "")} đã tồn tại.", 400));
+            }
+            if (model.SupplierId <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail($"Supplier ID {model.SupplierId} không hợp lệ.", 400));
+            }
+            var supplier = await _supplierService.GetBySupplierId(model.SupplierId);
+            if (supplier == null)
+            {
+                return NotFound(ApiResponse<object>.Fail($"Supplier ID {model.SupplierId} không tồn tại.", 404));
+            }
+            if (model.CategoryId <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail($"Category ID {model.CategoryId} không hợp lệ.", 400));
+            }
+            if (await _productService.GetById(Id) == null)
+            {
+                return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {Id} không tồn tại.", 404));
+            }
+            bool isInWarehouse = await _inventoryService.IsProductInWarehouse(model.WarehouseId, Id);
+            if (!isInWarehouse)
+            {
+                return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {Id} không thuộc Warehouse ID {model.WarehouseId}.", 404));
+            }
             try
             {
-                if(await _productService.GetById(Id) == null)
-                {
-                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {Id} không tồn tại."));
-                }
-
-                if(await _inventoryService.GetByWarehouseId(model.WarehouseId) == null)
-                {
-                    return NotFound(ApiResponse<object>.Fail($"Không tồn tại Warehouse {model.WarehouseId}."));
-                }
-                // Kiểm tra Product có thuộc warehouse không
-                bool isInWarehouse = await _inventoryService.IsProductInWarehouse(model.WarehouseId, Id);
-                if (!isInWarehouse)
-                {
-                    return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {Id} không thuộc Warehouse ID {model.WarehouseId}."));
-                }
-                if (model.CategoryId <= 0)
-                {
-                    return NotFound(ApiResponse<object>.Fail($"Category ID {model.CategoryId} không hợp lệ."));
-                }
-
-                // Kiểm tra SupplierId có tồn tại không
-                if (model.SupplierId > 0)
-                {
-                    var supplier = await _supplierService.GetBySupplierId(model.SupplierId);
-                    if (supplier == null)
-                    {
-                        return NotFound(ApiResponse<object>.Fail($"Supplier ID {model.SupplierId} không tồn tại."));
-                    }
-                }
 
                 var targetInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, Id);
                 var productEntity = await _productService.GetByIdAsync(Id);
 
-                productEntity.Code = model.Code;
-                productEntity.ProductName = model.ProductName;
+                productEntity.Code = model.Code.Replace(" ", "");
+                productEntity.ProductName = model.ProductName.Replace(" ", "");
                 productEntity.CategoryId = model.CategoryId;
                 productEntity.SupplierId = model.SupplierId;
-                productEntity.ImageUrl = model.ImageUrl;
+                productEntity.ImageUrl = model.ImageUrl.Replace(" ", "");
                 productEntity.Description = model.Description;
                 productEntity.IsAvailable = model.IsAvailable;
                 productEntity.WeightPerUnit = model.WeightPerUnit;
@@ -208,7 +229,6 @@ namespace NB.API.Controllers
 
                 await _inventoryService.UpdateAsync(targetInventory);
 
-                // Chuẩn bị dữ liệu trả về
                 ProductOutputVM result = new ProductOutputVM
                 {
                     WarehouseId = model.WarehouseId,
@@ -228,23 +248,31 @@ namespace NB.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi cập nhật sản phẩm với Id: {Id}", Id);
-                return BadRequest(ApiResponse<ProductDto>.Fail(ex.Message));
+                return BadRequest(ApiResponse<ProductDto>.Fail(ex.Message, 400));
             }
         }
 
         [HttpDelete("DeleteProduct/{id}")]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> Delete(int Id)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ"));
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+            if (Id <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail($"ProductId {Id} không hợp lệ", 400));
             }
             try
             {
-                var product = await _productService.GetByIdAsync(id);
+                var product = await _productService.GetById(Id);
                 if (product == null)
                 {
                     return NotFound(ApiResponse<object>.Fail("Không tìm thấy sản phẩm", 404));
+                }
+                if (product.IsAvailable == false)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Sản phẩm đã bị xóa từ trước", 400));
                 }
 
                 product.IsAvailable = false;
@@ -253,10 +281,10 @@ namespace NB.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi xóa sản phẩm với Id: {Id}", id);
-                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi xóa sản phẩm"));
+                _logger.LogError(ex, "Lỗi khi xóa sản phẩm với Id: {Id}", Id);
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi xóa sản phẩm", 400));
             }
         }
     }
-    
+
 }
