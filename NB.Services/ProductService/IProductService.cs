@@ -28,5 +28,7 @@ namespace NB.Service.ProductService
 
         Task<ProductDto?> GetByCode(string code);
 
+        Task<ProductDto?> GetByProductName(string productName);
+
     }
 }

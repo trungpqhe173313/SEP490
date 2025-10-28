@@ -138,6 +138,18 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<object>.Fail($"Mã sản phẩm {code} đã tồn tại.", 400));
             }
 
+            // Validate ProductName uniqueness
+            var productName = model.ProductName?.Trim();
+            if (string.IsNullOrWhiteSpace(productName))
+            {
+                return BadRequest(ApiResponse<object>.Fail("Tên sản phẩm không được để trống.", 400));
+            }
+
+            if (await _productService.GetByProductName(productName) != null)
+            {
+                return BadRequest(ApiResponse<object>.Fail($"Tên sản phẩm '{productName}' đã tồn tại.", 400));
+            }
+
             // Validate và tìm Supplier theo name
             var supplierName = model.SupplierName?.Trim();
             if (string.IsNullOrWhiteSpace(supplierName))
@@ -165,7 +177,7 @@ namespace NB.API.Controllers
                     CategoryId = category.CategoryId,
                     Code = code,
                     ImageUrl = model.ImageUrl?.Trim().Replace(" ", "") ?? string.Empty,
-                    ProductName = model.ProductName?.Trim().Replace(" ", "") ?? string.Empty,
+                    ProductName = productName?.Trim().Replace(" ", "") ?? string.Empty,
                     Description = model.Description?.Trim(),
                     WeightPerUnit = model.WeightPerUnit,
                     IsAvailable = true,
@@ -234,11 +246,22 @@ namespace NB.API.Controllers
             }
 
             var existingProductByCode = await _productService.GetByCode(newCode);
-            if (existingProductByCode.ProductId != Id && newCode == existingProductByCode.Code)
+            if (existingProductByCode != null && existingProductByCode.ProductId != Id)
             {
-                return BadRequest(ApiResponse<object>.Fail($"Mã sản phẩm {model.Code} đã tồn tại.", 400));
-            }else if(existingProductByCode == null){
-                return BadRequest(ApiResponse<object>.Fail($"Đã xảy ra lỗi...", 400));
+                return BadRequest(ApiResponse<object>.Fail($"Mã sản phẩm {newCode} đã tồn tại.", 400));
+            }
+
+            // Validate ProductName uniqueness
+            var newProductName = model.ProductName?.Trim();
+            if (string.IsNullOrWhiteSpace(newProductName))
+            {
+                return BadRequest(ApiResponse<object>.Fail("Tên sản phẩm không được để trống.", 400));
+            }
+
+            var existingProductByName = await _productService.GetByProductName(newProductName);
+            if (existingProductByName != null && existingProductByName.ProductId != Id)
+            {
+                return BadRequest(ApiResponse<object>.Fail($"Tên sản phẩm '{newProductName}' đã tồn tại.", 400));
             }
 
             // Validate Supplier by name
@@ -268,7 +291,7 @@ namespace NB.API.Controllers
             }
 
             // Validate WeightPerUnit
-            if (model.WeightPerUnit < 0)
+            if (model.WeightPerUnit.HasValue && model.WeightPerUnit < 0)
             {
                 return BadRequest(ApiResponse<object>.Fail("Trọng lượng trên đơn vị phải lớn hơn hoặc bằng 0.", 400));
             }
@@ -301,10 +324,10 @@ namespace NB.API.Controllers
                     isProductChanged = true;
                 }
 
-                var newProductName = model.ProductName?.Trim().Replace(" ", "");
-                if (!string.IsNullOrWhiteSpace(newProductName) && productEntity.ProductName != newProductName)
+                var productNameToUpdate = newProductName?.Trim().Replace(" ", "");
+                if (!string.IsNullOrWhiteSpace(productNameToUpdate) && productEntity.ProductName != productNameToUpdate)
                 {
-                    productEntity.ProductName = newProductName;
+                    productEntity.ProductName = productNameToUpdate;
                     isProductChanged = true;
                 }
 
@@ -334,9 +357,10 @@ namespace NB.API.Controllers
                     isProductChanged = true;
                 }
 
-                if (productEntity.IsAvailable != model.IsAvailable)
+                // Update IsAvailable if provided
+                if (model.IsAvailable.HasValue && productEntity.IsAvailable != model.IsAvailable.Value)
                 {
-                    productEntity.IsAvailable = model.IsAvailable;
+                    productEntity.IsAvailable = model.IsAvailable.Value;
                     isProductChanged = true;
                 }
 
