@@ -24,52 +24,56 @@ namespace NB.API.Controllers
         {
             try
             {
-                var categoryList = await _categoryService.GetData();
+                var categoryList = await _categoryService.GetDataWithProducts();
 
-                
+                // Lọc danh mục dựa trên tên danh mục nếu được cung cấp
                 var filteredCategories = string.IsNullOrEmpty(search.CategoryName)
                     ? categoryList
                     : categoryList
                         .Where(c => c.CategoryName != null &&
-                                   c.CategoryName.Contains(search.CategoryName, StringComparison.OrdinalIgnoreCase))
+                                   c.CategoryName.Contains(search.CategoryName.Replace(" ", ""), StringComparison.OrdinalIgnoreCase))
                         .ToList();
 
-                
-                var pagedResult = PagedList<CategoryDto?>.CreateFromList(filteredCategories, search);
-                foreach(var category in pagedResult.Items)
+                if (filteredCategories.Count == 0)
                 {
-                    category.IsActive = category.IsActive;
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy danh mục với tên tương tự.", 404));
                 }
 
-                return Ok(ApiResponse<PagedList<CategoryDto?>>.Ok(pagedResult));
+                var pagedResult = PagedList<CategoryDetailDto>.CreateFromList(filteredCategories, search);
+
+                return Ok(ApiResponse<PagedList<CategoryDetailDto>>.Ok(pagedResult));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy danh sách danh mục");
-                return BadRequest(ApiResponse<CategoryDto>.Fail("Có lỗi xảy ra khi lấy danh sách danh mục."));
+                return BadRequest(ApiResponse<CategoryDto>.Fail("Có lỗi xảy ra khi lấy danh sách danh mục.", 400));
             }
         }
 
-        [HttpGet("GetById/{id}")]
-        public async Task<IActionResult> GetById(int id)
+        [HttpGet("GetById/{Id}")]
+        public async Task<IActionResult> GetById(int Id)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ"));
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+            if (Id <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail($"ID {Id} không hợp lệ", 400));
             }
             try
             {
-                var category = await _categoryService.GetById(id);
+                var category = await _categoryService.GetByIdWithProducts(Id);
                 if (category == null)
                 {
-                    return NotFound(ApiResponse<object>.Fail($"Không tìm thấy danh mục với ID: {id}", 404));
+                    return NotFound(ApiResponse<object>.Fail($"Không tìm thấy danh mục với ID: {Id}", 404));
                 }
-                return Ok(ApiResponse<CategoryDto?>.Ok(category));
+                return Ok(ApiResponse<CategoryDetailDto?>.Ok(category));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Lỗi khi lấy danh mục với ID: {id}");
-                return BadRequest(ApiResponse<CategoryDto>.Fail("Có lỗi xảy ra khi lấy danh mục."));
+                _logger.LogError(ex, $"Lỗi khi lấy danh mục với ID: {Id}");
+                return BadRequest(ApiResponse<CategoryDto>.Fail("Có lỗi xảy ra khi lấy danh mục.", 400));
             }
         }
 
@@ -78,19 +82,20 @@ namespace NB.API.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ"));
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
-            var IsCategoryExist = await _categoryService.GetByName(model.CategoryName);
+            var IsCategoryExist = await _categoryService.GetByName(model.CategoryName.Replace(" ", ""));
             if (!(IsCategoryExist == null))
             {
-                return BadRequest(ApiResponse<object>.Fail("Tên danh mục đã tồn tại"));
+                return BadRequest(ApiResponse<object>.Fail("Tên danh mục đã tồn tại", 400));
             }
             try
             {
                 CategoryDto newCategory = new CategoryDto
                 {
-                    CategoryName = model.CategoryName,
+                    CategoryName = model.CategoryName.Replace(" ", ""),
                     Description = model.Description,
+                    IsActive = true,
                     CreatedAt = model.CreatedAt
                 };
                 await _categoryService.CreateAsync(newCategory);
@@ -99,28 +104,28 @@ namespace NB.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi tạo danh mục mới");
-                return BadRequest(ApiResponse<CategoryDto>.Fail("Có lỗi xảy ra khi tạo danh mục."));
+                return BadRequest(ApiResponse<CategoryDto>.Fail("Có lỗi xảy ra khi tạo danh mục.", 400));
             }
         }
 
         [HttpPut("UpdateCategory/{Id}")]
-        public async Task<IActionResult> UpdateCategory(int Id,[FromBody] CategoryUpdateVM model)
+        public async Task<IActionResult> UpdateCategory(int Id, [FromBody] CategoryUpdateVM model)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ"));
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
             try
             {
-                
+
                 var category = await _categoryService.GetById(Id);
-                if(category == null)
+                if (category == null)
                 {
-                    return BadRequest(ApiResponse<object>.Fail("Không tồn tại danh mục với Id này"));
+                    return NotFound(ApiResponse<object>.Fail("Không tồn tại danh mục với Id này", 404));
                 }
-                category.CategoryName = model.CategoryName;
+                category.CategoryName = model.CategoryName.Replace(" ", "");
                 category.Description = model.Description;
-                category.IsActive = model.IsActive;
+                category.IsActive = true;
                 category.UpdateAt = model.UpdatedAt;
 
                 await _categoryService.UpdateAsync(category);
@@ -140,7 +145,7 @@ namespace NB.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Lỗi khi cập nhật danh mục với ID: {Id}");
-                return BadRequest(ApiResponse<CategoryDto>.Fail("Có lỗi xảy ra khi cập nhật danh mục."));
+                return BadRequest(ApiResponse<CategoryDto>.Fail("Có lỗi xảy ra khi cập nhật danh mục.", 400));
             }
         }
 
@@ -149,7 +154,7 @@ namespace NB.API.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ"));
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
             try
             {
@@ -166,7 +171,7 @@ namespace NB.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Lỗi khi xóa danh mục với ID: {id}");
-                return BadRequest(ApiResponse<CategoryDto>.Fail("Có lỗi xảy ra khi xóa danh mục."));
+                return BadRequest(ApiResponse<CategoryDto>.Fail("Có lỗi xảy ra khi xóa danh mục.", 400));
             }
         }
     }

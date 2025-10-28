@@ -140,7 +140,6 @@ namespace NB.Service.InventoryService
                         {
                             // Thông tin từ Inventory
                             InventoryId = i.InventoryId,
-                            QuantityInStock = i.Quantity ?? 0,
                             LastUpdated = i.LastUpdated,
                             // Thông tin từ Product
                             ProductId = i.ProductId,
