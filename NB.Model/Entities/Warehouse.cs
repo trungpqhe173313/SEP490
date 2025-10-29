@@ -13,7 +13,9 @@ public partial class Warehouse
 
     public int Capacity { get; set; }
 
-    public string? Status { get; set; }
+    public int? Status { get; set; }
+
+    public bool? IsActive { get; set; }
 
     public string? Note { get; set; }
 

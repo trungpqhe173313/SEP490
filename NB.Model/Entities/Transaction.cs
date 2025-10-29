@@ -19,7 +19,7 @@ public partial class Transaction
 
     public string Type { get; set; } = null!;
 
-    public string? Status { get; set; }
+    public int? Status { get; set; }
 
     public DateTime? TransactionDate { get; set; }
 
