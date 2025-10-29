@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using NB.API.Utils;
 using NB.Service.CategoryService;
 using NB.Service.CategoryService.Dto;
 using NB.Service.Common;
@@ -26,12 +27,14 @@ namespace NB.API.Controllers
             {
                 var categoryList = await _categoryService.GetDataWithProducts();
 
+                var searchString = Helper.RemoveDiacritics(search.CategoryName);
                 // Lọc danh mục dựa trên tên danh mục nếu được cung cấp
-                var filteredCategories = string.IsNullOrEmpty(search.CategoryName)
+                var filteredCategories = string.IsNullOrEmpty(searchString)
                     ? categoryList
                     : categoryList
                         .Where(c => c.CategoryName != null &&
-                                   c.CategoryName.Contains(search.CategoryName.Replace(" ", ""), StringComparison.OrdinalIgnoreCase))
+                                   Helper.RemoveDiacritics(c.CategoryName) // Chuẩn hóa tên sản phẩm
+                                        .Contains(searchString, StringComparison.OrdinalIgnoreCase))
                         .ToList();
 
                 if (filteredCategories.Count == 0)
@@ -123,9 +126,15 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<object>.Fail("Không tồn tại danh mục với Id này", 404));
                 }
+                var cateName = category.CategoryName.Trim().Replace(" ", "");
+                var existingCategory = await _categoryService.GetByName(cateName);
+                if ( existingCategory != null && existingCategory.CategoryId != Id)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Tên danh mục này đã được đăng kí", 400));
+                }
                 category.CategoryName = model.CategoryName.Replace(" ", "");
                 category.Description = model.Description;
-                category.IsActive = true;
+                category.IsActive = model.IsActive;
                 category.UpdateAt = model.UpdatedAt;
 
                 await _categoryService.UpdateAsync(category);
