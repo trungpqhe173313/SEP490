@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using NB.Model.Entities;
 using NB.Service.Common;
-using NB.Service.Core.Mapper;
+using NB.API.Utils;
 using NB.Service.Dto;
 using NB.Service.InventoryService;
 using NB.Service.InventoryService.Dto;
@@ -42,11 +42,14 @@ namespace NB.API.Controllers
             try
             {
                 var products = await _productService.GetDataWithDetails();
-                var filteredProducts = string.IsNullOrEmpty(search.ProductName)
+                var searchString = Helper.RemoveDiacritics(search.ProductName); // Chuẩn hóa chuỗi tìm kiếm
+
+                var filteredProducts = string.IsNullOrEmpty(searchString)
                     ? products
                     : products
                         .Where(p => p.ProductName != null &&
-                                   p.ProductName.Contains(search.ProductName.Replace(" ", ""), StringComparison.OrdinalIgnoreCase))
+                                    Helper.RemoveDiacritics(p.ProductName) // Chuẩn hóa tên sản phẩm
+                                        .Contains(searchString, StringComparison.OrdinalIgnoreCase))
                         .ToList();
                 if (filteredProducts.Count == 0)
                 {

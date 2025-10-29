@@ -13,6 +13,8 @@ namespace NB.Service.CategoryService.Dto
 
         public string Description { get; set; } = null!;
 
+        public bool? IsActive { get; set; }
+
         public DateTime? UpdatedAt { get; set; }
     }
 }
