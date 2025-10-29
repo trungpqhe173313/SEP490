@@ -1,14 +1,14 @@
 ﻿using NB.Model.Entities;
-using NB.Repository.Common;
+using NB.Service.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Repository.ProductRepository
+namespace NB.Service.TransactionService
 {
-    public interface IProductRepository : IRepository<Product>
+    public interface ITransactionService : IService<Transaction>
     {
     }
 }

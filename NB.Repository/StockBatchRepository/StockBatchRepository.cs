@@ -7,11 +7,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Repository.ProductRepository
+namespace NB.Repository.StockBatchRepository
 {
-    public class ProductRepository : Repository<Product>, IProductRepository
+    public class StockBatchRepository : Repository<StockBatch>, IStockBatchRepository
     {
-        public ProductRepository(DbContext context) : base(context)
+        public StockBatchRepository(DbContext context) : base(context)
         {
         }
     }

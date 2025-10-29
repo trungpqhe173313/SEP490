@@ -7,11 +7,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Repository.ProductRepository
+namespace NB.Repository.TransactionDetailRepository
 {
-    public class ProductRepository : Repository<Product>, IProductRepository
+    public class TransactionDetailRepository : Repository<TransactionDetail>, ITransactionDetailRepository
     {
-        public ProductRepository(DbContext context) : base(context)
+        public TransactionDetailRepository(DbContext context) : base(context)
         {
         }
     }

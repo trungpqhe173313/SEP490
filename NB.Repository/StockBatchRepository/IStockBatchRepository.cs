@@ -6,9 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Repository.ProductRepository
+namespace NB.Repository.StockBatchRepository
 {
-    public interface IProductRepository : IRepository<Product>
+    public interface IStockBatchRepository : IRepository<StockBatch>
     {
     }
 }

@@ -168,7 +168,7 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<User>.Fail("Không tìm thấy nhân viên"));
                 }
 
-                // Kiểm tra nếu username thay đỏi thì username đã tồn tại chưa
+                // Kiểm tra nếu username thay đổi thì username đã tồn tại chưa
                 if (!string.IsNullOrEmpty(model.Username)
                     && entity.Username != model.Username)
                 {
@@ -181,7 +181,7 @@ namespace NB.API.Controllers
                         }
                     }
                 }
-                // Kiểm tra nếu email thay đổi thì email da ton tai chua
+                // Kiểm tra nếu email thay đổi thì email đã tồn tại chưa 
                 if (!string.IsNullOrEmpty(model.Email)
                     && !string.IsNullOrEmpty(entity.Email)
                     && entity.Email != model.Email)

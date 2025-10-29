@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace NB.Repository.WarehouseRepository
 {
-     class WarehouseRepository : Repository<Warehouse>, IWarehouseRepository
+    public class WarehouseRepository : Repository<Warehouse>, IWarehouseRepository
     {
         public WarehouseRepository(DbContext dbContext) : base(dbContext)
         {
