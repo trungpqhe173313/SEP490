@@ -14,5 +14,7 @@ namespace NB.Service.StockBatchService
         Task<PagedList<StockBatchDto?>> GetData(StockBatchSearch search);
 
         Task<List<StockBatchDto>> GetByTransactionId(int id);
+
+        Task<StockBatchDto?> GetByName(string name);
     }
 }
