@@ -44,7 +44,7 @@ namespace NB.API.Controllers
             try
             {
  
-                var result = await _warehouseService.GetByWarehouseId(id);
+                var result = await _warehouseService.GetById(id);
                 if (result == null)
                 {
                     return NotFound(ApiResponse<WarehouseDto>.Fail("Không tìm thấy kho", 404));

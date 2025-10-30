@@ -1,4 +1,6 @@
-﻿using NB.Model.Entities;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
+using NB.Model.Entities;
 using NB.Repository.Common;
 using NB.Service.Common;
 using System;
@@ -13,6 +15,22 @@ namespace NB.Service.TransactionDetailService
     {
         public TransactionDetailService(IRepository<TransactionDetail> repository) : base(repository)
         {
+        }
+
+        public async Task<List<TransactionDetail>> GetById(int Id)
+        {
+            var query = from td in GetQueryable()
+                        where td.TransactionId == Id
+                        select new TransactionDetail()
+                        {
+                            Id = td.Id,
+                            TransactionId = td.TransactionId,
+                            ProductId = td.ProductId,
+                            Quantity = td.Quantity,
+                            UnitPrice = td.UnitPrice,
+                            Subtotal = td.Subtotal
+                        };
+            return await query.ToListAsync();
         }
     }
 }
