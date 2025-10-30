@@ -54,16 +54,45 @@ namespace NB.API.Controllers
             }
             try
             {
-                var result = await _stockBatchService.GetData(search);
-                return Ok(ApiResponse<PagedList<StockBatchDto?>>.Ok(result));
+                var list = await _stockBatchService.GetData(search);
+                List<StockOutputVM>? result = new List<StockOutputVM>();
+                if (list != null)
+                {
+                    foreach (var item in list.Items)
+                    {
+                        StockOutputVM resultItem = new StockOutputVM();
+                        resultItem.BatchId = item.BatchId;
+                        resultItem.WarehouseName = (await _warehouseService.GetById(item.WarehouseId))?.WarehouseName;
+                        resultItem.ProductName = (await _productService.GetById(item.ProductId))?.ProductName;
+                        resultItem.TransactionId = item.TransactionId;
+                        resultItem.ProductionFinishName = item.ProductionFinishId != null ? (await _productService.GetById(item.ProductionFinishId.Value))?.ProductName : null;
+                        resultItem.BatchCode = item.BatchCode;
+                        resultItem.ImportDate = item.ImportDate;
+                        resultItem.ExpireDate = item.ExpireDate;
+                        resultItem.QuantityIn = item.QuantityIn;
+                        resultItem.Status = item.Status;
+                        resultItem.IsActive = item.IsActive ?? false;
+                        resultItem.Note = item.Note;
+                        result.Add(resultItem);
+                    }
+
+                }
+                else if (result == null || result.Count == 0)
+                {
+                    return NotFound(ApiResponse<PagedList<StockOutputVM>>.Fail("Không tìm thấy lô hàng nào.", 404));
+                }
+                var pagedResult = PagedList<StockOutputVM>.CreateFromList(result, search);
+                return Ok(ApiResponse<PagedList<StockOutputVM>>.Ok(pagedResult));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy dữ liệu lô hàng");
-                return BadRequest(ApiResponse<PagedList<StockBatchDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+                return BadRequest(ApiResponse<PagedList<StockOutputVM>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
             }
         }
 
+        
+            
         [HttpPost("CreateStockInputs")]
         public async Task<IActionResult> CreateStockInputs([FromBody] StockBatchCreateVM model)
         {
@@ -101,6 +130,11 @@ namespace NB.API.Controllers
             {
                 return BadRequest(ApiResponse<object>.Fail("Mã lô không được để trống.", 400));
             }
+            var existBatchCode = $"{model.BatchCode}{1:D4}";
+            if(await _stockBatchService.GetByName(existBatchCode) != null)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Mã lô này đã tồn tại"));
+            }
 
             if (model.ExpireDate == null)
             {
@@ -117,6 +151,7 @@ namespace NB.API.Controllers
             {
                 var listTransactionDetails = await _transactionDetailService.GetById(model.TransactionId);
                 int batchCounter = 1;
+                List<StockOutputVM> list = new List<StockOutputVM>();
                 foreach (var item in listTransactionDetails)
                 {
                     
@@ -129,14 +164,13 @@ namespace NB.API.Controllers
                     }
                     else
                     {
-                        string uniqueBatchCode = $"{model.BatchCode}{batchCounter:D2}"; // D2 = 2 chữ số: 01, 02, 03...
-
+                        string uniqueBatchCode = $"{model.BatchCode.Trim().Replace(" ", "")}{batchCounter:D4}"; // D4 = 4 chữ số: 0001, 0002, 0003...
                         var newStockBatch = _mapper.Map<StockBatchCreateVM, StockBatchDto>(model);
                         {
                             newStockBatch.WarehouseId = model.WarehouseId;
                             newStockBatch.ProductId = item.ProductId;
                             newStockBatch.TransactionId = model.TransactionId;
-                            newStockBatch.BatchCode = uniqueBatchCode.Trim().Replace(" ", "");
+                            newStockBatch.BatchCode = uniqueBatchCode;
                             newStockBatch.ImportDate = DateTime.UtcNow;
                             newStockBatch.ExpireDate = model.ExpireDate;
                             newStockBatch.QuantityIn = item.Quantity;
@@ -172,12 +206,26 @@ namespace NB.API.Controllers
                             existInventory.LastUpdated = DateTime.UtcNow;
                             await _inventoryService.UpdateAsync(existInventory);
                         }
+                        StockOutputVM resultItem = new StockOutputVM();
+                        resultItem.BatchId = newStockBatch.BatchId;
+                        resultItem.WarehouseName = (await _warehouseService.GetById(newStockBatch.WarehouseId))?.WarehouseName;
+                        resultItem.ProductName = (await _productService.GetById(newStockBatch.ProductId))?.ProductName;
+                        resultItem.TransactionId = newStockBatch.TransactionId;
+                        resultItem.ProductionFinishName = newStockBatch.ProductionFinishId != null ? (await _productService.GetById(newStockBatch.ProductionFinishId.Value))?.ProductName : null;
+                        resultItem.BatchCode = newStockBatch.BatchCode;
+                        resultItem.ImportDate = newStockBatch.ImportDate;
+                        resultItem.ExpireDate = newStockBatch.ExpireDate;
+                        resultItem.QuantityIn = newStockBatch.QuantityIn;
+                        resultItem.QuantityOut = newStockBatch.QuantityOut;
+                        resultItem.Status = newStockBatch.Status;
+                        resultItem.IsActive = newStockBatch.IsActive ?? false;
+                        resultItem.Note = newStockBatch.Note;
+                        list.Add(resultItem);
                         batchCounter++;
                     }
                 }
-                var resultList = await _stockBatchService.GetByTransactionId(model.TransactionId);
 
-                return Ok(ApiResponse<List<StockBatchDto>>.Ok(resultList));
+                return Ok(ApiResponse<List<StockOutputVM>>.Ok(list));
             }
             catch (Exception ex)
             {
