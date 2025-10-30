@@ -12,5 +12,7 @@ namespace NB.Service.StockBatchService
     public interface IStockBatchService : IService<StockBatch>
     {
         Task<PagedList<StockBatchDto?>> GetData(StockBatchSearch search);
+
+        Task<List<StockBatchDto>> GetByTransactionId(int id);
     }
 }
