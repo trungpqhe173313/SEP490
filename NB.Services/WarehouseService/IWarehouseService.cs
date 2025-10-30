@@ -13,7 +13,7 @@ namespace NB.Service.WarehouseService
     {
         Task<List<WarehouseDto?>> GetData();
         Task<WarehouseDto?> GetByWarehouseId(int id);
-        Task<WarehouseDto?> GetByWarehouseStatus(string status);
+        Task<WarehouseDto?> GetByWarehouseStatus(int status);
 
     }
 }
