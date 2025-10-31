@@ -166,7 +166,7 @@ namespace NB.API.Controllers
                     CategoryId = category.CategoryId,
                     Code = code,
                     ImageUrl = model.ImageUrl?.Trim().Replace(" ", "") ?? string.Empty,
-                    ProductName = productName?.Trim().Replace(" ", "") ?? string.Empty,
+                    ProductName = productName,
                     Description = model.Description?.Trim(),
                     WeightPerUnit = model.WeightPerUnit,
                     IsAvailable = true,
@@ -299,7 +299,7 @@ namespace NB.API.Controllers
                     isProductChanged = true;
                 }
 
-                var productNameToUpdate = newProductName?.Trim().Replace(" ", "");
+                var productNameToUpdate = newProductName;
                 if (!string.IsNullOrWhiteSpace(productNameToUpdate) && productEntity.ProductName != productNameToUpdate)
                 {
                     productEntity.ProductName = productNameToUpdate;
