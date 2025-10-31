@@ -9,5 +9,11 @@ namespace NB.Service.TransactionService.Dto
 {
     public class TransactionSearch : SearchBase
     {
+        public int? Status { get; set; }
+
+        public string? Type { get; set; }
+
+        public DateTime? TransactionFromDate { get; set; }
+        public DateTime? TransactionToDate { get; set; } 
     }
 }

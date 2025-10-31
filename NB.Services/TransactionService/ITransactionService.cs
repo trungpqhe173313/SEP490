@@ -12,5 +12,7 @@ namespace NB.Service.TransactionService
     public interface ITransactionService : IService<Transaction>
     {
         Task<List<TransactionDto>> GetById(int? id);
+        Task<TransactionDto?> GetByTransactionId(int? id);
+        Task<PagedList<TransactionDto>> GetData(TransactionSearch search);
     }
 }
