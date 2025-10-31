@@ -94,32 +94,35 @@ namespace NB.API.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ"));
+                return BadRequest(ApiResponse<User>.Fail("Dữ liệu không hợp lệ"));
             }
 
             try
             {
                 // Kiểm tra email da ton tai chua
-                var existingEmail = await _userService.GetByEmail(model.Email);
-                if (existingEmail != null)
+                if (!string.IsNullOrEmpty(model.Email))
                 {
-                    return BadRequest(ApiResponse<User>.Fail("Email đã tồn tại"));
+                    var existingEmail = await _userService.GetByEmail(model.Email);
+                    if (existingEmail != null)
+                    {
+                        return BadRequest(ApiResponse<User>.Fail("Email đã tồn tại"));
+                    }
                 }
+                
                 // Kiểm tra username đã tồn tại chưa
-                if (!string.IsNullOrWhiteSpace(model.Username))
-                {
                     var existingUsername = await _userService.GetByUsername(model.Username);
                     if (existingUsername != null)
                     {
                         return BadRequest(ApiResponse<User>.Fail("Username đã tồn tại"));
                     }
-                }
 
                 var entity = _mapper.Map<UserCreateVM, User>(model);
+                entity.Password = "123"; // Mật khẩu mặc định
                 entity.IsActive = true;
                 entity.CreatedAt = DateTime.Now;
                 await _userService.CreateAsync(entity);
 
+                // Gán role cho nhân viên
                 var role = await _roleService.GetByRoleName(roleName);
                 var entityUserRole = _mapper.Map<UserRoleCreateVM, UserRole>(
                     new UserRoleCreateVM
@@ -138,6 +141,7 @@ namespace NB.API.Controllers
                     Email = entity.Email,
                     Image = entity.Image,
                     Username = entity.Username,
+                    Password = entity.Password,
                     IsActive = entity.IsActive,
                     CreatedAt = entity.CreatedAt
                 }));
@@ -159,21 +163,33 @@ namespace NB.API.Controllers
             try
             {
                 var entity = await _userService.GetByIdAsync(id);
-
-
-                // Kiểm tra email da ton tai chua
-                var existingEmail = await _userService.GetByEmail(model.Email);
-                if (existingEmail != null)
+                if (entity == null)
                 {
-                    return BadRequest(ApiResponse<User>.Fail("Email đã tồn tại"));
+                    return NotFound(ApiResponse<User>.Fail("Không tìm thấy nhân viên"));
                 }
-                // Kiểm tra username đã tồn tại chưa
-                if (!string.IsNullOrWhiteSpace(model.Username))
+
+                // Kiểm tra nếu username thay đổi thì username đã tồn tại chưa
+                if (!string.IsNullOrEmpty(model.Username)
+                    && entity.Username != model.Username)
                 {
-                    var existingUsername = await _userService.GetByUsername(model.Username);
-                    if (existingUsername != null)
+                    if (!string.IsNullOrWhiteSpace(model.Username))
                     {
-                        return BadRequest(ApiResponse<User>.Fail("Username đã tồn tại"));
+                        var existingUsername = await _userService.GetByUsername(model.Username);
+                        if (existingUsername != null)
+                        {
+                            return BadRequest(ApiResponse<User>.Fail("Username đã tồn tại"));
+                        }
+                    }
+                }
+                // Kiểm tra nếu email thay đổi thì email đã tồn tại chưa 
+                if (!string.IsNullOrEmpty(model.Email)
+                    && !string.IsNullOrEmpty(entity.Email)
+                    && entity.Email != model.Email)
+                {
+                    var existingEmail = await _userService.GetByEmail(model.Email);
+                    if (existingEmail != null)
+                    {
+                        return BadRequest(ApiResponse<User>.Fail("Email đã tồn tại"));
                     }
                 }
 
@@ -184,7 +200,7 @@ namespace NB.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi cập nhật nhân viên");
-                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi cập nhật nhân viên"));
+                return BadRequest(ApiResponse<User>.Fail("Có lỗi xảy ra khi cập nhật nhân viên"));
             }
         }
 
@@ -196,7 +212,7 @@ namespace NB.API.Controllers
                 var entity = await _userService.GetByIdAsync(id);
                 if (entity == null)
                 {
-                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy nhân viên"));
+                    return NotFound(ApiResponse<User>.Fail("Không tìm thấy nhân viên"));
                 }
                 entity.IsActive = false;
                 await _userService.UpdateAsync(entity);
@@ -205,7 +221,7 @@ namespace NB.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi xóa nhân viên với ID: {id}", id);
-                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi xóa nhân viên"));
+                return BadRequest(ApiResponse<User>.Fail("Có lỗi xảy ra khi xóa nhân viên"));
             }
         }
     }

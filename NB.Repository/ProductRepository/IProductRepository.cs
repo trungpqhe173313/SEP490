@@ -10,7 +10,5 @@ namespace NB.Repository.ProductRepository
 {
     public interface IProductRepository : IRepository<Product>
     {
-
     }
-    
 }

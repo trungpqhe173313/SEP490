@@ -25,11 +25,9 @@ public partial class StockBatch
 
     public decimal? QuantityOut { get; set; }
 
-    public decimal? RemainingQty { get; set; }
+    public int? Status { get; set; }
 
-    public decimal? UnitCost { get; set; }
-
-    public string? Status { get; set; }
+    public bool? IsActive { get; set; }
 
     public string? Note { get; set; }
 

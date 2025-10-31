@@ -34,7 +34,7 @@ namespace NB.Service.WarehouseService
             return await query.ToListAsync();
         }
 
-        public async Task<WarehouseDto?> GetByWarehouseId(int search)
+        public async Task<WarehouseDto?> GetById(int search)
         {
             var query = from warehouse in GetQueryable()
                         where warehouse.WarehouseId == search
@@ -51,7 +51,7 @@ namespace NB.Service.WarehouseService
             return await query.FirstOrDefaultAsync();
         }
 
-        public async Task<WarehouseDto?> GetByWarehouseStatus(string status)
+        public async Task<WarehouseDto?> GetByWarehouseStatus(int status)
         {
             var query = from warehouse in GetQueryable()
                         where warehouse.Status == status

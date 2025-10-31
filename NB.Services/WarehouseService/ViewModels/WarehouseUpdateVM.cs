@@ -20,7 +20,7 @@ namespace NB.Service.WarehouseService.ViewModels
         public int Capacity { get; set; }
 
         [Required(ErrorMessage = "Trạng thái kho không được để trống.")]
-        public string? Status { get; set; }
+        public int Status { get; set; }
 
         [Required(ErrorMessage = "Ghi chú không được để trống.")]
         public string? Note { get; set; }

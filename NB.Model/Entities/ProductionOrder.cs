@@ -11,7 +11,7 @@ public partial class ProductionOrder
 
     public DateTime? EndDate { get; set; }
 
-    public string? Status { get; set; }
+    public int? Status { get; set; }
 
     public string? Note { get; set; }
 
