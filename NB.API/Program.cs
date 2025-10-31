@@ -26,13 +26,6 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContext<NutriBarnContext>(options =>
-{
-
-    options.UseSqlServer("Server=localhost;Database=NutriBarn;User Id=sa;Password=123456;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true")
-           .EnableSensitiveDataLogging()  // Hiển thị giá trị parameters
-           .LogTo(Console.WriteLine, LogLevel.Information); // Log ra console
-});
 
 builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
 {
