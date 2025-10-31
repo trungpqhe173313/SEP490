@@ -77,5 +77,31 @@ namespace NB.Service.StockBatchService
                         };
             return await query.ToListAsync();
         }
+
+        public async Task<StockBatchDto?> GetByName(string name)
+        {
+            var normalizedSearchName = name.Replace(" ", "").ToLower();
+
+            var query = from sb in GetQueryable()
+                        where sb.BatchCode.Replace(" ", "").ToLower() == normalizedSearchName
+                        select new StockBatchDto()
+                        {
+                            BatchId = sb.BatchId,
+                            WarehouseId = sb.WarehouseId,
+                            ProductId = sb.ProductId,
+                            TransactionId = sb.TransactionId,
+                            ProductionFinishId = sb.ProductionFinishId,
+                            BatchCode = sb.BatchCode,
+                            ImportDate = sb.ImportDate,
+                            ExpireDate = sb.ExpireDate,
+                            QuantityIn = sb.QuantityIn,
+                            QuantityOut = sb.QuantityOut,
+                            Status = sb.Status,
+                            IsActive = sb.IsActive,
+                            Note = sb.Note,
+                            LastUpdated = sb.LastUpdated
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
     }
 }

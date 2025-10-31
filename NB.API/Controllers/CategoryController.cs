@@ -96,7 +96,7 @@ namespace NB.API.Controllers
             {
                 CategoryDto newCategory = new CategoryDto
                 {
-                    CategoryName = model.CategoryName.Replace(" ", ""),
+                    CategoryName = model.CategoryName,
                     Description = model.Description,
                     IsActive = true,
                     CreatedAt = model.CreatedAt
@@ -132,7 +132,7 @@ namespace NB.API.Controllers
                 {
                     return BadRequest(ApiResponse<object>.Fail("Tên danh mục này đã được đăng kí", 400));
                 }
-                category.CategoryName = model.CategoryName.Replace(" ", "");
+                category.CategoryName = model.CategoryName;
                 category.Description = model.Description;
                 category.IsActive = model.IsActive;
                 category.UpdateAt = model.UpdatedAt;
