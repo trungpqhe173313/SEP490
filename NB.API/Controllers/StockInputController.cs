@@ -115,8 +115,8 @@ namespace NB.API.Controllers
             {
                 return BadRequest(ApiResponse<object>.Fail($"ID đơn nhập {model.TransactionId} không hợp lệ", 400));
             }
-            var existTransaction = await _transactionService.GetById(model.TransactionId);
-            if (existTransaction.Count == 0)
+            var existTransaction = await _transactionService.GetByTransactionId(model.TransactionId);
+            if (existTransaction == null)
             {
                 return NotFound(ApiResponse<object>.Fail($"Không tìm thấy đơn nhập với ID: {model.TransactionId}", 404));
             }
