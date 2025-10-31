@@ -7,7 +7,10 @@ using System.Threading.Tasks;
 
 namespace NB.Service.TransactionDetailService.Dto
 {
-    public class TransactionDetailDto : Transaction
+    public class TransactionDetailDto : TransactionDetail
     {
+        public string? ProductName { get; set; }
+
+        public string? ImageUrl { get; set; }
     }
 }

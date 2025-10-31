@@ -15,6 +15,7 @@ namespace NB.Service.ProductService
     {
 
         Task<ProductDto?> GetById(int id);
+        Task<ProductDto?> GetByProductId(int id);
 
         Task<List<ProductDto>> GetByIds(List<int> ids);
 
