@@ -11,10 +11,8 @@ namespace NB.Service.UserService.ViewModels
     {
         [Required(ErrorMessage = "Username là bắt buộc")]
         public string Username { get; set; } = null!;
-        [Required(ErrorMessage = "Email là bắt buộc")]
-        public string Email { get; set; } = null!;
-        [Required(ErrorMessage = "Password là bắt buộc")]
-        public string Password { get; set; } = null!;
+        [EmailAddress(ErrorMessage = "Email không hợp lệ")]
+        public string? Email { get; set; }
         [Required(ErrorMessage = "Tên người dùng là bắt buộc")]
         public string FullName { get; set; } = null!;
 

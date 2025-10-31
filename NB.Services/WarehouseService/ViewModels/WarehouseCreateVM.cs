@@ -17,7 +17,7 @@ namespace NB.Service.WarehouseService.ViewModels
 
         public int Capacity { get; set; }
 
-        public string? Status { get; set; }
+        public int Status { get; set; }
 
         public string? Note { get; set; }
     }

@@ -1,14 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using NB.Repository.Common;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Security.Principal;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NB.Service.Common
 {

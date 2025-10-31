@@ -3,11 +3,6 @@ using NB.Model.Entities;
 using NB.Repository.Common;
 using NB.Service.Common;
 using NB.Service.SupplierService.Dto;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NB.Service.SupplierService
 {
@@ -33,11 +28,16 @@ namespace NB.Service.SupplierService
             {
                 if (!string.IsNullOrEmpty(search.SupplierName))
                 {
-                    query = query.Where(s => s.SupplierName != null && s.SupplierName.ToLower().Contains(search.SupplierName.ToLower()));
+                    var keyword = search.SupplierName.Trim();
+                    query = query.Where(s => EF.Functions.Collate(s.SupplierName, "SQL_Latin1_General_CP1_CI_AI")
+                        .Contains(keyword));
                 }
+
                 if (!string.IsNullOrEmpty(search.Email))
                 {
-                    query = query.Where(s => s.Email != null && s.Email.Contains(search.Email));
+                    var keyword = search.Email.Trim();
+                    query = query.Where(s => EF.Functions.Collate(s.Email, "SQL_Latin1_General_CP1_CI_AI")
+                        .Contains(keyword));
                 }
                 if (!string.IsNullOrEmpty(search.Phone))
                 {
@@ -74,6 +74,41 @@ namespace NB.Service.SupplierService
                         where sup.Email
                         .ToLower()
                         .Equals(email.ToLower())
+                        select new SupplierDto()
+                        {
+                            SupplierId = sup.SupplierId,
+                            SupplierName = sup.SupplierName,
+                            Phone = sup.Phone,
+                            Email = sup.Email,
+                            IsActive = sup.IsActive,
+                            CreatedAt = sup.CreatedAt
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<SupplierDto?> GetByPhone(string phone)
+        {
+            var query = from sup in GetQueryable()
+                        where sup.Phone == phone
+                        select new SupplierDto()
+                        {
+                            SupplierId = sup.SupplierId,
+                            SupplierName = sup.SupplierName,
+                            Phone = sup.Phone,
+                            Email = sup.Email,
+                            IsActive = sup.IsActive,
+                            CreatedAt = sup.CreatedAt
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<SupplierDto?> GetByName(string name)
+        {
+            // Chuẩn hóa tên tìm kiếm: loại bỏ khoảng trắng và chuyển về lowercase
+            var normalizedSearchName = name.Replace(" ", "").ToLower();
+
+            var query = from sup in GetQueryable()
+                        where sup.SupplierName.Replace(" ", "").ToLower() == normalizedSearchName
                         select new SupplierDto()
                         {
                             SupplierId = sup.SupplierId,

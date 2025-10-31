@@ -13,7 +13,11 @@ namespace NB.Service.CategoryService
     {
         Task<List<CategoryDto?>> GetData();
 
+        Task<List<CategoryDetailDto>> GetDataWithProducts();
+
         Task<CategoryDto?> GetById(int id);
+
+        Task<CategoryDetailDto?> GetByIdWithProducts(int id);
 
         Task<CategoryDto?> GetByName(string name);
     }

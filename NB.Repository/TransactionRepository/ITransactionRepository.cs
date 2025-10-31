@@ -1,14 +1,14 @@
 ﻿using NB.Model.Entities;
-using NB.Service.Common;
+using NB.Repository.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Service.CustomerService
+namespace NB.Repository.TransactionRepository
 {
-    public interface ICustomerService : IService<User>
+    public interface ITransactionRepository : IRepository<Transaction>
     {
     }
 }

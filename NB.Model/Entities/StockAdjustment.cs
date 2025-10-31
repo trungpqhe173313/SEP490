@@ -25,7 +25,7 @@ public partial class StockAdjustment
 
     public int? ApprovedBy { get; set; }
 
-    public string? Status { get; set; }
+    public int? Status { get; set; }
 
     public virtual Product Product { get; set; } = null!;
 

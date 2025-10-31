@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Service.CustomerService.Dto
+namespace NB.Service.TransactionDetailService.ViewModels
 {
-    public class CustomerSearch
+    public class TransactionDetailCreateVM
     {
     }
 }

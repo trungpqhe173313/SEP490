@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Service.CustomerService.Dto
+namespace NB.Service.TransactionService.Dto
 {
-    public class CustomerDto : User
+    public class TransactionDto : Transaction
     {
     }
 }
