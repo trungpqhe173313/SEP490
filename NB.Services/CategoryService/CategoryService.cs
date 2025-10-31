@@ -60,10 +60,10 @@ namespace NB.Service.CategoryService
         public async Task<CategoryDto?> GetByName(string name)
         {
             // Chuẩn hóa tên tìm kiếm: loại bỏ khoảng trắng và chuyển về lowercase
-            var normalizedSearchName = name.Replace(" ", "").ToLower();
+            var normalizedSearchName = name.Replace(" ", "");
 
             var query = from category in GetQueryable()
-                        where category.CategoryName.Replace(" ", "").ToLower() == normalizedSearchName
+                        where category.CategoryName.Replace(" ", "") == normalizedSearchName
                         select new CategoryDto
                         {
                             CategoryId = category.CategoryId,
