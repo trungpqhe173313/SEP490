@@ -103,5 +103,14 @@ namespace NB.Service.StockBatchService
                         };
             return await query.FirstOrDefaultAsync();
         }
+
+        public async Task<string> GetMaxBatchCodeByPrefix(string prefix)
+        {
+            var query = from sb in GetQueryable()
+                        where sb.BatchCode.StartsWith(prefix)
+                        orderby sb.BatchCode descending
+                        select sb.BatchCode;
+            return await query.FirstOrDefaultAsync();
+        }
     }
 }

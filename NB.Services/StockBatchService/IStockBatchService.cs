@@ -16,5 +16,7 @@ namespace NB.Service.StockBatchService
         Task<List<StockBatchDto>> GetByTransactionId(int id);
 
         Task<StockBatchDto?> GetByName(string name);
+
+        Task<string> GetMaxBatchCodeByPrefix(string code);
     }
 }

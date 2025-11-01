@@ -79,7 +79,7 @@ namespace NB.Service.InventoryService
                             LastUpdated = i.LastUpdated,
                             Product = i.Product
                         };
-            return await query.FirstOrDefaultAsync();
+            return await query.AsNoTracking().FirstOrDefaultAsync();
         }
 
         public async Task<List<InventoryDto>> GetData()
