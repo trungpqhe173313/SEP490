@@ -31,5 +31,7 @@ namespace NB.Service.ProductService
 
         Task<ProductDto?> GetByProductName(string productName);
 
+        Task<PagedList<ProductDto>> GetData(ProductSearch search);
+
     }
 }

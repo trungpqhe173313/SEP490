@@ -10,6 +10,7 @@ using NB.Service.ProductService.Dto;
 using NB.Service.ProductService.ViewModels;
 using NB.Service.SupplierService;
 using NB.Service.CategoryService;
+using NB.Service.UserService.Dto;
 
 namespace NB.API.Controllers
 {
@@ -64,6 +65,44 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi lấy danh sách sản phẩm cho Kho");
                 return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi lấy danh sách sản phẩm.", 400));
+            }
+        }
+
+        /// <summary>
+        /// Duc Anh
+        /// Hàm để lấy ra danh sách các sản phẩm có sẵn cho chức năng tạo đơn khách hàng
+        /// </summary>
+        /// <param name="search">thêm isAvailable</param>
+        /// <returns>Sanh sách sản phẩm có sẵn</returns>
+        [HttpPost("GetProductAvailable")]
+        public async Task<IActionResult> GetProductAvailable([FromBody] ProductSearch search)
+        {
+            try
+            {
+                //mặc định lấy available
+                search.IsAvailable = true;
+                //lay ra danh sach cac san pham co san
+                var listProductAvailale = await _productService.GetData(search);
+                //lay ra danh sach ProductId
+                List<int> listProductId = listProductAvailale.Items.Select(p => p.ProductId).ToList();
+                //lay ra danh sach inventory de lay so luong va gia trung binh cua san pham
+                var listInventory = await _inventoryService.GetByProductIds(listProductId);
+                //gắn averageCost và quantity cho product
+                foreach(var p in listProductAvailale.Items)
+                {
+                    var inventory = listInventory.FirstOrDefault(i => i.ProductId == p.ProductId);
+                    if (inventory is not null)
+                    {
+                        p.AverageCost = inventory.AverageCost;
+                        p.Quantity = inventory.Quantity;
+                    }
+                }
+                return Ok(ApiResponse<PagedList<ProductDto>>.Ok(listProductAvailale));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy dữ liệu sản phẩm");
+                return BadRequest(ApiResponse<PagedList<ProductDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
             }
         }
 

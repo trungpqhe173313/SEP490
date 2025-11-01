@@ -4,6 +4,7 @@ using NB.Repository.Common;
 using NB.Service.Common;
 using NB.Service.InventoryService.Dto;
 using NB.Service.ProductService.Dto;
+using NB.Service.UserService.Dto;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -232,6 +233,42 @@ namespace NB.Service.ProductService
                             UpdatedAt = p.UpdatedAt
                         };
             return await query.FirstOrDefaultAsync();
+        }
+
+        //Duc Anh
+        public async Task<PagedList<ProductDto>> GetData(ProductSearch search)
+        {
+            var query = from p in GetQueryable()
+                        select new ProductDto()
+                        {
+                            ProductId = p.ProductId,
+                            ProductName = p.ProductName,
+                            Code = p.Code,
+                            SupplierId = p.SupplierId,
+                            CategoryId = p.CategoryId,
+                            ImageUrl = p.ImageUrl,
+                            Description = p.Description,
+                            WeightPerUnit = p.WeightPerUnit,
+                            IsAvailable = p.IsAvailable,
+                            CreatedAt = p.CreatedAt,
+                            UpdatedAt = p.UpdatedAt
+                        };
+            if (search != null)
+            {
+                if (!string.IsNullOrEmpty(search.ProductName))
+                {
+                    var keyword = search.ProductName.Trim();
+                    query = query.Where(u => EF.Functions.Collate(u.ProductName, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
+                }
+                if (search.IsAvailable.HasValue)
+                {
+                    query = query.Where(p => p.IsAvailable == search.IsAvailable);
+                }
+            }
+            
+            query = query.OrderBy(p => p.CreatedAt);
+            return await PagedList<ProductDto>.CreateAsync(query, search);
         }
     }
 }

@@ -104,5 +104,7 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<TransactionDto>.Fail("Có lỗi xảy ra"));
             }
         }
+
+
     }
 }
