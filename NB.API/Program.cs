@@ -29,6 +29,13 @@ builder.Services.AddSwaggerGen();
 // Register custom mapper
 builder.Services.AddScoped<NB.Service.Core.Mapper.IMapper, NB.Service.Core.Mapper.Mapper>();
 
+builder.Services.AddDbContext<NutriBarnContext>(options =>
+{
+
+    options.UseSqlServer("Server=localhost;Database=NutriBarn;User Id=sa;Password=123456;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true")
+           .EnableSensitiveDataLogging()  // Hiển thị giá trị parameters
+           .LogTo(Console.WriteLine, LogLevel.Information); // Log ra console
+});
 
 builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
 {

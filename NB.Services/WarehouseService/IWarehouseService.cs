@@ -1,6 +1,7 @@
 using NB.Model.Entities;
 using NB.Service.WarehouseService.Dto;
 using NB.Service.Common;
+using NB.Services.WarehouseService.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,5 +16,6 @@ namespace NB.Service.WarehouseService
         Task<WarehouseDto?> GetById(int id);
         Task<WarehouseDto?> GetByWarehouseStatus(int status);
 
+        Task<WarehouseImportResultVM> ImportFromExcelAsync(Stream excelStream);
     }
 }

@@ -26,11 +26,35 @@ namespace NB.Service.Dto
             StatusCode = statusCode,
             Error = new ApiError { Message = message }
         };
+
+        public static ApiResponse<T> Fail(List<string> messages, int statusCode = 400) => new()
+        {
+            Success = false,
+            StatusCode = statusCode,
+            Error = new ApiError
+            {
+                Message = messages.Any() ? messages[0] : "Có lỗi xảy ra",
+                Messages = messages
+            }
+        };
+
+        public static ApiResponse<T> OkWithWarnings(T data, List<string> warnings) => new()
+        {
+            Data = data,
+            Success = true,
+            StatusCode = 200,
+            Error = new ApiError
+            {
+                Message = warnings.Any() ? $"Thành công nhưng có {warnings.Count} cảnh báo" : string.Empty,
+                Messages = warnings
+            }
+        };
     }
 
     public class ApiError
     {
         public string Message { get; set; } = string.Empty;
+        public List<string>? Messages { get; set; }
         public string? Code { get; set; }
     }
 }
