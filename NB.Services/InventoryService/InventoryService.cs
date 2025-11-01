@@ -149,5 +149,23 @@ namespace NB.Service.InventoryService
                         };
             return Task.FromResult(query.ToList());
         }
+
+        public async Task<List<InventoryDto>> GetByProductIds(List<int> ids)
+        {
+
+            var query = from i in GetQueryable()
+                        where ids.Contains(i.ProductId)
+                        select new InventoryDto
+                        {
+                            InventoryId = i.InventoryId,
+                            ProductId = i.ProductId,
+                            WarehouseId = i.WarehouseId,
+                            AverageCost = i.AverageCost,
+                            Quantity = i.Quantity,
+                            LastUpdated = i.LastUpdated
+                        };
+
+            return await query.ToListAsync();
+        }
     }
 }
