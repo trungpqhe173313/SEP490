@@ -195,7 +195,7 @@ namespace NB.Service.Core.Forms
                     "ID Sản phẩm (Bắt buộc, số nguyên)",
                     "Số lượng (Bắt buộc, số nguyên > 0)",
                     "Mã lô (Bắt buộc, sẽ tự động thêm số thứ tự)",
-                    "Ngày hết hạn (Bắt buộc)",
+                    "Ngày hết hạn (Bắt buộc, định dạng: DD/MM/YYYY)",
                     "ID Đơn nhập (Bắt buộc, số nguyên)",
                     "Ghi chú (Tùy chọn)"
                 };
@@ -300,7 +300,7 @@ namespace NB.Service.Core.Forms
                 instructionSheet.Cells["A10"].Value = "   - ProductId: ID của sản phẩm (số nguyên)";
                 instructionSheet.Cells["A11"].Value = "   - Quantity: Số lượng nhập (số nguyên > 0)";
                 instructionSheet.Cells["A12"].Value = "   - BatchCode: Mã lô (hệ thống sẽ tự động thêm số thứ tự 0001, 0002...)";
-                instructionSheet.Cells["A13"].Value = "   - ExpireDate: Ngày hết hạn (phải sau ngày hiện tại, định dạng yyyy-MM-dd)";
+                instructionSheet.Cells["A13"].Value = "   - ExpireDate: Ngày hết hạn (phải sau ngày hiện tại, định dạng DD/MM/YYYY)";
                 instructionSheet.Cells["A14"].Value = "   - TransactionId: ID của đơn nhập hàng (nếu có)";
 
                 instructionSheet.Cells["A16"].Value = "3. Các trường tùy chọn:";
