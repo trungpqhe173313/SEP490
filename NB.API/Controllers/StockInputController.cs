@@ -65,7 +65,7 @@ public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
             return NotFound(ApiResponse<PagedList<StockBatchDto>>.Fail("Không tìm thấy lô hàng nào.", 404));
         }
         
-        // ✅ Map trực tiếp, KHÔNG CẦN loop query nữa
+
         var result = pagedResult.Items.Select(item => new StockOutputVM
         {
             BatchId = item.BatchId,
@@ -83,8 +83,13 @@ public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
             Note = item.Note
         }).ToList();
         
-        var finalResult = PagedList<StockOutputVM>.CreateFromList(result, search);
-        return Ok(ApiResponse<PagedList<StockOutputVM>>.Ok(finalResult));
+        var finalResult = new PagedList<StockOutputVM>(
+            items: result,
+            pageIndex: pagedResult.PageIndex,
+            pageSize: pagedResult.PageSize,
+            totalCount: pagedResult.TotalCount
+        );
+                return Ok(ApiResponse<PagedList<StockOutputVM>>.Ok(finalResult));
     }
     catch (Exception ex)
     {
