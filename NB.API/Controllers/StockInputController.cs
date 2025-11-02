@@ -66,6 +66,7 @@ namespace NB.API.Controllers
                     {
                         StockOutputVM resultItem = new StockOutputVM();
                         resultItem.BatchId = item.BatchId;
+                        resultItem.WarehouseId = item.WarehouseId;
                         resultItem.WarehouseName = (await _warehouseService.GetById(item.WarehouseId))?.WarehouseName;
                         resultItem.ProductName = (await _productService.GetById(item.ProductId))?.ProductName;
                         resultItem.TransactionId = item.TransactionId;
@@ -212,6 +213,7 @@ namespace NB.API.Controllers
                         }
                         StockOutputVM resultItem = new StockOutputVM();
                         resultItem.BatchId = newStockBatch.BatchId;
+                        resultItem.WarehouseId = newStockBatch.WarehouseId;
                         resultItem.WarehouseName = (await _warehouseService.GetById(newStockBatch.WarehouseId))?.WarehouseName;
                         resultItem.ProductName = (await _productService.GetById(newStockBatch.ProductId))?.ProductName;
                         resultItem.TransactionId = newStockBatch.TransactionId;
@@ -532,6 +534,7 @@ namespace NB.API.Controllers
                             var resultItem = new StockOutputVM
                             {
                                 BatchId = newStockBatch.BatchId,
+                                WarehouseId = newStockBatch.WarehouseId,
                                 WarehouseName = validRow.warehouseName,
                                 ProductName = validRow.productName,
                                 TransactionId = newStockBatch.TransactionId,
@@ -597,26 +600,4 @@ namespace NB.API.Controllers
             }
         }
     }
-
-    /*
-     * {
-  "success": false,
-  "statusCode": 400,
-  "data": null,
-  "error": {
-    "message": "Đã xảy ra lỗi",
-    "messages": [
-      "Dòng 5: ProductId phải là số nguyên lớn hơn 0",
-      "Dòng 6: Số lượng phải là số nguyên lớn hơn 0",
-      "Dòng 7: WarehouseId phải là số nguyên lớn hơn 0",
-      "Dòng 8: Ngày hết hạn không hợp lệ. Giá trị: '31/12/2025'",
-      "Dòng 9: Mã giao dịch phải là số nguyên lớn hơn 0",
-      "Dòng 10: Không tìm thấy kho với ID: 111",
-      "Dòng 11: Không tìm thấy sản phẩm với ID: 111",
-      "Dòng 12: Ngày hết hạn không hợp lệ. Giá trị: '31/12/2025'"
-    ],
-    "code": null
-  }
-}
-     */
 }
