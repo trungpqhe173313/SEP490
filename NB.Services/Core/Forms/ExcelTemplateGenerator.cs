@@ -195,7 +195,7 @@ namespace NB.Service.Core.Forms
                     "ID Sản phẩm (Bắt buộc, số nguyên)",
                     "Số lượng (Bắt buộc, số nguyên > 0)",
                     "Mã lô (Bắt buộc, sẽ tự động thêm số thứ tự)",
-                    "Ngày hết hạn (Bắt buộc, định dạng: DD/MM/YYYY)",
+                    "Ngày hết hạn (Bắt buộc, định dạng: MM/DD/YYYY)",
                     "ID Đơn nhập (Bắt buộc, số nguyên)",
                     "Ghi chú (Tùy chọn)"
                 };
@@ -233,7 +233,7 @@ namespace NB.Service.Core.Forms
                     101,
                     1000,
                     "BATCH001",
-                    "2025-12-31",
+                    "12-31-2025",
                     1,
                     "Lô hàng đầu tiên"
                 };
@@ -254,7 +254,7 @@ namespace NB.Service.Core.Forms
                     102,
                     500,
                     "BATCH001",
-                    "2025-12-31",
+                    "12/31/2026",
                     1,
                     "Lô hàng thứ hai"
                 };
@@ -269,7 +269,7 @@ namespace NB.Service.Core.Forms
                 }
 
                 // Set format ngày tháng (column 5)
-                worksheet.Column(5).Style.Numberformat.Format = "yyyy-MM-dd";
+                // worksheet.Column(5).Style.Numberformat.Format = "yyyy-MM-dd";
 
                 // Auto-fit columns
                 worksheet.Cells[1, 1, 4, headers.Length].AutoFitColumns();
@@ -300,7 +300,7 @@ namespace NB.Service.Core.Forms
                 instructionSheet.Cells["A10"].Value = "   - ProductId: ID của sản phẩm (số nguyên)";
                 instructionSheet.Cells["A11"].Value = "   - Quantity: Số lượng nhập (số nguyên > 0)";
                 instructionSheet.Cells["A12"].Value = "   - BatchCode: Mã lô (hệ thống sẽ tự động thêm số thứ tự 0001, 0002...)";
-                instructionSheet.Cells["A13"].Value = "   - ExpireDate: Ngày hết hạn (phải sau ngày hiện tại, định dạng DD/MM/YYYY)";
+                instructionSheet.Cells["A13"].Value = "   - ExpireDate: Ngày hết hạn (phải sau ngày hiện tại, định dạng MM/DD/YYYY)";
                 instructionSheet.Cells["A14"].Value = "   - TransactionId: ID của đơn nhập hàng (nếu có)";
 
                 instructionSheet.Cells["A16"].Value = "3. Các trường tùy chọn:";
