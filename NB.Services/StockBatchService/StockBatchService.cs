@@ -112,5 +112,42 @@ namespace NB.Service.StockBatchService
                         select sb.BatchCode;
             return await query.FirstOrDefaultAsync();
         }
+
+        /// <summary>
+        /// Duc Anh
+        /// Lay ra tat ca cac stock Batch trong list Product Id 
+        /// có hạn sử dụng nhỏ hơn ngày hiện tại
+        /// và vẫn còn sản phẩm
+        /// </summary>
+        /// <param name="ids">list các sản phẩm</param>
+        /// <returns>trả về các stock batch theo product</returns>
+        public async Task<List<StockBatchDto>> GetByProductIdForOrder(List<int> ids)
+        {
+            var query = from sb in GetQueryable()
+                        where ids.Contains(sb.ProductId)
+                        where sb.ExpireDate < DateTime.Today
+                        where sb.QuantityIn > sb.QuantityOut
+                        select new StockBatchDto()
+                        {
+                            BatchId = sb.BatchId,
+                            WarehouseId = sb.WarehouseId,
+                            ProductId = sb.ProductId,
+                            TransactionId = sb.TransactionId,
+                            ProductionFinishId = sb.ProductionFinishId,
+                            BatchCode = sb.BatchCode,
+                            ImportDate = sb.ImportDate,
+                            ExpireDate = sb.ExpireDate,
+                            QuantityIn = sb.QuantityIn,
+                            QuantityOut = sb.QuantityOut,
+                            Status = sb.Status,
+                            IsActive = sb.IsActive,
+                            Note = sb.Note,
+                            LastUpdated = sb.LastUpdated
+                        };
+
+            query = query.OrderBy(sb => sb.ProductId)
+                .ThenBy(sb => sb.ImportDate);
+            return await query.ToListAsync();
+        }
     }
 }

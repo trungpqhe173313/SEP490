@@ -167,5 +167,21 @@ namespace NB.Service.InventoryService
 
             return await query.ToListAsync();
         }
+
+        public async Task<InventoryDto?> GetByProductIdRetriveOneObject(int productId)
+        {
+            var query = from i in GetQueryable()
+                        where i.ProductId == productId
+                        select new InventoryDto
+                        {
+                            InventoryId = i.InventoryId,
+                            WarehouseId = i.WarehouseId,
+                            ProductId = i.ProductId,
+                            Quantity = i.Quantity,
+                            LastUpdated = i.LastUpdated,
+                            Product = i.Product
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
     }
 }
