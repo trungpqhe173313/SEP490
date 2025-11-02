@@ -9,5 +9,6 @@ namespace NB.Service.WarehouseService.Dto
 {
     public class WarehouseSearch : SearchBase
     {
+        public string WarehouseName { get; set; }
     }
 }

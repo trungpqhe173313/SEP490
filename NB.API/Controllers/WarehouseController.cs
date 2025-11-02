@@ -24,13 +24,13 @@ namespace NB.API.Controllers
             _logger = logger;
         }
 
-        [HttpGet("GetData")]
-        public async Task<IActionResult> GetData() 
+        [HttpPost("GetData")]
+        public async Task<IActionResult> GetData([FromBody] WarehouseSearch search) 
          {
              try
              {
-                var result = await _warehouseService.GetData();
-                return Ok(ApiResponse<List<WarehouseDto>>.Ok(result));
+                var result = await _warehouseService.GetData(search);
+                return Ok(ApiResponse<PagedList<WarehouseDto>>.Ok(result));
             }
             catch (Exception ex)
             {
