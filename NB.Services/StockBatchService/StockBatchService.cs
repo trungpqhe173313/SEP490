@@ -43,7 +43,6 @@ namespace NB.Service.StockBatchService
                 }
             }
 
-            // ✅ Project sang DTO với tất cả data cần thiết
             var query = baseQuery.Select(sb => new StockBatchDto()
             {
                 BatchId = sb.BatchId,

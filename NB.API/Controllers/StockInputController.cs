@@ -70,10 +70,10 @@ public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
         {
             BatchId = item.BatchId,
             WarehouseId = item.WarehouseId,
-            WarehouseName = item.WarehouseName,  // ← Đã có sẵn từ Service
-            ProductName = item.ProductName,       // ← Đã có sẵn từ Service
+            WarehouseName = item.WarehouseName,  
+            ProductName = item.ProductName,       
             TransactionId = item.TransactionId,
-            ProductionFinishName = item.ProductId.ToString(),  // ← Đã có sẵn
+            ProductionFinishId = item.ProductionFinishId,  
             BatchCode = item.BatchCode,
             ImportDate = item.ImportDate,
             ExpireDate = item.ExpireDate,
@@ -214,7 +214,7 @@ public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
                         resultItem.WarehouseName = (await _warehouseService.GetById(newStockBatch.WarehouseId))?.WarehouseName;
                         resultItem.ProductName = (await _productService.GetById(newStockBatch.ProductId))?.ProductName;
                         resultItem.TransactionId = newStockBatch.TransactionId;
-                        resultItem.ProductionFinishName = newStockBatch.ProductionFinishId != null ? (await _productService.GetById(newStockBatch.ProductionFinishId.Value))?.ProductName : null;
+                        resultItem.ProductionFinishId = null;
                         resultItem.BatchCode = newStockBatch.BatchCode;
                         resultItem.ImportDate = newStockBatch.ImportDate;
                         resultItem.ExpireDate = newStockBatch.ExpireDate;
@@ -535,7 +535,7 @@ public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
                                 WarehouseName = validRow.warehouseName,
                                 ProductName = validRow.productName,
                                 TransactionId = newStockBatch.TransactionId,
-                                ProductionFinishName = null,
+                                ProductionFinishId = null,
                                 BatchCode = newStockBatch.BatchCode,
                                 ImportDate = newStockBatch.ImportDate,
                                 ExpireDate = newStockBatch.ExpireDate,
