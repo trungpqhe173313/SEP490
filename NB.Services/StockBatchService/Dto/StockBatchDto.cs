@@ -9,5 +9,9 @@ namespace NB.Service.StockBatchService.Dto
 {
     public class StockBatchDto : StockBatch
     {
+        public string? WarehouseName { get; set; }      
+        public string? ProductName { get; set; }        
+
+        public string? ProductFinishName { get; set; } 
     }
 }

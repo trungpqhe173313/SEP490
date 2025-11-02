@@ -16,7 +16,7 @@ namespace NB.Service.WarehouseService
         {
         }
 
-        public async Task<List<WarehouseDto?>> GetData()
+        public async Task<PagedList<WarehouseDto?>> GetData(WarehouseSearch search)
         {
             var query = from warehouse in GetQueryable()
                         select new WarehouseDto()
@@ -29,8 +29,17 @@ namespace NB.Service.WarehouseService
                             Note = warehouse.Note,
                             CreatedAt = warehouse.CreatedAt
                         };
+            if(search != null)
+            {
+                if (!string.IsNullOrEmpty(search.WarehouseName))
+                {
+                    var keyword = search.WarehouseName.Trim();
+                    query = query.Where(w => EF.Functions.Collate(w.WarehouseName, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
+                }
+            }
             query = query.OrderByDescending(w => w.WarehouseId);
-            return await query.ToListAsync();
+            return await PagedList<WarehouseDto>.CreateAsync(query, search);
         }
 
         public async Task<WarehouseDto?> GetById(int search)

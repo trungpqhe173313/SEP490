@@ -50,50 +50,53 @@ namespace NB.API.Controllers
             _mapper = mapper;
         }
         [HttpPost("GetData")]
-        public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
+public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
+{
+    if (!ModelState.IsValid)
+    {
+        return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+    }
+    try
+    {
+        var pagedResult = await _stockBatchService.GetData(search);
+        
+        if (pagedResult == null || pagedResult.Items.Count == 0)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
-            }
-            try
-            {
-                var list = await _stockBatchService.GetData(search);
-                List<StockOutputVM>? result = new List<StockOutputVM>();
-                if (list != null)
-                {
-                    foreach (var item in list.Items)
-                    {
-                        StockOutputVM resultItem = new StockOutputVM();
-                        resultItem.BatchId = item.BatchId;
-                        resultItem.WarehouseName = (await _warehouseService.GetById(item.WarehouseId))?.WarehouseName;
-                        resultItem.ProductName = (await _productService.GetById(item.ProductId))?.ProductName;
-                        resultItem.TransactionId = item.TransactionId;
-                        resultItem.ProductionFinishName = item.ProductionFinishId != null ? (await _productService.GetById(item.ProductionFinishId.Value))?.ProductName : null;
-                        resultItem.BatchCode = item.BatchCode;
-                        resultItem.ImportDate = item.ImportDate;
-                        resultItem.ExpireDate = item.ExpireDate;
-                        resultItem.QuantityIn = item.QuantityIn;
-                        resultItem.Status = item.Status;
-                        resultItem.IsActive = item.IsActive ?? false;
-                        resultItem.Note = item.Note;
-                        result.Add(resultItem);
-                    }
-
-                }
-                else if (result == null || result.Count == 0)
-                {
-                    return NotFound(ApiResponse<PagedList<StockOutputVM>>.Fail("Không tìm thấy lô hàng nào.", 404));
-                }
-                var pagedResult = PagedList<StockOutputVM>.CreateFromList(result, search);
-                return Ok(ApiResponse<PagedList<StockOutputVM>>.Ok(pagedResult));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi lấy dữ liệu lô hàng");
-                return BadRequest(ApiResponse<PagedList<StockOutputVM>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
-            }
+            return NotFound(ApiResponse<PagedList<StockBatchDto>>.Fail("Không tìm thấy lô hàng nào.", 404));
         }
+        
+
+        var result = pagedResult.Items.Select(item => new StockOutputVM
+        {
+            BatchId = item.BatchId,
+            WarehouseId = item.WarehouseId,
+            WarehouseName = item.WarehouseName,  
+            ProductName = item.ProductName,       
+            TransactionId = item.TransactionId,
+            ProductionFinishId = item.ProductionFinishId,  
+            BatchCode = item.BatchCode,
+            ImportDate = item.ImportDate,
+            ExpireDate = item.ExpireDate,
+            QuantityIn = item.QuantityIn,
+            Status = item.Status,
+            IsActive = item.IsActive ?? false,
+            Note = item.Note
+        }).ToList();
+        
+        var finalResult = new PagedList<StockOutputVM>(
+            items: result,
+            pageIndex: pagedResult.PageIndex,
+            pageSize: pagedResult.PageSize,
+            totalCount: pagedResult.TotalCount
+        );
+                return Ok(ApiResponse<PagedList<StockOutputVM>>.Ok(finalResult));
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Lỗi khi lấy dữ liệu lô hàng");
+        return BadRequest(ApiResponse<PagedList<StockOutputVM>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+    }
+}
 
         
             
@@ -212,10 +215,11 @@ namespace NB.API.Controllers
                         }
                         StockOutputVM resultItem = new StockOutputVM();
                         resultItem.BatchId = newStockBatch.BatchId;
+                        resultItem.WarehouseId = newStockBatch.WarehouseId;
                         resultItem.WarehouseName = (await _warehouseService.GetById(newStockBatch.WarehouseId))?.WarehouseName;
                         resultItem.ProductName = (await _productService.GetById(newStockBatch.ProductId))?.ProductName;
                         resultItem.TransactionId = newStockBatch.TransactionId;
-                        resultItem.ProductionFinishName = newStockBatch.ProductionFinishId != null ? (await _productService.GetById(newStockBatch.ProductionFinishId.Value))?.ProductName : null;
+                        resultItem.ProductionFinishId = null;
                         resultItem.BatchCode = newStockBatch.BatchCode;
                         resultItem.ImportDate = newStockBatch.ImportDate;
                         resultItem.ExpireDate = newStockBatch.ExpireDate;
@@ -532,10 +536,11 @@ namespace NB.API.Controllers
                             var resultItem = new StockOutputVM
                             {
                                 BatchId = newStockBatch.BatchId,
+                                WarehouseId = newStockBatch.WarehouseId,
                                 WarehouseName = validRow.warehouseName,
                                 ProductName = validRow.productName,
                                 TransactionId = newStockBatch.TransactionId,
-                                ProductionFinishName = null,
+                                ProductionFinishId = null,
                                 BatchCode = newStockBatch.BatchCode,
                                 ImportDate = newStockBatch.ImportDate,
                                 ExpireDate = newStockBatch.ExpireDate,
@@ -597,26 +602,4 @@ namespace NB.API.Controllers
             }
         }
     }
-
-    /*
-     * {
-  "success": false,
-  "statusCode": 400,
-  "data": null,
-  "error": {
-    "message": "Đã xảy ra lỗi",
-    "messages": [
-      "Dòng 5: ProductId phải là số nguyên lớn hơn 0",
-      "Dòng 6: Số lượng phải là số nguyên lớn hơn 0",
-      "Dòng 7: WarehouseId phải là số nguyên lớn hơn 0",
-      "Dòng 8: Ngày hết hạn không hợp lệ. Giá trị: '31/12/2025'",
-      "Dòng 9: Mã giao dịch phải là số nguyên lớn hơn 0",
-      "Dòng 10: Không tìm thấy kho với ID: 111",
-      "Dòng 11: Không tìm thấy sản phẩm với ID: 111",
-      "Dòng 12: Ngày hết hạn không hợp lệ. Giá trị: '31/12/2025'"
-    ],
-    "code": null
-  }
-}
-     */
 }

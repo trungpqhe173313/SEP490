@@ -9,13 +9,15 @@ namespace NB.Service.StockBatchService.ViewModels
     public class StockOutputVM
     {
         public int BatchId { get; set; }
+        
+        public int WarehouseId { get; set; }
         public string WarehouseName { get; set; }
 
         public string ProductName { get; set; }
 
         public int? TransactionId { get; set; }
 
-        public string? ProductionFinishName { get; set; }
+        public int? ProductionFinishId { get; set; }
 
         public string? BatchCode { get; set; }
 

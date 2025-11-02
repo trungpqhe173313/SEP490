@@ -20,37 +20,49 @@ namespace NB.Service.StockBatchService
 
         public async Task<PagedList<StockBatchDto?>> GetData(StockBatchSearch search)
         {
-            var query = from sb in GetQueryable()
-                        select new StockBatchDto()
-                        {
-                            BatchId = sb.BatchId,
-                            WarehouseId = sb.WarehouseId,
-                            ProductId = sb.ProductId,
-                            TransactionId = sb.TransactionId,
-                            ProductionFinishId = sb.ProductionFinishId,
-                            BatchCode = sb.BatchCode,
-                            ImportDate = sb.ImportDate,
-                            ExpireDate = sb.ExpireDate,
-                            QuantityIn = sb.QuantityIn,
-                            QuantityOut = sb.QuantityOut,
-                            Status = sb.Status,
-                            IsActive = sb.IsActive,
-                            Note = sb.Note,
-                            LastUpdated = sb.LastUpdated
-                        };
-            if(search != null)
+            // Join các bảng
+            var baseQuery = GetQueryable()
+                .Include(sb => sb.Warehouse)
+                .Include(sb => sb.Product)
+                .Include(sb => sb.Transaction)
+                .Include(sb => sb.ProductionFinish)  
+                .AsQueryable();
+
+            // Apply filters
+            if (search != null)
             {
-                if(!(search.BatchId <= 0))
+                if (!(search.BatchId <= 0))
                 {
-                    query = query.Where(sb => sb.BatchId == search.BatchId);
+                    baseQuery = baseQuery.Where(sb => sb.BatchId == search.BatchId);
                 }
                 if (!string.IsNullOrEmpty(search.BatchCode))
                 {
                     var keyword = search.BatchCode.Trim();
-                    query = query.Where(sb => EF.Functions.Collate(sb.BatchCode, "SQL_Latin1_General_CP1_CI_AI")
-                    .Contains(keyword));
+                    baseQuery = baseQuery.Where(sb => EF.Functions.Collate(sb.BatchCode, "SQL_Latin1_General_CP1_CI_AI")
+                        .Contains(keyword));
                 }
             }
+
+            var query = baseQuery.Select(sb => new StockBatchDto()
+            {
+                BatchId = sb.BatchId,
+                WarehouseId = sb.WarehouseId,
+                WarehouseName = sb.Warehouse.WarehouseName, 
+                ProductId = sb.ProductId,
+                ProductName = sb.Product.ProductName,        
+                TransactionId = sb.TransactionId,
+                ProductionFinishId = sb.ProductionFinishId,
+                BatchCode = sb.BatchCode,
+                ImportDate = sb.ImportDate,
+                ExpireDate = sb.ExpireDate,
+                QuantityIn = sb.QuantityIn,
+                QuantityOut = sb.QuantityOut,
+                Status = sb.Status,
+                IsActive = sb.IsActive,
+                Note = sb.Note,
+                LastUpdated = sb.LastUpdated
+            });
+
             return await PagedList<StockBatchDto?>.CreateAsync(query, search);
         }
 
