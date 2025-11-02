@@ -273,7 +273,7 @@ namespace NB.API.Controllers
         //}
 
         [HttpPost("CreateOrder/{userId}")]
-        public async Task<IActionResult> CreateOrder(int userId, List<ProductOrder> listProductOrder)
+        public async Task<IActionResult> CreateOrder(int userId, [FromBody] List<ProductOrder> listProductOrder)
         {
             var existingUser = await _userService.GetByUserId(userId);
             if (existingUser == null)
@@ -360,7 +360,28 @@ namespace NB.API.Controllers
                 }
 
                 // 6️⃣ Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
-                return Ok(ApiResponse<Transaction>.Ok(transactionEntity));
+                return Ok(ApiResponse<Transaction>.Ok(new Transaction
+                {
+                    TransactionId = transactionEntity.TransactionId,
+
+                    CustomerId = transactionEntity.CustomerId,
+
+                    WarehouseInId = transactionEntity.WarehouseInId,
+
+                    SupplierId = transactionEntity.SupplierId,
+
+                    WarehouseId = transactionEntity.WarehouseId,
+
+                    ConversionRate = transactionEntity.ConversionRate,
+
+                    Type = transactionEntity.Type,
+
+                    Status = transactionEntity.Status,
+
+                    TransactionDate = transactionEntity.TransactionDate,
+
+                    Note = transactionEntity.Note
+                }));
             }
             catch (Exception ex)
             {

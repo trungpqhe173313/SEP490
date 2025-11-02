@@ -125,8 +125,8 @@ namespace NB.Service.StockBatchService
         {
             var query = from sb in GetQueryable()
                         where ids.Contains(sb.ProductId)
-                        where sb.ExpireDate < DateTime.Today
-                        where sb.QuantityIn > sb.QuantityOut
+                        //where sb.ExpireDate > DateTime.Today
+                        //where sb.QuantityIn > sb.QuantityOut
                         select new StockBatchDto()
                         {
                             BatchId = sb.BatchId,
