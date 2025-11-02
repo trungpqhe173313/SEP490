@@ -33,10 +33,11 @@ namespace NB.Service.Dto
             StatusCode = statusCode,
             Error = new ApiError
             {
-                Message = messages.Any() ? messages[0] : "Có lỗi xảy ra",
+                Message = "Đã xảy ra lỗi",
                 Messages = messages
             }
         };
+
 
         public static ApiResponse<T> OkWithWarnings(T data, List<string> warnings) => new()
         {
