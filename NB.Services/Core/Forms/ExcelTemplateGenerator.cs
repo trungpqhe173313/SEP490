@@ -269,7 +269,7 @@ namespace NB.Service.Core.Forms
                 }
 
                 // Set format ngày tháng (column 5)
-                // worksheet.Column(5).Style.Numberformat.Format = "yyyy-MM-dd";
+                worksheet.Column(5).Style.Numberformat.Format = "yyyy-MM-dd";
 
                 // Auto-fit columns
                 worksheet.Cells[1, 1, 4, headers.Length].AutoFitColumns();

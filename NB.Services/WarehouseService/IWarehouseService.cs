@@ -12,7 +12,7 @@ namespace NB.Service.WarehouseService
 {
     public interface IWarehouseService : IService<Warehouse>
     {
-        Task<List<WarehouseDto?>> GetData();
+        Task<PagedList<WarehouseDto?>> GetData(WarehouseSearch search);
         Task<WarehouseDto?> GetById(int id);
         Task<WarehouseDto?> GetByWarehouseStatus(int status);
 
