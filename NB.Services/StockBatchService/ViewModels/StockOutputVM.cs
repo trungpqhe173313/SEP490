@@ -17,7 +17,7 @@ namespace NB.Service.StockBatchService.ViewModels
 
         public int? TransactionId { get; set; }
 
-        public string? ProductionFinishName { get; set; }
+        public int? ProductionFinishId { get; set; }
 
         public string? BatchCode { get; set; }
 
