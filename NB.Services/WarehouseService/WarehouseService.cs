@@ -59,6 +59,23 @@ namespace NB.Service.WarehouseService
             return await query.FirstOrDefaultAsync();
         }
 
+        public async Task<WarehouseDto?> GetByWarehouseName(string warehouseName)
+        {
+            var query = from warehouse in GetQueryable()
+                        where warehouse.WarehouseName == warehouseName
+                        select new WarehouseDto()
+                        {
+                            WarehouseId = warehouse.WarehouseId,
+                            WarehouseName = warehouse.WarehouseName,
+                            Location = warehouse.Location,
+                            Capacity = warehouse.Capacity,
+                            Status = warehouse.Status,
+                            Note = warehouse.Note,
+                            CreatedAt = warehouse.CreatedAt
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
+
         public async Task<WarehouseDto?> GetByWarehouseStatus(int status)
         {
             var query = from warehouse in GetQueryable()

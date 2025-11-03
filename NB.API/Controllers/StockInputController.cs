@@ -13,9 +13,13 @@ using NB.Service.StockBatchService.ViewModels;
 using NB.Service.TransactionDetailService;
 using NB.Service.TransactionService;
 using NB.Service.WarehouseService;
+using NB.Service.SupplierService;
 using NB.Services.StockBatchService.ViewModels;
 using OfficeOpenXml;
 using System.Globalization;
+using NB.Service.TransactionService.Dto;
+using NB.Service.TransactionDetailService.Dto;
+using NB.Model.Entities;
 
 namespace NB.API.Controllers
 {
@@ -28,15 +32,17 @@ namespace NB.API.Controllers
         private readonly IWarehouseService _warehouseService;
         private readonly IProductService _productService;
         private readonly IStockBatchService _stockBatchService;
+        private readonly ISupplierService _supplierService;
         private readonly ILogger<StockInputController> _logger;
         private readonly IMapper _mapper;
 
-        public StockInputController(IInventoryService inventoryService, 
-                                    ITransactionService transactionService, 
+        public StockInputController(IInventoryService inventoryService,
+                                    ITransactionService transactionService,
                                     ITransactionDetailService transactionDetailService,
                                     IWarehouseService warehouseService,
                                     IProductService productService,
                                     IStockBatchService stockBatchService,
+                                    ISupplierService supplierService,
                                     ILogger<StockInputController> logger,
                                     IMapper mapper)
         {
@@ -46,199 +52,260 @@ namespace NB.API.Controllers
             _warehouseService = warehouseService;
             _productService = productService;
             _stockBatchService = stockBatchService;
+            _supplierService = supplierService;
             _logger = logger;
             _mapper = mapper;
         }
         [HttpPost("GetData")]
-public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
-{
-    if (!ModelState.IsValid)
-    {
-        return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
-    }
-    try
-    {
-        var pagedResult = await _stockBatchService.GetData(search);
-        
-        if (pagedResult == null || pagedResult.Items.Count == 0)
+        public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
         {
-            return NotFound(ApiResponse<PagedList<StockBatchDto>>.Fail("Không tìm thấy lô hàng nào.", 404));
-        }
-        
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+            try
+            {
+                var pagedResult = await _stockBatchService.GetData(search);
 
-        var result = pagedResult.Items.Select(item => new StockOutputVM
-        {
-            BatchId = item.BatchId,
-            WarehouseId = item.WarehouseId,
-            WarehouseName = item.WarehouseName,  
-            ProductName = item.ProductName,       
-            TransactionId = item.TransactionId,
-            ProductionFinishId = item.ProductionFinishId,  
-            BatchCode = item.BatchCode,
-            ImportDate = item.ImportDate,
-            ExpireDate = item.ExpireDate,
-            QuantityIn = item.QuantityIn,
-            Status = item.Status,
-            IsActive = item.IsActive ?? false,
-            Note = item.Note
-        }).ToList();
-        
-        var finalResult = new PagedList<StockOutputVM>(
-            items: result,
-            pageIndex: pagedResult.PageIndex,
-            pageSize: pagedResult.PageSize,
-            totalCount: pagedResult.TotalCount
-        );
+                if (pagedResult == null || pagedResult.Items.Count == 0)
+                {
+                    return NotFound(ApiResponse<PagedList<StockBatchDto>>.Fail("Không tìm thấy lô hàng nào.", 404));
+                }
+
+
+                var result = pagedResult.Items.Select(item => new StockOutputVM
+                {
+                    BatchId = item.BatchId,
+                    WarehouseId = item.WarehouseId,
+                    WarehouseName = item.WarehouseName,
+                    ProductName = item.ProductName,
+                    TransactionId = item.TransactionId,
+                    ProductionFinishId = item.ProductionFinishId,
+                    BatchCode = item.BatchCode,
+                    ImportDate = item.ImportDate,
+                    ExpireDate = item.ExpireDate,
+                    QuantityIn = item.QuantityIn,
+                    Status = item.Status,
+                    IsActive = item.IsActive ?? false,
+                    Note = item.Note
+                }).ToList();
+
+                var finalResult = new PagedList<StockOutputVM>(
+                    items: result,
+                    pageIndex: pagedResult.PageIndex,
+                    pageSize: pagedResult.PageSize,
+                    totalCount: pagedResult.TotalCount
+                );
                 return Ok(ApiResponse<PagedList<StockOutputVM>>.Ok(finalResult));
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Lỗi khi lấy dữ liệu lô hàng");
-        return BadRequest(ApiResponse<PagedList<StockOutputVM>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
-    }
-}
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy dữ liệu lô hàng");
+                return BadRequest(ApiResponse<PagedList<StockOutputVM>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+            }
+        }
 
-        
-            
+
+
         [HttpPost("CreateStockInputs")]
-        public async Task<IActionResult> CreateStockInputs([FromBody] StockBatchCreateVM model)
+        public async Task<IActionResult> CreateStockInputs([FromBody] StockBatchCreateWithProductsVM model)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
 
-            if (model.WarehouseId <= 0)
-            {
-                return BadRequest(ApiResponse<object>.Fail($"ID kho {model.WarehouseId} không hợp lệ", 400));
-            }
+            // Validate Warehouse
             var existWarehouse = await _warehouseService.GetById(model.WarehouseId);
             if (existWarehouse == null)
             {
                 return NotFound(ApiResponse<object>.Fail($"Không tìm thấy kho với ID: {model.WarehouseId}", 404));
             }
 
-            if (model.TransactionId <= 0)
+            // Validate Supplier
+            var existSupplier = await _supplierService.GetBySupplierId(model.SupplierId);
+            if (existSupplier == null)
             {
-                return BadRequest(ApiResponse<object>.Fail($"ID đơn nhập {model.TransactionId} không hợp lệ", 400));
-            }
-            var existTransaction = await _transactionService.GetByTransactionId(model.TransactionId);
-            if (existTransaction == null)
-            {
-                return NotFound(ApiResponse<object>.Fail($"Không tìm thấy đơn nhập với ID: {model.TransactionId}", 404));
-            }
-            if (model.ProductionFinishId != null)
-            {
-                return BadRequest(ApiResponse<object>.Fail("Đơn nhập không có sản phẩm sau xử lí.", 400));
+                return NotFound(ApiResponse<object>.Fail($"Không tìm thấy nhà cung cấp với ID: {model.SupplierId}", 404));
             }
 
-
-            if (model.BatchCode == null || model.BatchCode.Trim().Replace(" ", "").Length == 0)
-            {
-                return BadRequest(ApiResponse<object>.Fail("Mã lô không được để trống.", 400));
-            }
-            var existBatchCode = $"{model.BatchCode}{1:D4}";
-            if(await _stockBatchService.GetByName(existBatchCode) != null)
-            {
-                return BadRequest(ApiResponse<object>.Fail("Mã lô này đã tồn tại"));
-            }
-
-            if (model.ExpireDate == null)
-            {
-                return BadRequest(ApiResponse<object>.Fail("Ngày hết hạn không được để trống.", 400));
-            }
-
+            // Validate ExpireDate
             if (model.ExpireDate <= DateTime.UtcNow)
             {
-                return BadRequest(ApiResponse<object>.Fail("Ngày hết hạn phải sau ngày nhập.", 400));
+                return BadRequest(ApiResponse<object>.Fail("Ngày hết hạn phải sau ngày hiện tại.", 400));
             }
 
+            // Validate List Products
+            if (model.Products == null || model.Products.Count == 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Danh sách sản phẩm không được để trống.", 400));
+            }
+
+            // Validate từng product trong list
+            foreach (var product in model.Products)
+            {
+                var existProduct = await _productService.GetById(product.ProductId);
+                if (existProduct == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail($"Không tìm thấy sản phẩm với ID: {product.ProductId}", 404));
+                }
+            }
 
             try
             {
-                var listTransactionDetails = await _transactionDetailService.GetById(model.TransactionId);
-                int batchCounter = 1;
-                List<StockOutputVM> list = new List<StockOutputVM>();
-                foreach (var item in listTransactionDetails)
+                // Tạo Transaction
+                var newTransaction = new TransactionDto
                 {
-                    
-                    if (await _productService.GetById(item.ProductId) == null)
+                    SupplierId = model.SupplierId,
+                    WarehouseId = model.WarehouseId,
+                    Type = "Import",
+                    Status = 1, // Mặc định
+                    TransactionDate = DateTime.UtcNow,
+                    Note = model.Note
+                };
+                await _transactionService.CreateAsync(newTransaction);
+                int transactionId = newTransaction.TransactionId;
+
+                // Tao TransactionDetails
+                foreach (var product in model.Products)
+                {
+                    var transactionDetail = new TransactionDetailDto
                     {
-                        return NotFound(ApiResponse<object>.Fail($"Không tìm thấy sản phẩm với ID: {item.ProductId}", 404));
-                    }else if (item.Quantity <= 0)
+                        TransactionId = transactionId,
+                        ProductId = product.ProductId,
+                        Quantity = product.Quantity,
+                        UnitPrice = product.UnitPrice,
+                        Subtotal = product.Quantity * product.UnitPrice
+                    };
+                    await _transactionDetailService.CreateAsync(transactionDetail);
+                }
+
+                
+                string batchCodePrefix = "BATCH-NUMBER";
+
+                // Update Inventory và tạo StockBatch cho từng product
+                int batchCounter = 1;
+                List<StockOutputVM> resultList = new List<StockOutputVM>();
+
+                // Inventory cache để xử lý trường hợp nhiều item cùng ProductId trong 1 request
+                Dictionary<string, InventoryDto> inventoryCache = new Dictionary<string, InventoryDto>();
+
+                foreach (var product in model.Products)
+                {
+
+                    // Tạo BatchCode
+                    string uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
+
+                    while (await _stockBatchService.GetByName(uniqueBatchCode) != null)
                     {
-                        return BadRequest(ApiResponse<object>.Fail($"Số lượng sản phẩm với ID: {item.ProductId} không hợp lệ", 400));
+                        batchCounter++;
+                        uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
                     }
-                    else
+
+                    // Tạo StockBatch
+                    var newStockBatch = new StockBatchDto
                     {
-                        string uniqueBatchCode = $"{model.BatchCode.Trim().Replace(" ", "")}{batchCounter:D4}"; // D4 = 4 chữ số: 0001, 0002, 0003...
-                        var newStockBatch = _mapper.Map<StockBatchCreateVM, StockBatchDto>(model);
-                        {
-                            newStockBatch.WarehouseId = model.WarehouseId;
-                            newStockBatch.ProductId = item.ProductId;
-                            newStockBatch.TransactionId = model.TransactionId;
-                            newStockBatch.BatchCode = uniqueBatchCode;
-                            newStockBatch.ImportDate = DateTime.UtcNow;
-                            newStockBatch.ExpireDate = model.ExpireDate;
-                            newStockBatch.QuantityIn = item.Quantity;
-                            newStockBatch.Status = 1; // Đặt trạng thái là 'Đã nhập kho'
-                            newStockBatch.IsActive = true;
-                            newStockBatch.LastUpdated = DateTime.UtcNow;
-                            newStockBatch.Note = model.Note;
-                        }
+                        WarehouseId = model.WarehouseId,
+                        ProductId = product.ProductId,
+                        TransactionId = transactionId,
+                        BatchCode = uniqueBatchCode,
+                        ImportDate = DateTime.UtcNow,
+                        ExpireDate = model.ExpireDate,
+                        QuantityIn = product.Quantity,
+                        Status = 1, // Đã nhập kho
+                        IsActive = true,
+                        LastUpdated = DateTime.UtcNow,
+                        Note = model.Note
+                    };
+                    await _stockBatchService.CreateAsync(newStockBatch);
 
-                        await _stockBatchService.CreateAsync(newStockBatch);
+                    // Update Inventory with Cache 
+                    string inventoryKey = $"{model.WarehouseId}_{product.ProductId}";
 
-                        var existInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, item.ProductId);
+                    if (!inventoryCache.ContainsKey(inventoryKey))
+                    {
+                        // Lần đầu gặp ProductId này: Load từ DB
+                        var existInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, product.ProductId);
+
                         if (existInventory == null)
                         {
-                            // Tạo mới tồn kho nếu chưa có
-                            var newInventory = _mapper.Map<StockBatchCreateVM, InventoryDto>(model);
+                            // Tạo mới Inventory trong cache
+                            var newInventory = new InventoryDto
                             {
-                                newInventory.WarehouseId = model.WarehouseId;
-                                newInventory.ProductId = item.ProductId;
-                                newInventory.Quantity = item.Quantity;
-                                newInventory.AverageCost = newInventory.AverageCost; // Giữ nguyên giá vốn trung bình ban đầu
-                                newInventory.LastUpdated = DateTime.UtcNow;
-                            }
-                            ;
-                            await _inventoryService.CreateAsync(newInventory);
-
+                                WarehouseId = model.WarehouseId,
+                                ProductId = product.ProductId,
+                                Quantity = product.Quantity,
+                                AverageCost = product.UnitPrice,
+                                LastUpdated = DateTime.UtcNow
+                            };
+                            inventoryCache[inventoryKey] = newInventory;
                         }
                         else
                         {
-                            // Cập nhật tồn kho nếu đã có
-                            existInventory.AverageCost = existInventory.AverageCost;
-                            existInventory.Quantity += item.Quantity;
+                            // Đã tồn tại trong DB: Update với weighted average cost
+                            decimal? totalCost = (existInventory.Quantity * existInventory.AverageCost) + (product.Quantity * product.UnitPrice);
+                            decimal? totalQuantity = existInventory.Quantity + product.Quantity;
+                            existInventory.AverageCost = totalCost / totalQuantity;
+                            existInventory.Quantity = totalQuantity;
                             existInventory.LastUpdated = DateTime.UtcNow;
-                            await _inventoryService.UpdateAsync(existInventory);
+                            inventoryCache[inventoryKey] = existInventory;
                         }
-                        StockOutputVM resultItem = new StockOutputVM();
-                        resultItem.BatchId = newStockBatch.BatchId;
-                        resultItem.WarehouseId = newStockBatch.WarehouseId;
-                        resultItem.WarehouseName = (await _warehouseService.GetById(newStockBatch.WarehouseId))?.WarehouseName;
-                        resultItem.ProductName = (await _productService.GetById(newStockBatch.ProductId))?.ProductName;
-                        resultItem.TransactionId = newStockBatch.TransactionId;
-                        resultItem.ProductionFinishId = null;
-                        resultItem.BatchCode = newStockBatch.BatchCode;
-                        resultItem.ImportDate = newStockBatch.ImportDate;
-                        resultItem.ExpireDate = newStockBatch.ExpireDate;
-                        resultItem.QuantityIn = newStockBatch.QuantityIn;
-                        resultItem.QuantityOut = newStockBatch.QuantityOut;
-                        resultItem.Status = newStockBatch.Status;
-                        resultItem.IsActive = newStockBatch.IsActive ?? false;
-                        resultItem.Note = newStockBatch.Note;
-                        list.Add(resultItem);
-                        batchCounter++;
+                    }
+                    else
+                    {
+                        // Đã gặp ProductId này trong request : Cộng dồn trong cache
+                        var cachedInventory = inventoryCache[inventoryKey];
+                        decimal? totalCost = (cachedInventory.Quantity * cachedInventory.AverageCost) + (product.Quantity * product.UnitPrice);
+                        decimal? totalQuantity = cachedInventory.Quantity + product.Quantity;
+                        cachedInventory.AverageCost = totalCost / totalQuantity;
+                        cachedInventory.Quantity = totalQuantity;
+                        cachedInventory.LastUpdated = DateTime.UtcNow;
+                    }
+
+                    var resultItem = new StockOutputVM
+                    {
+                        BatchId = newStockBatch.BatchId,
+                        WarehouseId = newStockBatch.WarehouseId,
+                        WarehouseName = existWarehouse.WarehouseName,
+                        ProductName = (await _productService.GetById(product.ProductId))?.ProductName,
+                        TransactionId = transactionId,
+                        ProductionFinishId = null,
+                        BatchCode = uniqueBatchCode,
+                        ImportDate = newStockBatch.ImportDate,
+                        ExpireDate = newStockBatch.ExpireDate,
+                        QuantityIn = newStockBatch.QuantityIn,
+                        QuantityOut = newStockBatch.QuantityOut,
+                        Status = newStockBatch.Status,
+                        IsActive = newStockBatch.IsActive ?? false,
+                        Note = newStockBatch.Note
+                    };
+                    resultList.Add(resultItem);
+                    batchCounter++;
+                }
+
+                // Load Inventory vào db
+                foreach (var inv in inventoryCache)
+                {
+                    var inventory = inv.Value;
+
+                    if (inventory.InventoryId == 0)
+                    {
+                        // InventoryId = 0 nghĩa là mới tạo, chưa có trong DB
+                        await _inventoryService.CreateAsync(inventory);
+                    }
+                    else
+                    {
+                        // Đã tồn tại, update
+                        await _inventoryService.UpdateAsync(inventory);
                     }
                 }
 
-                return Ok(ApiResponse<List<StockOutputVM>>.Ok(list));
+                return Ok(ApiResponse<List<StockOutputVM>>.Ok(resultList));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi tạo lô nhập kho mới");
-                return BadRequest(ApiResponse<StockBatchDto>.Fail("Có lỗi xảy ra khi tạo lô nhập kho.", 400));
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi tạo lô nhập kho.", 400));
             }
         }
 
@@ -270,20 +337,6 @@ public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
                 var result = new StockBatchImportResultVM();
                 var validationErrors = new List<string>();
 
-                // Class để chứa dữ liệu đã validate
-                var validatedRows = new List<(
-                    int rowNumber,
-                    int warehouseId,
-                    int productId,
-                    int quantity,
-                    string batchCode,
-                    DateTime expireDate,
-                    int transactionId,
-                    string note,
-                    string warehouseName,
-                    string productName
-                )>();
-
                 using (var stream = new MemoryStream())
                 {
                     await file.CopyToAsync(stream);
@@ -291,48 +344,107 @@ public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
 
                     using (var package = new ExcelPackage(stream))
                     {
-                        var worksheet = package.Workbook.Worksheets[0];
-                        var rowCount = worksheet.Dimension?.Rows ?? 0;
-
-                        if (rowCount < 2)
+                        // Đọc Sheet "Thông tin chung"
+                        var infoSheet = package.Workbook.Worksheets.FirstOrDefault(s => s.Name == "Thông tin chung");
+                        if (infoSheet == null)
                         {
-                            return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("File Excel không có dữ liệu hoặc chỉ có header.", 400));
+                            return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("Không tìm thấy sheet 'Thông tin chung'", 400));
                         }
 
-                        result.TotalRows = rowCount - 1;
+                        // Đọc dòng 3 (dữ liệu)
+                        string warehouseName = infoSheet.Cells[3, 1].Value?.ToString()?.Trim();
+                        string supplierName = infoSheet.Cells[3, 2].Value?.ToString()?.Trim();
+                        var expireDateCell = infoSheet.Cells[3, 3];
 
-                        // VALIDATE TẤT CẢ CÁC DÒNG
+                        // Validate thông tin chung
+                        if (string.IsNullOrWhiteSpace(warehouseName))
+                            validationErrors.Add("Sheet 'Thông tin chung': WarehouseName không được để trống");
+
+                        if (string.IsNullOrWhiteSpace(supplierName))
+                            validationErrors.Add("Sheet 'Thông tin chung': SupplierName không được để trống");
+
+                        DateTime expireDate = DateTime.MinValue;
+                        bool isValidDate = false;
+                        if (expireDateCell.Value is double doubleValue)
+                        {
+                            try
+                            {
+                                expireDate = DateTime.FromOADate(doubleValue);
+                                isValidDate = true;
+                            }
+                            catch { isValidDate = false; }
+                        }
+
+                        if (!isValidDate)
+                            validationErrors.Add($"Sheet 'Thông tin chung': ExpireDate không hợp lệ. Giá trị: '{expireDateCell.Value}'");
+                        else if (expireDate <= DateTime.UtcNow)
+                            validationErrors.Add("Sheet 'Thông tin chung': ExpireDate phải sau ngày hiện tại");
+
+                        // Lookup Warehouse và Supplier
+                        var warehouse = !string.IsNullOrWhiteSpace(warehouseName)
+                            ? await _warehouseService.GetByWarehouseName(warehouseName)
+                            : null;
+                        if (warehouse == null && !string.IsNullOrWhiteSpace(warehouseName))
+                            validationErrors.Add($"Không tìm thấy kho với tên: {warehouseName}");
+
+                        var supplier = !string.IsNullOrWhiteSpace(supplierName)
+                            ? await _supplierService.GetByName(supplierName)
+                            : null;
+                        if (supplier == null && !string.IsNullOrWhiteSpace(supplierName))
+                            validationErrors.Add($"Không tìm thấy nhà cung cấp với tên: {supplierName}");
+
+                        // Nếu có lỗi ở thông tin chung, dừng luôn
+                        if (validationErrors.Any())
+                        {
+                            return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail(validationErrors, 400));
+                        }
+
+                        // Đọc Sheet "Danh sách sản phẩm"
+                        var productSheet = package.Workbook.Worksheets.FirstOrDefault(s => s.Name == "Danh sách sản phẩm");
+                        if (productSheet == null)
+                        {
+                            return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("Không tìm thấy sheet 'Danh sách sản phẩm'", 400));
+                        }
+
+                        var rowCount = productSheet.Dimension?.Rows ?? 0;
+                        if (rowCount < 3)
+                        {
+                            return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("Sheet 'Danh sách sản phẩm' không có dữ liệu", 400));
+                        }
+
+                        result.TotalRows = rowCount - 2; // Trừ header và description
+
+                        // Class để chứa dữ liệu sản phẩm đã validate
+                        var validatedProducts = new List<(
+                            int rowNumber,
+                            int productId,
+                            int quantity,
+                            decimal unitPrice,
+                            string note,
+                            string productName
+                        )>();
+
+                        // VALIDATE TẤT CẢ CÁC DÒNG SẢN PHẨM (Sheet 2)
                         for (int row = 3; row <= rowCount; row++)
                         {
                             try
                             {
-                                // Đọc dữ liệu trong file Excel
-                                var warehouseIdStr = worksheet.Cells[row, 1].Value?.ToString()?.Trim();
-                                var productIdStr = worksheet.Cells[row, 2].Value?.ToString()?.Trim();
-                                var quantityStr = worksheet.Cells[row, 3].Value?.ToString()?.Trim();
-                                var batchCode = worksheet.Cells[row, 4].Value?.ToString()?.Trim();
-                                var expireDateCell = worksheet.Cells[row, 5];
-                                var transactionIdStr = worksheet.Cells[row, 6].Value?.ToString()?.Trim();
-                                var note = worksheet.Cells[row, 7].Value?.ToString()?.Trim();
+                                // Đọc dữ liệu: ProductName, Quantity, UnitPrice, Note
+                                var productName = productSheet.Cells[row, 1].Value?.ToString()?.Trim();
+                                var quantityStr = productSheet.Cells[row, 2].Value?.ToString()?.Trim();
+                                var unitPriceStr = productSheet.Cells[row, 3].Value?.ToString()?.Trim();
+                                var note = productSheet.Cells[row, 4].Value?.ToString()?.Trim();
 
-                                // Validate các trường trong file excel - Thu thập TẤT CẢ lỗi của dòng
                                 var rowErrors = new List<string>();
 
-                                // Parse và validate format
-                                int warehouseId = 0;
-                                bool warehouseIdValid = !string.IsNullOrWhiteSpace(warehouseIdStr) && int.TryParse(warehouseIdStr, out warehouseId) && warehouseId > 0;
-                                if (!warehouseIdValid)
+                                // Validate ProductName
+                                bool productNameValid = !string.IsNullOrWhiteSpace(productName);
+                                if (!productNameValid)
                                 {
-                                    rowErrors.Add($"Dòng {row}: WarehouseId phải là số nguyên lớn hơn 0");
+                                    rowErrors.Add($"Dòng {row}: Tên sản phẩm không được để trống");
                                 }
 
-                                int productId = 0;
-                                bool productIdValid = !string.IsNullOrWhiteSpace(productIdStr) && int.TryParse(productIdStr, out productId) && productId > 0;
-                                if (!productIdValid)
-                                {
-                                    rowErrors.Add($"Dòng {row}: ProductId phải là số nguyên lớn hơn 0");
-                                }
-
+                                // Validate Quantity
                                 int quantity = 0;
                                 bool quantityValid = !string.IsNullOrWhiteSpace(quantityStr) && int.TryParse(quantityStr, out quantity) && quantity > 0;
                                 if (!quantityValid)
@@ -340,82 +452,35 @@ public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
                                     rowErrors.Add($"Dòng {row}: Số lượng phải là số nguyên lớn hơn 0");
                                 }
 
-                                bool batchCodeValid = !string.IsNullOrWhiteSpace(batchCode);
-                                if (!batchCodeValid)
+                                // Validate UnitPrice
+                                decimal unitPrice = 0;
+                                bool unitPriceValid = !string.IsNullOrWhiteSpace(unitPriceStr) && decimal.TryParse(unitPriceStr, out unitPrice) && unitPrice > 0;
+                                if (!unitPriceValid)
                                 {
-                                    rowErrors.Add($"Dòng {row}: Mã lô không được để trống");
+                                    rowErrors.Add($"Dòng {row}: Giá nhập phải là số lớn hơn 0");
                                 }
 
-                                DateTime expireDate = DateTime.MinValue;
-                                bool isValidDate = false;
-
-                                // OLE Automation Date
-                                if (expireDateCell.Value is double doubleValue)
+                                // Lookup Product
+                                var existProduct = productNameValid ? await _productService.GetByProductName(productName) : null;
+                                if (productNameValid && existProduct == null)
                                 {
-                                    try
-                                    {
-                                        expireDate = DateTime.FromOADate(doubleValue);
-                                        isValidDate = true;
-                                    }
-                                    catch
-                                    {
-                                        isValidDate = false;
-                                    }
+                                    rowErrors.Add($"Dòng {row}: Không tìm thấy sản phẩm với tên: {productName}");
                                 }
 
-                                if (!isValidDate)
-                                {
-                                    rowErrors.Add($"Dòng {row}: Ngày hết hạn không hợp lệ. Giá trị: '{expireDateCell.Value}'");
-                                }
-                                else if (expireDate <= DateTime.UtcNow)
-                                {
-                                    rowErrors.Add($"Dòng {row}: Ngày hết hạn phải sau ngày hiện tại");
-                                }
-
-                                int transactionId = 0;
-                                bool transactionIdValid = !string.IsNullOrWhiteSpace(transactionIdStr) && int.TryParse(transactionIdStr, out transactionId) && transactionId > 0;
-                                if (!transactionIdValid)
-                                {
-                                    rowErrors.Add($"Dòng {row}: Mã giao dịch phải là số nguyên lớn hơn 0");
-                                }
-
-                                // Validate exist trong DB (chỉ khi parse thành công)
-                                var existWarehouse = warehouseIdValid ? await _warehouseService.GetById(warehouseId) : null;
-                                if (warehouseIdValid && existWarehouse == null)
-                                {
-                                    rowErrors.Add($"Dòng {row}: Không tìm thấy kho với ID: {warehouseId}");
-                                }
-
-                                var existProduct = productIdValid ? await _productService.GetById(productId) : null;
-                                if (productIdValid && existProduct == null)
-                                {
-                                    rowErrors.Add($"Dòng {row}: Không tìm thấy sản phẩm với ID: {productId}");
-                                }
-
-                                var existTransaction = transactionIdValid ? await _transactionService.GetByTransactionId(transactionId) : null;
-                                if (transactionIdValid && existTransaction == null)
-                                {
-                                    rowErrors.Add($"Dòng {row}: Không tìm thấy đơn nhập với ID: {transactionId}");
-                                }
-
-                                // Nếu có bất kỳ lỗi nào trong dòng này, thêm TẤT CẢ vào validationErrors
+                                // Nếu có lỗi, thêm vào list và skip
                                 if (rowErrors.Any())
                                 {
                                     validationErrors.AddRange(rowErrors);
                                     continue;
                                 }
 
-                                // Nếu tất cả đều hợp lệ, thêm vào list
-                                validatedRows.Add((
+                                // Thêm vào list đã validate
+                                validatedProducts.Add((
                                     row,
-                                    warehouseId,
-                                    productId,
+                                    existProduct.ProductId,
                                     quantity,
-                                    batchCode,
-                                    expireDate,
-                                    transactionId,
+                                    unitPrice,
                                     note,
-                                    existWarehouse.WarehouseName,
                                     existProduct.ProductName
                                 ));
                             }
@@ -428,7 +493,7 @@ public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
                         // Nếu có bất kỳ lỗi nào, return BadRequest, hủy toàn bộ quá trình import
                         if (validationErrors.Any())
                         {
-                            result.TotalRows = rowCount - 1;
+                            result.TotalRows = validatedProducts.Count;
                             result.FailedCount = result.TotalRows;
                             result.SuccessCount = 0;
                             result.ErrorMessages = validationErrors;
@@ -438,110 +503,118 @@ public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
                                 400));
                         }
 
-                        // Dữ liệu hợp lệ, tiến hành tạo StockBatch và cập nhật Inventory
-                        // Nhóm các hàng theo BatchCode để tạo batchcode riêng biệt
-                        Dictionary<string, int> batchCodeCounters = new Dictionary<string, int>();
-                        // Nhóm các Inventory
+                        // Tạo Transaction
+                        var newTransaction = new TransactionDto
+                        {
+                            SupplierId = supplier.SupplierId,
+                            WarehouseId = warehouse.WarehouseId,
+                            Type = "Import",
+                            Status = 1, // Completed
+                            TransactionDate = DateTime.UtcNow,
+                            Note = $"Import từ Excel - NCC: {supplier.SupplierName} → Kho: {warehouse.WarehouseName}"
+                        };
+                        await _transactionService.CreateAsync(newTransaction);
+                        int transactionId = newTransaction.TransactionId;
+
+                        // Inventory cache
                         Dictionary<string, InventoryDto> inventoryCache = new Dictionary<string, InventoryDto>();
 
-                        foreach (var validRow in validatedRows)
+                        // BatchCode prefix
+                        string batchCodePrefix = "BATCH-NUMBER";
+                        int batchCounter = 1;
+
+                        // Tạo TransactionDetails, StockBatches và cập nhật Inventory
+                        foreach (var product in validatedProducts)
                         {
-                            // Tạo số thứ tự dạng chuỗi cho BatchCode
-                            string cleanBatchCode = validRow.batchCode.Trim().Replace(" ", "");
-                            string uniqueBatchCode;
-
-                            if (!batchCodeCounters.ContainsKey(cleanBatchCode))
+                            // Tạo TransactionDetail
+                            var transactionDetail = new TransactionDetailDto
                             {
-                                // Tìm BatchCode cao nhất trong DB cho prefix này
-                                var maxExistingBatchCode = await _stockBatchService.GetMaxBatchCodeByPrefix(cleanBatchCode);
+                                TransactionId = transactionId,
+                                ProductId = product.productId,
+                                Quantity = product.quantity,
+                                UnitPrice = product.unitPrice,
+                                Subtotal = product.quantity * product.unitPrice
+                            };
+                            await _transactionDetailService.CreateAsync(transactionDetail);
 
-                                int startCounter = 1;
-                                if (maxExistingBatchCode != null)
-                                {
-                                    // Lấy 4 số cuối của BatchCode cao nhất
-                                    string numberPart = maxExistingBatchCode.Substring(cleanBatchCode.Length);
-                                    if (int.TryParse(numberPart, out int maxNumber))
-                                    {
-                                        startCounter = maxNumber + 1;
-                                    }
-                                }
-
-                                batchCodeCounters[cleanBatchCode] = startCounter;
-                            }
-
-                            uniqueBatchCode = $"{cleanBatchCode}{batchCodeCounters[cleanBatchCode]:D4}";
-                            batchCodeCounters[cleanBatchCode]++;
-
-                            // Kiểm tra lại lần nữa để đảm bảo không trùng
+                            // Tạo BatchCode
+                            string uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
                             while (await _stockBatchService.GetByName(uniqueBatchCode) != null)
                             {
-                                uniqueBatchCode = $"{cleanBatchCode}{batchCodeCounters[cleanBatchCode]:D4}";
-                                batchCodeCounters[cleanBatchCode]++;
+                                batchCounter++;
+                                uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
                             }
 
                             // Tạo StockBatch
                             var newStockBatch = new StockBatchDto
                             {
-                                WarehouseId = validRow.warehouseId,
-                                ProductId = validRow.productId,
-                                TransactionId = validRow.transactionId,
+                                WarehouseId = warehouse.WarehouseId,
+                                ProductId = product.productId,
+                                TransactionId = transactionId,
                                 BatchCode = uniqueBatchCode,
                                 ImportDate = DateTime.UtcNow,
-                                ExpireDate = validRow.expireDate,
-                                QuantityIn = validRow.quantity,
+                                ExpireDate = expireDate,
+                                QuantityIn = product.quantity,
                                 Status = 1,
                                 IsActive = true,
                                 LastUpdated = DateTime.UtcNow,
-                                Note = validRow.note
+                                Note = product.note
                             };
-
                             await _stockBatchService.CreateAsync(newStockBatch);
 
-                            // Xử lý Inventory cache
-                            string inventoryKey = $"{validRow.warehouseId}_{validRow.productId}";
+                            // Update Inventory cache
+                            string inventoryKey = $"{warehouse.WarehouseId}_{product.productId}";
 
                             if (!inventoryCache.ContainsKey(inventoryKey))
                             {
-                                // Lần đầu gặp combination này, load từ DB
-                                var existInventory = await _inventoryService.GetByWarehouseAndProductId(validRow.warehouseId, validRow.productId);
+                                // Load từ DB lần đầu
+                                var existInventory = await _inventoryService.GetByWarehouseAndProductId(warehouse.WarehouseId, product.productId);
 
                                 if (existInventory == null)
                                 {
-                                    // Tạo mới trong cache
+                                    // Tạo mới Inventory
                                     var newInventory = new InventoryDto
                                     {
-                                        WarehouseId = validRow.warehouseId,
-                                        ProductId = validRow.productId,
-                                        Quantity = validRow.quantity,
+                                        WarehouseId = warehouse.WarehouseId,
+                                        ProductId = product.productId,
+                                        Quantity = product.quantity,
+                                        AverageCost = product.unitPrice,
                                         LastUpdated = DateTime.UtcNow
                                     };
                                     inventoryCache[inventoryKey] = newInventory;
                                 }
                                 else
                                 {
-                                    // Đã tồn tại, cộng thêm số lượng
-                                    existInventory.Quantity += validRow.quantity;
+                                    // Update với weighted average cost
+                                    decimal? totalCost = (existInventory.Quantity * existInventory.AverageCost) + (product.quantity * product.unitPrice);
+                                    decimal? totalQuantity = existInventory.Quantity + product.quantity;
+                                    existInventory.AverageCost = totalCost / totalQuantity;
+                                    existInventory.Quantity = totalQuantity;
                                     existInventory.LastUpdated = DateTime.UtcNow;
                                     inventoryCache[inventoryKey] = existInventory;
                                 }
                             }
                             else
                             {
-                                // Đã gặp rồi trong file Excel, cộng dồn trong cache
-                                inventoryCache[inventoryKey].Quantity += validRow.quantity;
-                                inventoryCache[inventoryKey].LastUpdated = DateTime.UtcNow;
+                                // Cộng dồn trong cache với weighted average
+                                var cachedInventory = inventoryCache[inventoryKey];
+                                decimal? totalCost = (cachedInventory.Quantity * cachedInventory.AverageCost) + (product.quantity * product.unitPrice);
+                                decimal? totalQuantity = cachedInventory.Quantity + product.quantity;
+                                cachedInventory.AverageCost = totalCost / totalQuantity;
+                                cachedInventory.Quantity = totalQuantity;
+                                cachedInventory.LastUpdated = DateTime.UtcNow;
                             }
 
-                            // Thêm StockBatch vào result
+                            // Tạo kết quả trả về 
                             var resultItem = new StockOutputVM
                             {
                                 BatchId = newStockBatch.BatchId,
                                 WarehouseId = newStockBatch.WarehouseId,
-                                WarehouseName = validRow.warehouseName,
-                                ProductName = validRow.productName,
-                                TransactionId = newStockBatch.TransactionId,
+                                WarehouseName = warehouse.WarehouseName,
+                                ProductName = product.productName,
+                                TransactionId = transactionId,
                                 ProductionFinishId = null,
-                                BatchCode = newStockBatch.BatchCode,
+                                BatchCode = uniqueBatchCode,
                                 ImportDate = newStockBatch.ImportDate,
                                 ExpireDate = newStockBatch.ExpireDate,
                                 QuantityIn = newStockBatch.QuantityIn,
@@ -551,14 +624,15 @@ public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
                             };
                             result.ImportedStockBatches.Add(resultItem);
                             result.SuccessCount++;
+                            batchCounter++;
                         }
 
-                        // Update hoặc create inventory
+                        // Load Inventory từ cache vào DB
                         foreach (var inv in inventoryCache)
                         {
                             var inventory = inv.Value;
 
-                            if (inventory.InventoryId == 0) // InventoryId = 0 nghĩa là mới tạo
+                            if (inventory.InventoryId == 0)
                             {
                                 await _inventoryService.CreateAsync(inventory);
                             }
