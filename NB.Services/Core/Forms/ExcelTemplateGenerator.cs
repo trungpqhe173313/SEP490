@@ -318,51 +318,37 @@ namespace NB.Service.Core.Forms
 
                 // Tạo sheet hướng dẫn
                 var instructionSheet = package.Workbook.Worksheets.Add("Hướng Dẫn");
-
                 instructionSheet.Cells["A1"].Value = "HƯỚNG DẪN IMPORT STOCK INPUT";
                 instructionSheet.Cells["A1"].Style.Font.Bold = true;
                 instructionSheet.Cells["A1"].Style.Font.Size = 16;
-
                 instructionSheet.Cells["A3"].Value = "1. Cấu trúc file:";
                 instructionSheet.Cells["A3"].Style.Font.Bold = true;
                 instructionSheet.Cells["A4"].Value = "   - Dòng 1: Header (tên các cột)";
                 instructionSheet.Cells["A5"].Value = "   - Dòng 2: Mô tả chi tiết (có thể xóa trước khi import)";
                 instructionSheet.Cells["A6"].Value = "   - Từ dòng 3 trở đi: Dữ liệu thực tế (mỗi dòng là 1 sản phẩm)";
-
                 instructionSheet.Cells["A8"].Value = "2. SHEET 1 - Thông tin chung (CHỈ 1 DÒNG):";
                 instructionSheet.Cells["A8"].Style.Font.Bold = true;
                 instructionSheet.Cells["A9"].Value = "   - WarehouseName: Tên kho nhập (phải tồn tại trong hệ thống)";
                 instructionSheet.Cells["A10"].Value = "   - SupplierName: Tên nhà cung cấp (phải tồn tại trong hệ thống)";
                 instructionSheet.Cells["A11"].Value = "   - ExpireDate: Ngày hết hạn CHUNG cho toàn bộ đơn (MM/DD/YYYY)";
-
                 instructionSheet.Cells["A13"].Value = "3. SHEET 2 - Danh sách sản phẩm (NHIỀU DÒNG):";
                 instructionSheet.Cells["A13"].Style.Font.Bold = true;
                 instructionSheet.Cells["A14"].Value = "   - ProductName: Tên sản phẩm (phải tồn tại trong hệ thống)";
                 instructionSheet.Cells["A15"].Value = "   - Quantity: Số lượng nhập (số nguyên > 0)";
                 instructionSheet.Cells["A16"].Value = "   - UnitPrice: Giá nhập (số thực > 0, VD: 50000.50)";
                 instructionSheet.Cells["A17"].Value = "   - Note: Ghi chú cho sản phẩm (tùy chọn)";
-
-                instructionSheet.Cells["A19"].Value = "4. Quy tắc nghiệp vụ:";
+                instructionSheet.Cells["A19"].Value = "4. Lưu ý quan trọng:";
                 instructionSheet.Cells["A19"].Style.Font.Bold = true;
-                instructionSheet.Cells["A20"].Value = "   - 1 FILE EXCEL = 1 ĐơN NHẬP HÀNG = 1 TRANSACTION";
-                instructionSheet.Cells["A21"].Value = "   - Toàn bộ sản phẩm trong file thuộc CÙNG 1 Supplier và CÙNG 1 Warehouse";
-                instructionSheet.Cells["A22"].Value = "   - Mỗi dòng trong Sheet 2 = 1 sản phẩm trong đơn nhập = 1 StockBatch";
-                instructionSheet.Cells["A23"].Value = "   - BatchCode tự động generate: BATCH + timestamp + số thứ tự";
-                instructionSheet.Cells["A24"].Value = "   - ExpireDate áp dụng CHUNG cho TẤT CẢ sản phẩm trong đơn";
-                instructionSheet.Cells["A25"].Value = "   - Inventory được cập nhật tự động với weighted average cost";
-
-                instructionSheet.Cells["A27"].Value = "5. Lưu ý quan trọng:";
-                instructionSheet.Cells["A27"].Style.Font.Bold = true;
-                instructionSheet.Cells["A28"].Value = "   - PHẢI có đủ 2 sheets: 'Thông tin chung' và 'Danh sách sản phẩm'";
-                instructionSheet.Cells["A29"].Value = "   - Sheet 'Thông tin chung' CHỈ CÓ 1 DÒNG DUY NHẤT (dòng 3)";
-                instructionSheet.Cells["A30"].Value = "   - Sheet 'Danh sách sản phẩm' có thể có NHIỀU DÒNG (từ dòng 3 trở đi)";
-                instructionSheet.Cells["A31"].Value = "   - Các dòng màu vàng là dữ liệu mẫu, có thể xóa và thay bằng dữ liệu thực";
-                instructionSheet.Cells["A32"].Value = "   - File chỉ chấp nhận định dạng .xlsx hoặc .xls";
-                instructionSheet.Cells["A33"].Value = "   - Kích thước file tối đa: 10MB";
-                instructionSheet.Cells["A34"].Value = "   - Tên phải chính xác (WarehouseName, SupplierName, ProductName)";
-
+                instructionSheet.Cells["A20"].Value = "   - PHẢI có đủ 2 sheets: 'Thông tin chung' và 'Danh sách sản phẩm'";
+                instructionSheet.Cells["A21"].Value = "   - Sheet 'Thông tin chung' CHỈ CÓ 1 DÒNG DUY NHẤT (dòng 3)";
+                instructionSheet.Cells["A22"].Value = "   - Sheet 'Danh sách sản phẩm' có thể có NHIỀU DÒNG (từ dòng 3 trở đi)";
+                instructionSheet.Cells["A23"].Value = "   - Các dòng màu vàng là dữ liệu mẫu, có thể xóa và thay bằng dữ liệu thực";
+                instructionSheet.Cells["A24"].Value = "   - File chỉ chấp nhận định dạng .xlsx hoặc .xls";
+                instructionSheet.Cells["A25"].Value = "   - Kích thước file tối đa: 10MB";
+                instructionSheet.Cells["A26"].Value = "   - Tên phải chính xác (WarehouseName, SupplierName, ProductName)";
+                instructionSheet.Cells["A27"].Value = "   - Nếu xảy ra lỗi sẽ trả về file được nhập vào, các ô dữ liệu không hợp lệ sẽ bị bôi đỏ(Đang phát triển)";
                 instructionSheet.Column(1).Width = 90;
-                instructionSheet.Cells["A1:A34"].Style.WrapText = true;
+                instructionSheet.Cells["A1:A26"].Style.WrapText = true;
 
                 package.Save();
             }
