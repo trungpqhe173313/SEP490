@@ -74,7 +74,9 @@ namespace NB.Service.StockBatchService
                         {
                             BatchId = sb.BatchId,
                             WarehouseId = sb.WarehouseId,
+                            WarehouseName = sb.Warehouse.WarehouseName,
                             ProductId = sb.ProductId,
+                            ProductName = sb.Product.ProductName,
                             TransactionId = sb.TransactionId,
                             ProductionFinishId = sb.ProductionFinishId,
                             BatchCode = sb.BatchCode,
@@ -100,7 +102,9 @@ namespace NB.Service.StockBatchService
                         {
                             BatchId = sb.BatchId,
                             WarehouseId = sb.WarehouseId,
+                            WarehouseName = sb.Warehouse.WarehouseName,
                             ProductId = sb.ProductId,
+                            ProductName = sb.Product.ProductName,
                             TransactionId = sb.TransactionId,
                             ProductionFinishId = sb.ProductionFinishId,
                             BatchCode = sb.BatchCode,
