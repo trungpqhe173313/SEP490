@@ -11,7 +11,5 @@ namespace NB.Service.StockBatchService.Dto
     {
         public string? WarehouseName { get; set; }      
         public string? ProductName { get; set; }        
-
-        public string? ProductFinishName { get; set; } 
     }
 }

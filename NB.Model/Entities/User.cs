@@ -25,6 +25,10 @@ public partial class User
 
     public DateTime? LastLogin { get; set; }
 
+    public string? RefreshToken { get; set; }
+
+    public DateTime? RefreshTokenExpiryDate { get; set; }
+
     public virtual ICollection<Contract> Contracts { get; set; } = new List<Contract>();
 
     public virtual ICollection<CustomerPrice> CustomerPrices { get; set; } = new List<CustomerPrice>();

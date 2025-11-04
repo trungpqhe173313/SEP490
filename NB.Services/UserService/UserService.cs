@@ -169,5 +169,24 @@ namespace NB.Service.UserService
             if (entity.Password != password) return await Task.FromResult(false);
             return await Task.FromResult(true);
         }
+
+        public async Task<UserDto?> GetByRefreshTokenAsync(string RefreshToken)
+        {
+            var query = from u in GetQueryable()
+                        where u.RefreshToken == RefreshToken && u.IsActive == true
+                        select new UserDto
+                        {
+                            UserId = u.UserId,
+                            Username = u.Username,
+                            FullName = u.FullName,
+                            Email = u.Email,
+                            Image = u.Image,
+                            CreatedAt = u.CreatedAt,
+                            IsActive = u.IsActive,
+                            RefreshToken = u.RefreshToken,
+                            RefreshTokenExpiryDate = u.RefreshTokenExpiryDate
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
     }
 }

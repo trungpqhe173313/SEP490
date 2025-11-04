@@ -15,6 +15,7 @@ namespace NB.Service.WarehouseService
         Task<PagedList<WarehouseDto?>> GetData(WarehouseSearch search);
         Task<WarehouseDto?> GetById(int id);
         Task<List<WarehouseDto?>> GetByListWarehouseId(List<int> ids);
+        Task<WarehouseDto?> GetByWarehouseName(string warehouseName);
         Task<WarehouseDto?> GetByWarehouseStatus(int status);
 
         Task<WarehouseImportResultVM> ImportFromExcelAsync(Stream excelStream);
