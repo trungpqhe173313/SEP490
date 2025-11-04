@@ -18,6 +18,11 @@ namespace NB.Service.TransactionDetailService
         {
         }
 
+        public Task<bool> DeleteByTransactionId(int transactionId)
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task<List<TransactionDetail>> GetById(int Id)
         {
             var query = from td in GetQueryable()

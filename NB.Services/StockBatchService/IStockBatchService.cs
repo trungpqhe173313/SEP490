@@ -18,6 +18,7 @@ namespace NB.Service.StockBatchService
         Task<List<StockBatchDto>> GetByProductIdForOrder(List<int> ids);
 
         Task<StockBatchDto?> GetByName(string name);
+        //Task<List<StockBatchDto?>> GetByProductIdForTransaction(int productId, int transactionId);
 
         Task<string> GetMaxBatchCodeByPrefix(string code);
     }

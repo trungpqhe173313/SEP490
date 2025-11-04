@@ -179,9 +179,10 @@ namespace NB.Service.InventoryService
                             ProductId = i.ProductId,
                             Quantity = i.Quantity,
                             LastUpdated = i.LastUpdated,
+                            AverageCost = i.AverageCost,
                             Product = i.Product
                         };
-            return await query.FirstOrDefaultAsync();
+            return await query.AsNoTracking().FirstOrDefaultAsync();
         }
     }
 }

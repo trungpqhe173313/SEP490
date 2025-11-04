@@ -8,5 +8,14 @@ namespace NB.Model.Enums
 {
     public enum TransactionStatus
     {
+        //xuất kho
+        draft,
+        order,
+        delivering,
+        done,
+        cancel,
+        //nhập kho
+        checking,
+        @checked
     }
 }
