@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using NB.Model.Entities;
 using NB.Repository.WarehouseRepository;
 using NB.Service.Common;
 using NB.Service.Core.Forms;
@@ -10,16 +11,17 @@ using NB.Service.ProductService;
 using NB.Service.StockBatchService;
 using NB.Service.StockBatchService.Dto;
 using NB.Service.StockBatchService.ViewModels;
-using NB.Service.TransactionDetailService;
-using NB.Service.TransactionService;
-using NB.Service.WarehouseService;
 using NB.Service.SupplierService;
+using NB.Service.SupplierService.Dto;
+using NB.Service.TransactionDetailService;
+using NB.Service.TransactionDetailService.Dto;
+using NB.Service.TransactionService;
+using NB.Service.TransactionService.Dto;
+using NB.Service.UserService.Dto;
+using NB.Service.WarehouseService;
 using NB.Services.StockBatchService.ViewModels;
 using OfficeOpenXml;
 using System.Globalization;
-using NB.Service.TransactionService.Dto;
-using NB.Service.TransactionDetailService.Dto;
-using NB.Model.Entities;
 
 namespace NB.API.Controllers
 {
@@ -35,6 +37,7 @@ namespace NB.API.Controllers
         private readonly ISupplierService _supplierService;
         private readonly ILogger<StockInputController> _logger;
         private readonly IMapper _mapper;
+
 
         public StockInputController(IInventoryService inventoryService,
                                     ITransactionService transactionService,
@@ -56,8 +59,78 @@ namespace NB.API.Controllers
             _logger = logger;
             _mapper = mapper;
         }
+
         [HttpPost("GetData")]
-        public async Task<IActionResult> GetData([FromBody] StockBatchSearch search)
+        public async Task<IActionResult> GetData([FromBody] TransactionSearch search)
+        {
+            try
+            {
+
+                var result = await _transactionService.GetData(search);
+                return Ok(ApiResponse<PagedList<TransactionDto>>.Ok(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy dữ liệu đơn hàng");
+                return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+            }
+        }
+
+        [HttpGet("GetByTransactionId")]
+        public async Task<IActionResult> GetByTransactionId(int id)
+        {
+            try
+            {
+                var result = await _transactionService.GetByTransactionId(id);
+                if (result == null)
+                {
+                    return NotFound(ApiResponse<UserDto>.Fail("Không tìm thấy đơn hàng", 404));
+                }
+                return Ok(ApiResponse<TransactionDto>.Ok(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy đơn hàng với Id: {Id}", id);
+                return BadRequest(ApiResponse<TransactionDto>.Fail("Có lỗi xảy ra"));
+            }
+        }
+
+        [HttpGet("GetTransactionDetailByTransactionId")]
+        public async Task<IActionResult> GetTransactionDetailByTransactionId(int id)
+        {
+            try
+            {
+                //lay don hàng
+                var result = await _transactionDetailService.GetByTransactionId(id);
+                if (result == null)
+                {
+                    return NotFound(ApiResponse<UserDto>.Fail("Không tìm thấy đơn hàng", 404));
+                }
+                //lay danh sach product id
+                List<int> listProductId = result.Select(td => td.ProductId).ToList();
+                //lay ra các sản phẩm trong listProductId
+                var listProduct = await _productService.GetByIds(listProductId);
+                foreach (var t in result)
+                {
+                    var product = listProduct.FirstOrDefault(p => p.ProductId == t.ProductId);
+                    if (product is not null)
+                    {
+                        t.ProductName = product.ProductName;
+                        t.ImageUrl = product.ImageUrl;
+                    }
+                }
+
+                return Ok(ApiResponse<List<TransactionDetailDto>>.Ok(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy đơn hàng với Id: {Id}", id);
+                return BadRequest(ApiResponse<TransactionDto>.Fail("Có lỗi xảy ra"));
+            }
+        }
+
+        [HttpPost("GetStockBatch")]
+        public async Task<IActionResult> GetStockBatch([FromBody] StockBatchSearch search)
         {
             if (!ModelState.IsValid)
             {
@@ -73,7 +146,7 @@ namespace NB.API.Controllers
                 }
 
 
-                var result = pagedResult.Items.Select(item => new StockOutputVM
+                var list = pagedResult.Items.Select(item => new StockOutputVM
                 {
                     BatchId = item.BatchId,
                     WarehouseId = item.WarehouseId,
@@ -90,18 +163,47 @@ namespace NB.API.Controllers
                     Note = item.Note
                 }).ToList();
 
-                var finalResult = new PagedList<StockOutputVM>(
-                    items: result,
+                var result = new PagedList<StockOutputVM>(
+                    items: list,
                     pageIndex: pagedResult.PageIndex,
                     pageSize: pagedResult.PageSize,
                     totalCount: pagedResult.TotalCount
                 );
-                return Ok(ApiResponse<PagedList<StockOutputVM>>.Ok(finalResult));
+                return Ok(ApiResponse<PagedList<StockOutputVM>>.Ok(result));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy dữ liệu lô hàng");
                 return BadRequest(ApiResponse<PagedList<StockOutputVM>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+            }
+        }
+
+        [HttpPost("GetStockBatchById/{Id}")]
+        public async Task<IActionResult> GetStockBatchById(int Id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+            try
+            {
+                if (Id <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Id không hợp lệ", 400));
+                }
+                var result = await _stockBatchService.GetByTransactionId(Id);
+                if (result == null || result.Count == 0)
+                {
+                    return NotFound(ApiResponse<List<StockBatchDto>>.Fail("Không tìm thấy lô hàng nào.", 404));
+                }
+
+                return Ok(ApiResponse<List<StockBatchDto>>.Ok(result));
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy dữ liệu lô hàng");
+                return BadRequest(ApiResponse<List<StockBatchDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
             }
         }
 
