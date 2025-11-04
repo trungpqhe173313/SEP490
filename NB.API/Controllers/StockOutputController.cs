@@ -66,7 +66,7 @@ namespace NB.API.Controllers
             try
             {
                 search.Type = transactionType;
-                var result = await _transactionService.GetData(search);
+                var result = await _transactionService.GetDataForExport(search);
                 var listWarehouseId = result.Items.Select(t => t.WarehouseId).ToList();
                 var listWareHouse = await _warehouseService.GetByListWarehouseId(listWarehouseId);
                 if (listWareHouse == null || !listWareHouse.Any())
