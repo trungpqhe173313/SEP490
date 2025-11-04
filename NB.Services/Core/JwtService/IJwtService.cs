@@ -15,5 +15,7 @@ namespace NB.Service.Core.JwtService
         string GenerateRefreshToken();
         ClaimsPrincipal? ValidateToken(string token);
         bool ValidateRefreshToken(string refreshToken);
+        DateTime GetAccessTokenExpiry();
+        DateTime GetRefreshTokenExpiry();
     }
 }
