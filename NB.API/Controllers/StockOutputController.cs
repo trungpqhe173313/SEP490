@@ -59,7 +59,7 @@ namespace NB.API.Controllers
             try
             {
                 search.Type = transactionType;
-                var result = await _transactionService.GetData(search);
+                var result = await _transactionService.GetExportData(search);
                 return Ok(ApiResponse<PagedList<TransactionDto>>.Ok(result));
             }
             catch (Exception ex)
