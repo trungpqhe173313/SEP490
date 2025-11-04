@@ -567,6 +567,8 @@ public partial class NutriBarnContext : DbContext
             entity.Property(e => e.LastLogin).HasColumnType("datetime");
             entity.Property(e => e.Password).HasMaxLength(255);
             entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.RefreshToken).HasMaxLength(500);
+            entity.Property(e => e.RefreshTokenExpiryDate).HasColumnType("datetime");
             entity.Property(e => e.Username).HasMaxLength(50);
         });
 

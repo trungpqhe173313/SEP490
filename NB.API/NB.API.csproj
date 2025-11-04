@@ -15,9 +15,14 @@
 
   <ItemGroup>
     <PackageReference Include="Autofac" Version="8.4.0" />
-	      <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="10.0.0" />
 	  <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="10.0.0" />
-	  <PackageReference Include="AutoMapper" Version="15.1.0" />
+	  <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.21" />
+	  <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	  </PackageReference>
+
+		  <PackageReference Include="AutoMapper" Version="15.1.0" />
 
 	  <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>

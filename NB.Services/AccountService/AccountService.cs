@@ -50,31 +50,84 @@ namespace NB.Service.AccountService
                 return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 401);
             }
 
-            return GenToken(user);
+            return await GenToken(user);
         }
 
-        public Task<ApiResponse<RefreshTokenResponse>> RefreshTokenAsync(string refreshToken)
+        public async Task<ApiResponse<RefreshTokenResponse>> RefreshTokenAsync(string refreshToken)
         {
-            throw new NotImplementedException();
+            if (!_jwtService.ValidateRefreshToken(refreshToken))
+            {
+                return ApiResponse<RefreshTokenResponse>.Fail("Invalid refresh token format", 401);
+            }
+            var user = await _userService.GetByRefreshTokenAsync(refreshToken);
+            if (user == null)
+                return ApiResponse<RefreshTokenResponse>.Fail("Invalid refresh token", 401);
+            if(user.RefreshTokenExpiryDate < DateTime.Now)
+                return ApiResponse<RefreshTokenResponse>.Fail("Refresh token has expired", 401);
+            var newRefreshToken = _jwtService.GenerateRefreshToken();
+
+            var refreshTokenExpiryDate = _jwtService.GetRefreshTokenExpiry();
+
+            var accessTokenExpiry = _jwtService.GetAccessTokenExpiry();
+
+            user.RefreshToken = newRefreshToken;
+
+            user.RefreshTokenExpiryDate = refreshTokenExpiryDate;
+
+            await _userService.UpdateAsync(user);
+
+            var tokenResponse = await GenToken(user);
+            var userDto = new UserInfo
+            {
+                Id = user.UserId,
+                Username = user.Username,
+                Email = user.Email,
+                // Lấy roles tương tự phương thức GenToken
+                Roles = _userRoleRepository.GetQueryable()
+              .Where(x => x.UserId == user.UserId)
+              .Join(_roleRepository.GetQueryable(),
+                  userRole => userRole.RoleId,
+                  role => role.RoleId,
+                  (userRole, role) => role.RoleName)
+              .Distinct()
+              .ToList()
+            };
+            var newAccessToken = _jwtService.GenerateToken(userDto);
+
+            return ApiResponse<RefreshTokenResponse>.Ok(new RefreshTokenResponse
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken,
+                ExpiresAt = accessTokenExpiry
+            });
         }
 
         public Task<bool> ValidateUserAsync(string username, string password)
         {
             throw new NotImplementedException();
         }
-        private ApiResponse<LoginResponse> GenToken(UserDto? user)
+        private async Task<ApiResponse<LoginResponse>> GenToken(UserDto? user)
         {
             if (user == null)
                 return ApiResponse<LoginResponse>.Fail("User not found", 401);
 
             var refreshToken = _jwtService.GenerateRefreshToken();
-
+            var refreshTokenExpiryDate = _jwtService.GetRefreshTokenExpiry();
+            var accessTokenExpiry = _jwtService.GetAccessTokenExpiry();
             var userDto = new UserInfo
             {
                 Id = user.UserId,
                 Username = user.Username,
                 Email = user.Email,
             };
+
+            var userRefreshToken = await _userService.GetByIdAsync(user.UserId);
+            if(userRefreshToken != null)
+            {
+                userRefreshToken.RefreshToken = refreshToken;
+                userRefreshToken.RefreshTokenExpiryDate = refreshTokenExpiryDate;
+                await _userService.UpdateAsync(userRefreshToken);
+            }
 
             var roleFromUser = _userRoleRepository.GetQueryable()
                .Where(x => x.UserId == user.UserId)
@@ -94,7 +147,7 @@ namespace NB.Service.AccountService
             {
                 AccessToken = token,
                 RefreshToken = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(60), // Set expiration time
+                ExpiresAt = accessTokenExpiry, 
                 UserInfo = userDto
             });
         }
