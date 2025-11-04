@@ -53,6 +53,16 @@ namespace NB.Repository.Common
         public virtual void Update(T entity)
         {
             _entities.Entry(entity).State = EntityState.Modified;
+
+            //var entry = _entities.Entry(entity);
+
+            //// Nếu chưa được tracking thì attach, rồi set Modified
+            //if (entry.State == EntityState.Detached)
+            //{
+            //    _dbset.Attach(entity);
+            //}
+
+            //entry.State = EntityState.Modified;
         }
 
         public virtual async Task SaveAsync()

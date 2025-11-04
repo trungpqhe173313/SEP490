@@ -75,7 +75,7 @@ namespace NB.Service.TransactionService
             {
                 if (search.Status.HasValue)
                 {
-                    query = query.Where(t => t.Status == search.Status);
+                    query = query.Where(t => t.Status.Value == search.Status);
                 }
                 if (!string.IsNullOrEmpty(search.Type))
                 {

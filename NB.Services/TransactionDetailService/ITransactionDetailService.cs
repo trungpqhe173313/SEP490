@@ -13,5 +13,6 @@ namespace NB.Service.TransactionDetailService
     {
         Task<List<TransactionDetail>> GetById(int Id);
         Task<List<TransactionDetailDto>> GetByTransactionId(int Id);
+        Task<bool> DeleteByTransactionId(int transactionId);
     }
 }

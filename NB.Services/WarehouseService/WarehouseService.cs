@@ -210,5 +210,30 @@ namespace NB.Service.WarehouseService
 
             return result;
         }
+
+        /// <summary>
+        /// Duc anh
+        /// lay ra cac warehouse theo list Id
+        /// </summary>
+        /// <param name="ids">list id</param>
+        /// <returns>list warehouse</returns>
+        /// <exception cref="NotImplementedException"></exception>
+        public async Task<List<WarehouseDto?>> GetByListWarehouseId(List<int> ids)
+        {
+            var query = from warehouse in GetQueryable()
+                        where ids.Contains(warehouse.WarehouseId)
+                        select new WarehouseDto()
+                        {
+                            WarehouseId = warehouse.WarehouseId,
+                            WarehouseName = warehouse.WarehouseName,
+                            Location = warehouse.Location,
+                            Capacity = warehouse.Capacity,
+                            Status = warehouse.Status,
+                            Note = warehouse.Note,
+                            CreatedAt = warehouse.CreatedAt,
+                            IsActive = warehouse.IsActive
+                        };
+            return await query.ToListAsync();
+        }
     }
 }

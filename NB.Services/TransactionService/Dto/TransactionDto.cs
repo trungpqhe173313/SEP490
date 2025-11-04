@@ -1,4 +1,5 @@
 ﻿using NB.Model.Entities;
+using NB.Model.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,5 +10,7 @@ namespace NB.Service.TransactionService.Dto
 {
     public class TransactionDto : Transaction
     {
+        public string? WarehouseName { get; set; }
+        public string? StatusName { get; set; }
     }
 }
