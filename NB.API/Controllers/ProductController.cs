@@ -40,26 +40,32 @@ namespace NB.API.Controllers
         [HttpPost("GetData")]
         public async Task<IActionResult> GetData([FromBody] ProductSearch search)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+            
             try
             {
-                var products = await _productService.GetDataWithDetails();
-                var searchString = Helper.RemoveDiacritics(search.ProductName); // Chuẩn hóa chuỗi tìm kiếm
-
-                var filteredProducts = string.IsNullOrEmpty(searchString)
-                    ? products
-                    : products
-                        .Where(p => p.ProductName != null &&
-                                    Helper.RemoveDiacritics(p.ProductName) // Chuẩn hóa tên sản phẩm
-                                        .Contains(searchString, StringComparison.OrdinalIgnoreCase))
-                        .ToList();
-                if (filteredProducts.Count == 0)
+                search.ProductName = Helper.RemoveDiacritics(search.ProductName);
+                
+                var products = await _productService.GetData(search);
+                List<int> listProductId = products.Items.Select(p => p.ProductId).ToList();
+                var listInventory = await _inventoryService.GetByProductIds(listProductId);
+                foreach (var p in products.Items)
+                {
+                    var inventory = listInventory.FirstOrDefault(i => i.ProductId == p.ProductId);
+                    if (inventory is not null)
+                    {
+                        p.AverageCost = inventory.AverageCost;
+                        p.Quantity = inventory.Quantity;
+                    }
+                }
+                if (products.TotalCount == 0)
                 {
                     return NotFound(ApiResponse<object>.Fail("Không tìm thấy sản phẩm nào.", 404));
                 }
-
-                var pagedResult = PagedList<ProductDetailDto>.CreateFromList(filteredProducts, search);
-
-                return Ok(ApiResponse<PagedList<ProductDetailDto>>.Ok(pagedResult));
+                return Ok(ApiResponse<PagedList<ProductDto>>.Ok(products));
             }
             catch (Exception ex)
             {
