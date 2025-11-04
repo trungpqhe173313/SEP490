@@ -14,5 +14,6 @@ namespace NB.Service.TransactionService
         Task<List<TransactionDto>> GetById(int? id);
         Task<TransactionDto?> GetByTransactionId(int? id);
         Task<PagedList<TransactionDto>> GetData(TransactionSearch search);
+        Task<PagedList<TransactionDto>> GetDataForExport(TransactionSearch search);
     }
 }

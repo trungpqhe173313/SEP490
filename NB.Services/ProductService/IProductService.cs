@@ -23,8 +23,6 @@ namespace NB.Service.ProductService
 
         Task<List<ProductDto>> GetData();
 
-        Task<List<ProductDetailDto>> GetDataWithDetails();
-
         Task<List<ProductInWarehouseDto>> GetProductsByWarehouseId(int warehouseId);
 
         Task<ProductDto?> GetByCode(string code);
