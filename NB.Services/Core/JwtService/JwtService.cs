@@ -21,6 +21,7 @@ namespace NB.Service.Core.JwtService
         private readonly string _issuer;
         private readonly string _audience;
         private readonly int _expireMinutes;
+        private readonly int _refreshTokenExpireDays;
         public JwtService(IConfiguration configuration)
         {
             _configuration = configuration;
@@ -28,6 +29,7 @@ namespace NB.Service.Core.JwtService
             _issuer = _configuration["Jwt:Issuer"] ?? "";
             _audience = _configuration["Jwt:Audience"] ?? "";
             _expireMinutes = int.Parse(_configuration["Jwt:ExpireMinutes"] ?? "");
+            _refreshTokenExpireDays = int.Parse(_configuration["Jwt:RefreshTokenExpireDays"] ?? "");
         }
         public string GenerateRefreshToken()
         {
@@ -36,11 +38,18 @@ namespace NB.Service.Core.JwtService
             rng.GetBytes(randomBytes);
             return Convert.ToBase64String(randomBytes);
         }
-
+        public DateTime GetRefreshTokenExpiry()
+        {
+            return DateTime.Now.AddDays(_refreshTokenExpireDays);
+        }
+        public DateTime GetAccessTokenExpiry()
+        {
+            return DateTime.Now.AddMinutes(_expireMinutes);
+        }
         public string GenerateToken(UserInfo user)
         {
             var key = Encoding.UTF8.GetBytes(_secretKey);
-            var expires = DateTime.UtcNow.AddMinutes(_expireMinutes);
+            var expires = DateTime.Now.AddMinutes(_expireMinutes);
 
             var claims = new List<Claim>
             {
@@ -52,13 +61,13 @@ namespace NB.Service.Core.JwtService
                 new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
             };
 
-            //if (user.Roles != null && user.Roles.Any())
-            //{
-            //    foreach (var role in user.Roles)
-            //    {
-            //        claims.Add(new Claim(ClaimTypes.Role, role));
-            //    }
-            //}
+            if (user.Roles != null && user.Roles.Any())
+            {
+                foreach (var role in user.Roles)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role));
+                }
+            }
 
             var token = new JwtSecurityToken(
                 issuer: _issuer,

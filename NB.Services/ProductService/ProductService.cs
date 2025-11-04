@@ -36,10 +36,13 @@ namespace NB.Service.ProductService
                         where p.ProductId == id
                         select new ProductDto
                         {
+                            ProductId = p.ProductId,
                             ProductName = p.ProductName,
                             Code = p.Code,
                             SupplierId = p.SupplierId,
+                            SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
+                            CategoryName = p.Category != null ? p.Category.CategoryName : null,
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
@@ -56,10 +59,13 @@ namespace NB.Service.ProductService
                         where p.ProductId == id
                         select new ProductDto
                         {
+                            ProductId = p.ProductId,
                             ProductName = p.ProductName,
                             Code = p.Code,
                             SupplierId = p.SupplierId,
+                            SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
+                            CategoryName = p.Category != null ? p.Category.CategoryName : null,
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
@@ -81,7 +87,9 @@ namespace NB.Service.ProductService
                             ProductName = p.ProductName,
                             Code = p.Code,
                             SupplierId = p.SupplierId,
+                            SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
+                            CategoryName = p.Category != null ? p.Category.CategoryName : null,
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
@@ -109,11 +117,13 @@ namespace NB.Service.ProductService
                         where productIds.Contains(p.ProductId)
                         select new ProductDto
                         {
-                            ProductId = p.ProductId, 
+                            ProductId = p.ProductId,
                             ProductName = p.ProductName,
                             Code = p.Code,
                             SupplierId = p.SupplierId,
+                            SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
+                            CategoryName = p.Category != null ? p.Category.CategoryName : null,
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
@@ -134,7 +144,9 @@ namespace NB.Service.ProductService
                             ProductName = p.ProductName,
                             Code = p.Code,
                             SupplierId = p.SupplierId,
+                            SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
+                            CategoryName = p.Category != null ? p.Category.CategoryName : null,
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
@@ -155,7 +167,9 @@ namespace NB.Service.ProductService
                             ProductName = p.ProductName,
                             Code = p.Code,
                             SupplierId = p.SupplierId,
+                            SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
+                            CategoryName = p.Category != null ? p.Category.CategoryName : null,
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
@@ -166,27 +180,6 @@ namespace NB.Service.ProductService
             return await Task.FromResult(query.FirstOrDefault());
         }
 
-        public async Task<List<ProductDetailDto>> GetDataWithDetails()
-        {
-            var query = from p in GetQueryable()
-                        join s in _supplierRepository.GetQueryable() on p.SupplierId equals s.SupplierId
-                        join c in _categoryRepository.GetQueryable() on p.CategoryId equals c.CategoryId
-                        select new ProductDetailDto
-                        {
-                            ProductId = p.ProductId,
-                            Code = p.Code,
-                            ProductName = p.ProductName,
-                            ImageUrl = p.ImageUrl,
-                            WeightPerUnit = p.WeightPerUnit,
-                            Description = p.Description,
-                            IsAvailable = p.IsAvailable,
-                            CreatedAt = p.CreatedAt,
-                            UpdatedAt = p.UpdatedAt,
-                            SupplierName = s.SupplierName,
-                            CategoryName = c.CategoryName
-                        };
-            return await query.ToListAsync();
-        }
 
         public async Task<List<ProductInWarehouseDto>> GetProductsByWarehouseId(int warehouseId)
         {
@@ -224,7 +217,9 @@ namespace NB.Service.ProductService
                             ProductName = p.ProductName,
                             Code = p.Code,
                             SupplierId = p.SupplierId,
+                            SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
+                            CategoryName = p.Category != null ? p.Category.CategoryName : null,
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
@@ -238,34 +233,46 @@ namespace NB.Service.ProductService
         //Duc Anh
         public async Task<PagedList<ProductDto>> GetData(ProductSearch search)
         {
-            var query = from p in GetQueryable()
-                        select new ProductDto()
+            var baseQuery = GetQueryable()
+                .Include(p => p.Supplier)
+                .Include(p => p.Category)
+                .AsQueryable();
+
+            if (search != null)
+            {
+                if (!string.IsNullOrEmpty(search.ProductName))
+                {
+                    var keyword = search.ProductName.Trim();
+                    baseQuery = baseQuery.Where(u => EF.Functions.Collate(u.ProductName, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
+                }
+                if (search.IsAvailable.HasValue)
+                {
+                    baseQuery = baseQuery.Where(p => p.IsAvailable == search.IsAvailable);
+                }
+                if (search.SupplierId.HasValue)
+                {
+                    baseQuery = baseQuery.Where(p => p.SupplierId == search.SupplierId);
+                }
+            }
+
+            var query = baseQuery.Select(p => new ProductDto()
                         {
                             ProductId = p.ProductId,
                             ProductName = p.ProductName,
                             Code = p.Code,
                             SupplierId = p.SupplierId,
+                            SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
+                            CategoryName = p.Category != null ? p.Category.CategoryName : null,
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
                             IsAvailable = p.IsAvailable,
                             CreatedAt = p.CreatedAt,
                             UpdatedAt = p.UpdatedAt
-                        };
-            if (search != null)
-            {
-                if (!string.IsNullOrEmpty(search.ProductName))
-                {
-                    var keyword = search.ProductName.Trim();
-                    query = query.Where(u => EF.Functions.Collate(u.ProductName, "SQL_Latin1_General_CP1_CI_AI")
-                    .Contains(keyword));
-                }
-                if (search.IsAvailable.HasValue)
-                {
-                    query = query.Where(p => p.IsAvailable == search.IsAvailable);
-                }
-            }
+                        });
+            
             
             query = query.OrderBy(p => p.CreatedAt);
             return await PagedList<ProductDto>.CreateAsync(query, search);
