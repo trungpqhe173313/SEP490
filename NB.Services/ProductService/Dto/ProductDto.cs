@@ -9,8 +9,13 @@ namespace NB.Service.ProductService.Dto
 {
     public class ProductDto : Product
     {
+        
         public decimal? Quantity { get; set; }
 
         public decimal? AverageCost { get; set; }
+
+        public String? SupplierName { get; set; }
+
+        public String? CategoryName { get; set; }
     }
 }
