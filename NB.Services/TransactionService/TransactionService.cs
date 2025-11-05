@@ -56,6 +56,8 @@ namespace NB.Service.TransactionService
 
         public async Task<PagedList<TransactionDto>> GetData(TransactionSearch search)
         {
+
+
             var query = from t in GetQueryable()
                         select new TransactionDto()
                         {
@@ -72,6 +74,7 @@ namespace NB.Service.TransactionService
                         };
             if (search != null)
             {
+
                 if (search.Status.HasValue)
                 {
                     query = query.Where(t => t.Status == search.Status);
