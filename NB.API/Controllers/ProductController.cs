@@ -54,57 +54,22 @@ namespace NB.API.Controllers
                 
                 var products = await _productService.GetData(search);
                 var resultList = new List<ProductOutputVM>();
-                int warehouseId = search.WarehouseId ?? 0;
-                if (warehouseId > 0)
+                foreach (var p in products.Items)
                 {
-                    foreach(var p in products.Items)
+                    resultList.Add(new ProductOutputVM
                     {
-                        var warehouseCheck = await _inventoryService.IsProductInWarehouse(warehouseId, p.ProductId);
-                        if(warehouseCheck == true)
-                        {
-                            resultList.Add(new ProductOutputVM
-                            {
-                                ProductId = p.ProductId,
-                                ProductName = p.ProductName,
-                                Code = p.Code,
-                                Description = p.Description,
-                                SupplierId = p.SupplierId,
-                                SupplierName = p.SupplierName,
-                                CategoryId = p.CategoryId,
-                                CategoryName = p.CategoryName,
-                                WeightPerUnit = p.WeightPerUnit,
-                                IsAvailable = p.IsAvailable,
-                                CreatedAt = p.CreatedAt
-                            });
-                        }
-                    }            
-                }else if (warehouseId == 0)
-                {
-                    foreach (var p in products.Items)
-                    {
-                        resultList.Add(new ProductOutputVM
-                        {
-                            ProductId = p.ProductId,
-                            ProductName = p.ProductName,
-                            Code = p.Code,
-                            Description = p.Description,
-                            SupplierId = p.SupplierId,
-                            SupplierName = p.SupplierName,
-                            CategoryId = p.CategoryId,
-                            CategoryName = p.CategoryName,
-                            WeightPerUnit = p.WeightPerUnit,
-                            IsAvailable = p.IsAvailable,
-                            CreatedAt = p.CreatedAt
-                        });
-                    }
-                }else if (warehouseId < 0 || (await _warehouseService.GetById(warehouseId)) == null)
-                {
-                    return BadRequest(ApiResponse<object>.Fail("Không tồn tại kho với Id này.", 400));
-                }
-
-                if (products.TotalCount == 0)
-                {
-                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy sản phẩm nào phù hợp.", 404));
+                        ProductId = p.ProductId,
+                        ProductName = p.ProductName,
+                        Code = p.Code,
+                        Description = p.Description,
+                        SupplierId = p.SupplierId,
+                        SupplierName = p.SupplierName,
+                        CategoryId = p.CategoryId,
+                        CategoryName = p.CategoryName,
+                        WeightPerUnit = p.WeightPerUnit,
+                        IsAvailable = p.IsAvailable,
+                        CreatedAt = p.CreatedAt
+                    });
                 }
 
                 var pagedResult = new PagedList<ProductOutputVM>(

@@ -95,10 +95,6 @@ namespace NB.API.Controllers
                         }
                     });
                 }
-                if(list.Count == 0)
-                {
-                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch nào giống với mô tả", 404));
-                }
 
                 var pagedList = new PagedList<TransactionOutputVM>(
                     items: list,
