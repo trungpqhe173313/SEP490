@@ -70,17 +70,48 @@ namespace NB.API.Controllers
             {
                 return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
-
             try
             {
-
+                
                 var result = await _transactionService.GetData(search);
-                return Ok(ApiResponse<PagedList<TransactionDto>>.Ok(result));
+                var filteredItems = result.Items.ToList();
+                List<TransactionOutputVM> list = new List<TransactionOutputVM>();
+                foreach (var item in filteredItems)
+                {
+                    list.Add(new TransactionOutputVM
+                    {
+                        TransactionId = item.TransactionId,
+                        CustomerId = item.CustomerId,
+                        TransactionDate = item.TransactionDate ?? DateTime.MinValue,
+                        WarehouseName = (await _warehouseService.GetById(item.WarehouseId))?.WarehouseName ?? "N/A",
+                        SupplierName = (await _supplierService.GetBySupplierId(item.SupplierId ?? 0))?.SupplierName ?? "N/A",
+                        Type = item.Type,
+                        Status = item.Status switch
+                        {
+                            0 => "Đã ngừng hoạt động",
+                            1 => "Đã thanh toán",
+                            2 => "Đang thanh toán",
+                            _ => "Unknown"
+                        }
+                    });
+                }
+                if(list.Count == 0)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch nào giống với mô tả", 404));
+                }
+
+                var pagedList = new PagedList<TransactionOutputVM>(
+                    items: list,
+                    pageIndex: result.PageIndex,
+                    pageSize: result.PageSize,
+                    totalCount: filteredItems.Count
+                );
+                return Ok(ApiResponse<PagedList<TransactionOutputVM>>.Ok(pagedList));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy dữ liệu đơn hàng");
-                return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+                return BadRequest(ApiResponse<PagedList<TransactionOutputVM>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
             }
         }
         [HttpPost("GetDetail/{Id}")]
@@ -93,7 +124,7 @@ namespace NB.API.Controllers
 
             try
             {
-                var transaction = new TransactionOutputVM();
+                var transaction = new FullTransactionVM();
                 if (Id > 0)
                 {
                     var detail = await _transactionService.GetByTransactionId(Id);
@@ -135,18 +166,18 @@ namespace NB.API.Controllers
                     }
                     else
                     {
-                        return NotFound(ApiResponse<TransactionOutputVM>.Fail("Không tìm thấy đơn hàng.", 404));
+                        return NotFound(ApiResponse<FullTransactionVM>.Fail("Không tìm thấy đơn hàng.", 404));
                     }
                 }
                 else if(Id <=0)
                 {
-                    return BadRequest(ApiResponse<TransactionOutputVM>.Fail("Id không hợp lệ", 400));
+                    return BadRequest(ApiResponse<FullTransactionVM>.Fail("Id không hợp lệ", 400));
                 }
 
                 var productDetails = await _transactionDetailService.GetByTransactionId(Id);
                 if(productDetails.Count == 0)
                 {
-                    return NotFound(ApiResponse<TransactionOutputVM>.Fail("Không có thông tin cho giao dịch này.", 400));
+                    return NotFound(ApiResponse<FullTransactionVM>.Fail("Không có thông tin cho giao dịch này.", 400));
                 }
                 foreach (var item in productDetails)
                 {
@@ -171,7 +202,7 @@ namespace NB.API.Controllers
                 }).ToList();
 
                 transaction.list = listResult;
-                return Ok(ApiResponse<TransactionOutputVM>.Ok(transaction));
+                return Ok(ApiResponse<FullTransactionVM>.Ok(transaction));
             }
             catch (Exception ex)
             {
@@ -181,8 +212,8 @@ namespace NB.API.Controllers
         }
 
 
-            [HttpPost("GetStockBatch")]
-            public async Task<IActionResult> GetStockBatch([FromBody] StockBatchSearch search)
+        [HttpPost("GetStockBatch")]
+        public async Task<IActionResult> GetStockBatch([FromBody] StockBatchSearch search)
             {
                 if (!ModelState.IsValid)
                 {
@@ -245,12 +276,12 @@ namespace NB.API.Controllers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Lỗi khi lấy dữ liệu lô hàng");
-                    return BadRequest(ApiResponse<TransactionOutputVM>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+                    return BadRequest(ApiResponse<FullTransactionVM>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
                 }
             }
 
-            [HttpPost("GetStockBatchById/{Id}")]
-            public async Task<IActionResult> GetStockBatchById(int Id)
+        [HttpPost("GetStockBatchById/{Id}")]
+        public async Task<IActionResult> GetStockBatchById(int Id)
             {
                 if (!ModelState.IsValid)
                 {
@@ -280,8 +311,8 @@ namespace NB.API.Controllers
 
 
 
-            [HttpPost("CreateStockInputs")]
-            public async Task<IActionResult> CreateStockInputs([FromBody] StockBatchCreateWithProductsVM model)
+        [HttpPost("CreateStockInputs")]
+        public async Task<IActionResult> CreateStockInputs([FromBody] StockBatchCreateWithProductsVM model)
             {
                 if (!ModelState.IsValid)
                 {
@@ -498,8 +529,8 @@ namespace NB.API.Controllers
                 }
             }
 
-            [HttpPost("ImportFromExcel")]
-            public async Task<IActionResult> ImportFromExcel(IFormFile file)
+        [HttpPost("ImportFromExcel")]
+        public async Task<IActionResult> ImportFromExcel(IFormFile file)
             {
                 try
                 {
@@ -860,8 +891,8 @@ namespace NB.API.Controllers
                 }
             }
 
-            [HttpGet("DownloadTemplate")]
-            public IActionResult DownloadTemplate()
+        [HttpGet("DownloadTemplate")]
+        public IActionResult DownloadTemplate()
             {
                 try
                 {

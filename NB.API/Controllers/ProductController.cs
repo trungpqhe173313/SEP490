@@ -11,6 +11,7 @@ using NB.Service.ProductService.ViewModels;
 using NB.Service.SupplierService;
 using NB.Service.CategoryService;
 using NB.Service.UserService.Dto;
+using NB.Service.WarehouseService;
 
 namespace NB.API.Controllers
 {
@@ -21,6 +22,7 @@ namespace NB.API.Controllers
         private readonly IInventoryService _inventoryService;
         private readonly ISupplierService _supplierService;
         private readonly ICategoryService _categoryService;
+        private readonly IWarehouseService _warehouseService;
         private readonly ILogger<ProductController> _logger;
 
         public ProductController(
@@ -28,12 +30,14 @@ namespace NB.API.Controllers
             IInventoryService inventoryService,
             ISupplierService supplierService,
             ICategoryService categoryService,
-            ILogger<ProductController> logger)
+            IWarehouseService warehouseService,
+        ILogger<ProductController> logger)
         {
             _productService = productService;
             _inventoryService = inventoryService;
             _supplierService = supplierService;
             _categoryService = categoryService;
+            _warehouseService = warehouseService;
             _logger = logger;
         }
 
@@ -47,25 +51,69 @@ namespace NB.API.Controllers
             
             try
             {
-                search.ProductName = Helper.RemoveDiacritics(search.ProductName);
                 
                 var products = await _productService.GetData(search);
-                List<int> listProductId = products.Items.Select(p => p.ProductId).ToList();
-                var listInventory = await _inventoryService.GetByProductIds(listProductId);
-                foreach (var p in products.Items)
+                var resultList = new List<ProductOutputVM>();
+                int warehouseId = search.WarehouseId ?? 0;
+                if (warehouseId > 0)
                 {
-                    var inventory = listInventory.FirstOrDefault(i => i.ProductId == p.ProductId);
-                    if (inventory is not null)
+                    foreach(var p in products.Items)
                     {
-                        p.AverageCost = inventory.AverageCost;
-                        p.Quantity = inventory.Quantity;
+                        var warehouseCheck = await _inventoryService.IsProductInWarehouse(warehouseId, p.ProductId);
+                        if(warehouseCheck == true)
+                        {
+                            resultList.Add(new ProductOutputVM
+                            {
+                                ProductId = p.ProductId,
+                                ProductName = p.ProductName,
+                                Code = p.Code,
+                                Description = p.Description,
+                                SupplierId = p.SupplierId,
+                                SupplierName = p.SupplierName,
+                                CategoryId = p.CategoryId,
+                                CategoryName = p.CategoryName,
+                                WeightPerUnit = p.WeightPerUnit,
+                                IsAvailable = p.IsAvailable,
+                                CreatedAt = p.CreatedAt
+                            });
+                        }
+                    }            
+                }else if (warehouseId == 0)
+                {
+                    foreach (var p in products.Items)
+                    {
+                        resultList.Add(new ProductOutputVM
+                        {
+                            ProductId = p.ProductId,
+                            ProductName = p.ProductName,
+                            Code = p.Code,
+                            Description = p.Description,
+                            SupplierId = p.SupplierId,
+                            SupplierName = p.SupplierName,
+                            CategoryId = p.CategoryId,
+                            CategoryName = p.CategoryName,
+                            WeightPerUnit = p.WeightPerUnit,
+                            IsAvailable = p.IsAvailable,
+                            CreatedAt = p.CreatedAt
+                        });
                     }
+                }else if (warehouseId < 0 || (await _warehouseService.GetById(warehouseId)) == null)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Không tồn tại kho với Id này.", 400));
                 }
+
                 if (products.TotalCount == 0)
                 {
-                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy sản phẩm nào.", 404));
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy sản phẩm nào phù hợp.", 404));
                 }
-                return Ok(ApiResponse<PagedList<ProductDto>>.Ok(products));
+
+                var pagedResult = new PagedList<ProductOutputVM>(
+                    items: resultList,
+                    pageIndex: search.PageIndex,
+                    pageSize: search.PageSize,
+                    totalCount: resultList.Count
+                );
+                return Ok(ApiResponse<PagedList<ProductOutputVM>>.Ok(pagedResult));
             }
             catch (Exception ex)
             {
@@ -130,6 +178,13 @@ namespace NB.API.Controllers
                 if (!productList.Any())
                 {
                     return NotFound(ApiResponse<object>.Fail($"Không tìm thấy sản phẩm nào trong kho ID: {Id}", 404));
+                }
+
+                foreach(var p in productList)
+                {
+                    var inventory = await _inventoryService.GetByWarehouseAndProductId(Id, p.ProductId);
+                    p.InventoryId = inventory.InventoryId;
+                    p.LastUpdated = inventory.LastUpdated;
                 }
 
                 return Ok(ApiResponse<List<ProductInWarehouseDto>>.Ok(productList));
@@ -230,7 +285,6 @@ namespace NB.API.Controllers
 
                 var productOutputDto = new ProductOutputVM
                 {
-                    WarehouseId = model.WarehouseId,
                     ProductId = newProductEntity.ProductId,
                     ProductName = newProductEntity.ProductName,
                     Code = newProductEntity.Code,
@@ -259,17 +313,6 @@ namespace NB.API.Controllers
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
-            }
-
-            // Validate WarehouseId
-            if (model.WarehouseId <= 0)
-            {
-                return BadRequest(ApiResponse<object>.Fail($"Warehouse ID {model.WarehouseId} không hợp lệ.", 400));
-            }
-
-            if (await _inventoryService.GetByWarehouseId(model.WarehouseId) == null)
-            {
-                return NotFound(ApiResponse<object>.Fail($"Không tồn tại Warehouse {model.WarehouseId}.", 404));
             }
 
             // Validate Product Code uniqueness
@@ -323,19 +366,12 @@ namespace NB.API.Controllers
                 return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {Id} không tồn tại.", 404));
             }
 
-            // Validate Product in Warehouse
-            bool isInWarehouse = await _inventoryService.IsProductInWarehouse(model.WarehouseId, Id);
-            if (!isInWarehouse)
-            {
-                return NotFound(ApiResponse<object>.Fail($"Sản phẩm ID {Id} không thuộc Warehouse ID {model.WarehouseId}.", 404));
-            }
 
             try
             {
                 var targetInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, Id);
 
                 bool isProductChanged = false;
-                bool isInventoryChanged = false;
 
                 // Check và update từng field của Product
                 if (productEntity.Code != newCode)
@@ -378,7 +414,7 @@ namespace NB.API.Controllers
                     isProductChanged = true;
                 }
 
-                // Update IsAvailable if provided
+                // Cập nhật IsAvailable
                 if (model.IsAvailable.HasValue && productEntity.IsAvailable != model.IsAvailable.Value)
                 {
                     productEntity.IsAvailable = model.IsAvailable.Value;
@@ -398,17 +434,9 @@ namespace NB.API.Controllers
                     await _productService.UpdateAsync(productEntity);
                 }
 
-                // Update Inventory nếu có thay đổi
-                if (isInventoryChanged)
-                {
-                    targetInventory.LastUpdated = DateTime.UtcNow;
-                    await _inventoryService.UpdateAsync(targetInventory);
-                }
-
-                // Prepare response with Supplier and Category names
+                // Chuẩn bị dữ liệu trả về
                 ProductOutputVM result = new ProductOutputVM
                 {
-                    WarehouseId = model.WarehouseId,
                     ProductId = productEntity.ProductId,
                     ProductName = productEntity.ProductName,
                     Code = productEntity.Code,
