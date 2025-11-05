@@ -79,6 +79,21 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<UserDto>.Fail("Không tìm thấy nhân viên", 404));
                 }
+                //kiem tra role của người dùng
+                var role = await _roleService.GetByRoleName(roleName);
+                if (role == null)
+                {
+                    return BadRequest(ApiResponse<UserDto>.Fail("Không tìm thấy vai trò", 404));
+                }
+
+                var userRoles = await _userRoleService.GetByRoleId(role.RoleId) ?? new List<UserRole>();
+
+                bool isInRole = userRoles.Any(ur => ur.UserId == result.UserId);
+                if (!isInRole)
+                {
+                    return BadRequest(ApiResponse<UserDto>.Fail("Người dùng không phải nhân viên", 404));
+                }
+
                 result.RoleName = roleName;
                 return Ok(ApiResponse<UserDto>.Ok(result));
             }
