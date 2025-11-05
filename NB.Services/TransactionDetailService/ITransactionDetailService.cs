@@ -12,7 +12,9 @@ namespace NB.Service.TransactionDetailService
     public interface ITransactionDetailService : IService<TransactionDetail>
     {
         Task<List<TransactionDetail>> GetById(int Id);
-        Task<List<TransactionDetailDto>> GetByTransactionId(int Id);
+
+
+        Task<List<TransactionDetailDto>> GetByTransactionId(int? Id);
         Task<bool> DeleteByTransactionId(int transactionId);
     }
 }
