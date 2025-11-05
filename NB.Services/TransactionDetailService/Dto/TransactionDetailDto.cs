@@ -11,6 +11,7 @@ namespace NB.Service.TransactionDetailService.Dto
     {
         public string? ProductName { get; set; }
 
+        public decimal? WeightPerUnit { get; set; }
         public string? ImageUrl { get; set; }
     }
 }
