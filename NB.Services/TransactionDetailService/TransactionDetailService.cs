@@ -39,15 +39,20 @@ namespace NB.Service.TransactionDetailService
             return await query.ToListAsync();
         }
 
-        public async Task<List<TransactionDetailDto>> GetByTransactionId(int Id)
+        public async Task<List<TransactionDetailDto>> GetByTransactionId(int? Id)
         {
+
+
             var query = from td in GetQueryable()
                         where td.TransactionId == Id
                         select new TransactionDetailDto()
                         {
-                            Id = td.Id,
+                            Id = td.Id,                      
                             TransactionId = td.TransactionId,
+                            ProductName = td.Product!.ProductName,
                             ProductId = td.ProductId,
+                            ImageUrl = td.Product.ImageUrl,
+                            WeightPerUnit = td.Product.WeightPerUnit,
                             Quantity = td.Quantity,
                             UnitPrice = td.UnitPrice,
                             Subtotal = td.Subtotal
