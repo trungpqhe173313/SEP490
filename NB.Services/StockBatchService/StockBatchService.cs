@@ -41,6 +41,10 @@ namespace NB.Service.StockBatchService
                     baseQuery = baseQuery.Where(sb => EF.Functions.Collate(sb.BatchCode, "SQL_Latin1_General_CP1_CI_AI")
                         .Contains(keyword));
                 }
+                if(!(search.TransactionId <= 0))
+                {
+                    baseQuery = baseQuery.Where(sb => sb.TransactionId == search.TransactionId);
+                }
             }
 
             var query = baseQuery.Select(sb => new StockBatchDto()
@@ -51,6 +55,7 @@ namespace NB.Service.StockBatchService
                 ProductId = sb.ProductId,
                 ProductName = sb.Product.ProductName,        
                 TransactionId = sb.TransactionId,
+                TransactionDate = sb.Transaction.TransactionDate,
                 ProductionFinishId = sb.ProductionFinishId,
                 BatchCode = sb.BatchCode,
                 ImportDate = sb.ImportDate,
@@ -128,6 +133,31 @@ namespace NB.Service.StockBatchService
                         select sb.BatchCode;
             return await query.FirstOrDefaultAsync();
         }
+
+        public async Task<StockBatchDto> GetByBatchId(int id)
+        {
+            var query = from sb in GetQueryable()
+                        where sb.BatchId == id
+                        select new StockBatchDto()
+                        {
+                            BatchId = sb.BatchId,
+                            WarehouseId = sb.WarehouseId,
+                            ProductId = sb.ProductId,
+                            TransactionId = sb.TransactionId,
+                            ProductionFinishId = sb.ProductionFinishId,
+                            BatchCode = sb.BatchCode,
+                            ImportDate = sb.ImportDate,
+                            ExpireDate = sb.ExpireDate,
+                            QuantityIn = sb.QuantityIn,
+                            QuantityOut = sb.QuantityOut,
+                            Status = sb.Status,
+                            IsActive = sb.IsActive,
+                            Note = sb.Note,
+                            LastUpdated = sb.LastUpdated
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
+
 
         /// <summary>
         /// Duc Anh

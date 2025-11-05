@@ -8,6 +8,7 @@ namespace NB.Service.StockBatchService.ViewModels
 {
     public class StockOutputVM
     {
+        
         public int BatchId { get; set; }
         
         public int WarehouseId { get; set; }
@@ -17,6 +18,8 @@ namespace NB.Service.StockBatchService.ViewModels
 
         public int? TransactionId { get; set; }
 
+        public DateTime? TransactionDate { get; set; }
+
         public int? ProductionFinishId { get; set; }
 
         public string? BatchCode { get; set; }
@@ -25,13 +28,17 @@ namespace NB.Service.StockBatchService.ViewModels
 
         public DateTime? ExpireDate { get; set; }
 
+        public decimal? WeightPerUnit { get; set; }
+
+        public decimal? UnitPrice { get; set; }
+
         public decimal? QuantityIn { get; set; }
 
         public decimal? QuantityOut { get; set; }
 
-        public int? Status { get; set; }
+        public string Status { get; set; }
 
-        public bool IsActive { get; set; }
+        public string IsActive { get; set; }
 
         public string? Note { get; set; }
     }

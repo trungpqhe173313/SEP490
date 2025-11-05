@@ -6,7 +6,7 @@ namespace NB.Model.Entities;
 public partial class Inventory
 {
     public int InventoryId { get; set; }
-
+    
     public int WarehouseId { get; set; }
 
     public int ProductId { get; set; }

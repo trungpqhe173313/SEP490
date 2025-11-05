@@ -9,8 +9,9 @@ namespace NB.Service.StockBatchService.Dto
 {
     public class StockBatchSearch : SearchBase
     {
-        public int BatchId { get; set; }
+        public int? TransactionId { get; set; }
+        public int? BatchId { get; set; }
 
-        public string BatchCode { get; set; }
+        public string? BatchCode { get; set; }
     }
 }

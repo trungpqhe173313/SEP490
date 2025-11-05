@@ -9,5 +9,6 @@ namespace NB.Service.TransactionDetailService.Dto
 {
     public class TransactionDetailSearch : SearchBase
     {
+       public int? TransactionId { get; set; }
     }
 }
