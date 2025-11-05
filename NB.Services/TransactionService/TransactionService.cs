@@ -74,7 +74,14 @@ namespace NB.Service.TransactionService
                         };
             if (search != null)
             {
-
+                if(search.SupplierId > 0)
+                {
+                    query = query.Where(t => t.SupplierId == search.SupplierId);
+                }
+                if (search.WarehouseId > 0)
+                {
+                    query = query.Where(t => t.WarehouseId == search.WarehouseId);
+                }
                 if (search.Status.HasValue)
                 {
                     query = query.Where(t => t.Status == search.Status);
@@ -98,6 +105,7 @@ namespace NB.Service.TransactionService
             query = query.OrderByDescending(t => t.TransactionDate);
             return await PagedList<TransactionDto>.CreateAsync(query, search);
         }
+
     
 
         public async Task<PagedList<TransactionDto>> GetDataForExport(TransactionSearch search)
@@ -119,6 +127,14 @@ namespace NB.Service.TransactionService
                         };
             if(search != null)
             {
+                if(search.SupplierId > 0)
+                {
+                    query = query.Where(t => t.SupplierId == search.SupplierId);
+                }
+                if(search.WarehouseId > 0)
+                {
+                    query = query.Where(t => t.WarehouseId == search.WarehouseId);
+                }
                 if (search.Status.HasValue)
                 {
                     query = query.Where(t => t.Status.Value == search.Status);
