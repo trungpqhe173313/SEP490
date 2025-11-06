@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NB.Model.Entities;
 using NB.Model.Enums;
 using NB.Service.Common;
+using NB.Service.Core.Enum;
 using NB.Service.Core.Mapper;
 using NB.Service.Dto;
 using NB.Service.InventoryService;
@@ -94,7 +95,7 @@ namespace NB.API.Controllers
                     }
                     //gắn statusName cho transaction
                     TransactionStatus status = (TransactionStatus)t.Status;
-                    t.StatusName = status.ToString();
+                    t.StatusName = status.GetDescription();
                 }
                 return Ok(ApiResponse<PagedList<TransactionDto>>.Ok(result));
             }
