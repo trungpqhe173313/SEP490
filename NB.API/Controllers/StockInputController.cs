@@ -25,6 +25,7 @@ using NB.Service.WarehouseService;
 using NB.Services.StockBatchService.ViewModels;
 using OfficeOpenXml;
 using System.Globalization;
+using System.Security.Permissions;
 
 namespace NB.API.Controllers
 {
@@ -70,6 +71,7 @@ namespace NB.API.Controllers
             {
                 return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
+
             try
             {
                 
@@ -78,6 +80,10 @@ namespace NB.API.Controllers
                 List<TransactionOutputVM> list = new List<TransactionOutputVM>();
                 foreach (var item in filteredItems)
                 {
+                    if(item.Type == "Export")
+                    {
+                        continue;
+                    }
                     list.Add(new TransactionOutputVM
                     {
                         TransactionId = item.TransactionId,
@@ -98,9 +104,9 @@ namespace NB.API.Controllers
 
                 var pagedList = new PagedList<TransactionOutputVM>(
                     items: list,
-                    pageIndex: result.PageIndex,
-                    pageSize: result.PageSize,
-                    totalCount: filteredItems.Count
+                    pageIndex: search.PageIndex,
+                    pageSize: search.PageSize,
+                    totalCount: list.Count
                 );
                 return Ok(ApiResponse<PagedList<TransactionOutputVM>>.Ok(pagedList));
             }
@@ -110,7 +116,7 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<PagedList<TransactionOutputVM>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
             }
         }
-        [HttpPost("GetDetail/{Id}")]
+        [HttpGet("GetDetail/{Id}")]
         public async Task<IActionResult> GetDetail(int Id)
         {
             if (!ModelState.IsValid)
@@ -133,6 +139,7 @@ namespace NB.API.Controllers
                         var supplier = await _supplierService.GetBySupplierId(id);
                         if(supplier != null)
                         {
+                            
                             var supplierResult = new SupplierOutputVM
                             {
                                 SupplierId = supplier.SupplierId,
@@ -276,7 +283,7 @@ namespace NB.API.Controllers
                 }
             }
 
-        [HttpPost("GetStockBatchById/{Id}")]
+        [HttpGet("GetStockBatchById/{Id}")]
         public async Task<IActionResult> GetStockBatchById(int Id)
             {
                 if (!ModelState.IsValid)
