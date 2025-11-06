@@ -74,9 +74,9 @@ namespace NB.API.Controllers
 
                 var pagedResult = new PagedList<ProductOutputVM>(
                     items: resultList,
-                    pageIndex: search.PageIndex,
-                    pageSize: search.PageSize,
-                    totalCount: resultList.Count
+                    pageIndex: products.PageIndex,
+                    pageSize: products.PageSize,
+                    totalCount: products.TotalCount
                 );
                 return Ok(ApiResponse<PagedList<ProductOutputVM>>.Ok(pagedResult));
             }
