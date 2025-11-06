@@ -12,6 +12,7 @@ using NB.Service.ProductService.Dto;
 using NB.Service.StockBatchService;
 using NB.Service.StockBatchService.Dto;
 using NB.Service.SupplierService.Dto;
+using NB.Service.SupplierService.ViewModels;
 using NB.Service.TransactionDetailService;
 using NB.Service.TransactionDetailService.Dto;
 using NB.Service.TransactionDetailService.ViewModels;
@@ -20,6 +21,7 @@ using NB.Service.TransactionService.Dto;
 using NB.Service.TransactionService.ViewModels;
 using NB.Service.UserService;
 using NB.Service.UserService.Dto;
+using NB.Service.UserService.ViewModels;
 using NB.Service.WarehouseService;
 using NB.Service.WarehouseService.Dto;
 
@@ -69,18 +71,28 @@ namespace NB.API.Controllers
                 var result = await _transactionService.GetData(search);
                 var listWarehouseId = result.Items.Select(t => t.WarehouseId).ToList();
                 var listWareHouse = await _warehouseService.GetByListWarehouseId(listWarehouseId);
+                //lấy tất cả các khách hàng
+                var listUser = _userService.GetAll();
                 if (listWareHouse == null || !listWareHouse.Any())
                 {
                     return NotFound(ApiResponse<PagedList<WarehouseDto>>.Fail("Không tìm thấy kho"));
                 }
                 foreach (var t in result.Items)
                 {
+                    //gắn tên khách hàng
+                    var user = listUser.FirstOrDefault(u => u.UserId == t.CustomerId);
+                    if (user != null)
+                    {
+                        t.FullName = user.FullName;
+                    }
+
+                    //lay tên kho
                     var warehouse = listWareHouse.FirstOrDefault(w => w.WarehouseId == t.WarehouseId);
                     if (warehouse != null)
                     {
                         t.WarehouseName = warehouse.WarehouseName;
                     }
-                    //gắn status cho transaction
+                    //gắn statusName cho transaction
                     TransactionStatus status = (TransactionStatus)t.Status;
                     t.StatusName = status.ToString();
                 }
@@ -90,6 +102,100 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi lấy dữ liệu đơn hàng");
                 return BadRequest(ApiResponse<PagedList<TransactionDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+            }
+        }
+
+        [HttpGet("GetDetail/{Id}")]
+        public async Task<IActionResult> GetDetail(int Id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            try
+            {
+                var transaction = new FullTransactionExportVM();
+                if (Id > 0)
+                {
+                    var detail = await _transactionService.GetByTransactionId(Id);
+                    if (detail != null)
+                    {
+                        transaction.TransactionId = detail.TransactionId;
+                        transaction.TransactionDate = detail.TransactionDate ?? DateTime.MinValue;
+                        transaction.WarehouseName = (await _warehouseService.GetById(detail.WarehouseId))?.WarehouseName ?? "N/A";
+                        int id = detail.SupplierId ?? 0;
+                        var customer = await _userService.GetByIdAsync(detail.CustomerId);
+                        if (customer != null)
+                        {
+
+                            var customerResult = new CustomerOutputVM
+                            {
+                                UserId = customer.UserId,
+                                FullName = customer.FullName,
+                                Phone = customer.Phone,
+                                Email = customer.Email,
+                                Image = customer.Image
+                            };
+                            transaction.Customer = customerResult;
+                        }
+                        else
+                        {
+                            var customerResult = new CustomerOutputVM
+                            {
+                                UserId = null,
+                                FullName = "N/A",
+                                Phone = "N/A",
+                                Email = "N/A",
+                                Image = "N/A"
+                            };
+                            transaction.Customer = customerResult;
+                        }
+                    }
+                    else
+                    {
+                        return NotFound(ApiResponse<FullTransactionVM>.Fail("Không tìm thấy đơn hàng.", 404));
+                    }
+                }
+                else if (Id <= 0)
+                {
+                    return BadRequest(ApiResponse<FullTransactionVM>.Fail("Id không hợp lệ", 400));
+                }
+
+                var productDetails = await _transactionDetailService.GetByTransactionId(Id);
+                if (productDetails.Count == 0)
+                {
+                    return NotFound(ApiResponse<FullTransactionVM>.Fail("Không có thông tin cho giao dịch này.", 400));
+                }
+                foreach (var item in productDetails)
+                {
+                    var product = await _productService.GetById(item.ProductId);
+                    item.ProductName = product != null ? product.ProductName : "N/A";
+
+                }
+                //var batches = await _stockBatchService.GetByTransactionId(Id);
+                //var batch = batches.FirstOrDefault();
+
+                var listResult = productDetails.Select(item => new TransactionDetailOutputVM
+                {
+                    TransactionDetailId = item.Id,
+                    ProductId = item.ProductId,
+                    ProductName = item.ProductName,
+                    UnitPrice = item.UnitPrice,
+                    WeightPerUnit = item.WeightPerUnit,
+                    Quantity = item.Quantity,
+                    SubTotal = item.Subtotal
+                    //,ExpireDate = batch.ExpireDate,
+                    //Note = batch.Note
+                }).ToList();
+
+                transaction.list = listResult;
+                return Ok(ApiResponse<FullTransactionExportVM>.Ok(transaction));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy dữ liệu đơn hàng");
+                return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
             }
         }
 

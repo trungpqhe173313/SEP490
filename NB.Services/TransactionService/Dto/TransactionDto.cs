@@ -12,5 +12,7 @@ namespace NB.Service.TransactionService.Dto
     {
         public string? WarehouseName { get; set; }
         public string? StatusName { get; set; }
+
+        public string? FullName { get; set; }
     }
 }
