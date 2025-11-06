@@ -14,6 +14,6 @@ namespace NB.Service.CategoryService.Dto
         public DateTime? UpdateAt { get; set; }
 
         // Danh sách products thuộc category này với SupplierName và CategoryName
-        public List<ProductDetailDto> Products { get; set; } = new List<ProductDetailDto>();
+
     }
 }

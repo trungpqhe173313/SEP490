@@ -86,25 +86,7 @@ namespace NB.Service.CategoryService
                             Description = category.Description,
                             IsActive = category.IsActive,
                             CreatedAt = category.CreatedAt,
-                            UpdateAt = category.UpdateAt,
-                            Products = (from p in _productRepository.GetQueryable()
-                                       join s in _supplierRepository.GetQueryable() on p.SupplierId equals s.SupplierId
-                                       join c in GetQueryable() on p.CategoryId equals c.CategoryId
-                                       where p.CategoryId == category.CategoryId
-                                       select new ProductDetailDto
-                                       {
-                                           ProductId = p.ProductId,
-                                           Code = p.Code,
-                                           ProductName = p.ProductName,
-                                           ImageUrl = p.ImageUrl,
-                                           WeightPerUnit = p.WeightPerUnit,
-                                           Description = p.Description,
-                                           IsAvailable = p.IsAvailable,
-                                           CreatedAt = p.CreatedAt,
-                                           UpdatedAt = p.UpdatedAt,
-                                           SupplierName = s.SupplierName,
-                                           CategoryName = c.CategoryName
-                                       }).ToList()
+                            UpdateAt = category.UpdateAt
                         };
             return await query.ToListAsync();
         }
@@ -120,25 +102,7 @@ namespace NB.Service.CategoryService
                             Description = category.Description,
                             IsActive = category.IsActive,
                             CreatedAt = category.CreatedAt,
-                            UpdateAt = category.UpdateAt,
-                            Products = (from p in _productRepository.GetQueryable()
-                                       join s in _supplierRepository.GetQueryable() on p.SupplierId equals s.SupplierId
-                                       join c in GetQueryable() on p.CategoryId equals c.CategoryId
-                                       where p.CategoryId == category.CategoryId
-                                       select new ProductDetailDto
-                                       {
-                                           ProductId = p.ProductId,
-                                           Code = p.Code,
-                                           ProductName = p.ProductName,
-                                           ImageUrl = p.ImageUrl,
-                                           WeightPerUnit = p.WeightPerUnit,
-                                           Description = p.Description,
-                                           IsAvailable = p.IsAvailable,
-                                           CreatedAt = p.CreatedAt,
-                                           UpdatedAt = p.UpdatedAt,
-                                           SupplierName = s.SupplierName,
-                                           CategoryName = c.CategoryName
-                                       }).ToList()
+                            UpdateAt = category.UpdateAt                          
                         };
             return await query.FirstOrDefaultAsync();
         }
