@@ -256,11 +256,11 @@ namespace NB.Service.ProductService
                 {
                     baseQuery = baseQuery.Where(p => p.IsAvailable == search.IsAvailable);
                 }
-                if (search.SupplierId > 0)
+                if (search.SupplierId.HasValue)
                 {
                     baseQuery = baseQuery.Where(p => p.SupplierId == search.SupplierId);
                 }
-                if(search.CategoryId > 0)
+                if(search.CategoryId.HasValue)
                 {
                     baseQuery = baseQuery.Where(p => p.CategoryId == search.CategoryId);
                 }
