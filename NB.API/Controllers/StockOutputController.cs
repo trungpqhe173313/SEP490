@@ -63,13 +63,19 @@ namespace NB.API.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Duc Anh
+        /// Lấy ra tất cả các các đơn hàng
+        /// </summary>
+        /// <param name="search"> tìm các đơn hàng theo một số đơn hàng</param>
+        /// <returns>các đơn hàng thỏa mãn các điều kiện của search nếu có</returns>
         [HttpPost("GetData")]
         public async Task<IActionResult> GetData([FromBody] TransactionSearch search)
         {
             try
             {
                 search.Type = transactionType;
-                var result = await _transactionService.GetData(search);
+                var result = await _transactionService.GetDataForExport(search);
                 var listWarehouseId = result.Items.Select(t => t.WarehouseId).ToList();
                 var listWareHouse = await _warehouseService.GetByListWarehouseId(listWarehouseId);
                 //lấy tất cả các khách hàng
@@ -106,6 +112,12 @@ namespace NB.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Duc Anh
+        /// Hàm để lấy ra chi tiết của đơn hàng
+        /// </summary>
+        /// <param name="Id">TransactionId</param>
+        /// <returns>Trả về chi tiết đơn hàng bao gồm các sản phẩm có trong đơn hàng</returns>
         [HttpGet("GetDetail/{Id}")]
         public async Task<IActionResult> GetDetail(int Id)
         {
@@ -164,7 +176,7 @@ namespace NB.API.Controllers
                 }
 
                 var productDetails = await _transactionDetailService.GetByTransactionId(Id);
-                if (productDetails.Count == 0)
+                if (productDetails == null || !productDetails.Any())
                 {
                     return NotFound(ApiResponse<FullTransactionVM>.Fail("Không có thông tin cho giao dịch này.", 400));
                 }
