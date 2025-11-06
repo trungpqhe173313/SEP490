@@ -56,7 +56,7 @@ namespace NB.Service.TransactionService
 
         public async Task<PagedList<TransactionDto>> GetData(TransactionSearch search)
         {
-
+       
 
             var query = from t in GetQueryable()
                         select new TransactionDto()
@@ -82,16 +82,36 @@ namespace NB.Service.TransactionService
                 {
                     query = query.Where(t => t.WarehouseId == search.WarehouseId);
                 }
-                if (search.Status.HasValue)
+                if (search.Status.HasValue && (search.Status.Value == 0 || search.Status.Value == 1))
                 {
                     query = query.Where(t => t.Status == search.Status);
                 }
                 if (!string.IsNullOrEmpty(search.Type))
                 {
                     var keyword = search.Type.Trim();
-                    query = query.Where(t => EF.Functions.Collate(t.Type, "SQL_Latin1_General_CP1_CI_AI")
-                    .Contains(keyword));
+                    // Nếu Type là "Export", gán query trả về rỗng
+                    if (keyword.Equals("Export", StringComparison.OrdinalIgnoreCase))
+                    {
+                        query = query.Where(t => 1 == 0);
+                    }
+                    else if (keyword.Equals("Import", StringComparison.OrdinalIgnoreCase))
+                    {
+
+                        query = query.Where(t => EF.Functions.Collate(t.Type, "SQL_Latin1_General_CP1_CI_AI") == "Import");
+                    }
+                    else if (keyword.Equals("Transfer", StringComparison.OrdinalIgnoreCase))
+                    {
+
+                        query = query.Where(t => EF.Functions.Collate(t.Type, "SQL_Latin1_General_CP1_CI_AI") == "Transfer");
+                    }
                 }
+                else
+                {
+                    
+                    query = query.Where(t => EF.Functions.Collate(t.Type, "SQL_Latin1_General_CP1_CI_AI") == "Import"
+                                          || EF.Functions.Collate(t.Type, "SQL_Latin1_General_CP1_CI_AI") == "Transfer");
+                }
+
                 if (search.TransactionFromDate.HasValue)
                 {
                     query = query.Where(t => t.TransactionDate >= search.TransactionFromDate);
