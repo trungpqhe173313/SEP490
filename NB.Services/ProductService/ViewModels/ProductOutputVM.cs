@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NB.Model.Entities;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,9 +7,8 @@ using System.Threading.Tasks;
 
 namespace NB.Service.ProductService.ViewModels
 {
-    public class ProductOutputVM
+    public class ProductOutputVM 
     {
-        public int WarehouseId { get; set; }
         public int ProductId { get; set; }
         public string Code { get; set; } = null!;
         public string ProductName { get; set; } = null!;
@@ -18,6 +18,7 @@ namespace NB.Service.ProductService.ViewModels
         public string CategoryName { get; set; } = null!;
         public string? Description { get; set; }
 
+        public bool? IsAvailable { get; set; }
         public decimal? WeightPerUnit { get; set; }
        // Thời gian tạo
         public DateTime? CreatedAt { get; set; }

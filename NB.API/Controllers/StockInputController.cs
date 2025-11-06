@@ -25,6 +25,7 @@ using NB.Service.WarehouseService;
 using NB.Services.StockBatchService.ViewModels;
 using OfficeOpenXml;
 using System.Globalization;
+using System.Security.Permissions;
 
 namespace NB.API.Controllers
 {
@@ -73,17 +74,49 @@ namespace NB.API.Controllers
 
             try
             {
-
+                
                 var result = await _transactionService.GetData(search);
-                return Ok(ApiResponse<PagedList<TransactionDto>>.Ok(result));
+                var filteredItems = result.Items.ToList();
+                List<TransactionOutputVM> list = new List<TransactionOutputVM>();
+                foreach (var item in filteredItems)
+                {
+                    if(item.Type == "Export")
+                    {
+                        continue;
+                    }
+                    list.Add(new TransactionOutputVM
+                    {
+                        TransactionId = item.TransactionId,
+                        CustomerId = item.CustomerId,
+                        TransactionDate = item.TransactionDate ?? DateTime.MinValue,
+                        WarehouseName = (await _warehouseService.GetById(item.WarehouseId))?.WarehouseName ?? "N/A",
+                        SupplierName = (await _supplierService.GetBySupplierId(item.SupplierId ?? 0))?.SupplierName ?? "N/A",
+                        Type = item.Type,
+                        Status = item.Status switch
+                        {
+                            0 => "Đã ngừng hoạt động",
+                            1 => "Đã thanh toán",
+                            2 => "Đang thanh toán",
+                            _ => "Unknown"
+                        }
+                    });
+                }
+
+                var pagedList = new PagedList<TransactionOutputVM>(
+                    items: list,
+                    pageIndex: search.PageIndex,
+                    pageSize: search.PageSize,
+                    totalCount: list.Count
+                );
+                return Ok(ApiResponse<PagedList<TransactionOutputVM>>.Ok(pagedList));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy dữ liệu đơn hàng");
-                return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+                return BadRequest(ApiResponse<PagedList<TransactionOutputVM>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
             }
         }
-        [HttpPost("GetDetail/{Id}")]
+        [HttpGet("GetDetail/{Id}")]
         public async Task<IActionResult> GetDetail(int Id)
         {
             if (!ModelState.IsValid)
@@ -93,7 +126,7 @@ namespace NB.API.Controllers
 
             try
             {
-                var transaction = new TransactionOutputVM();
+                var transaction = new FullTransactionVM();
                 if (Id > 0)
                 {
                     var detail = await _transactionService.GetByTransactionId(Id);
@@ -106,6 +139,7 @@ namespace NB.API.Controllers
                         var supplier = await _supplierService.GetBySupplierId(id);
                         if(supplier != null)
                         {
+                            
                             var supplierResult = new SupplierOutputVM
                             {
                                 SupplierId = supplier.SupplierId,
@@ -135,18 +169,18 @@ namespace NB.API.Controllers
                     }
                     else
                     {
-                        return NotFound(ApiResponse<TransactionOutputVM>.Fail("Không tìm thấy đơn hàng.", 404));
+                        return NotFound(ApiResponse<FullTransactionVM>.Fail("Không tìm thấy đơn hàng.", 404));
                     }
                 }
                 else if(Id <=0)
                 {
-                    return BadRequest(ApiResponse<TransactionOutputVM>.Fail("Id không hợp lệ", 400));
+                    return BadRequest(ApiResponse<FullTransactionVM>.Fail("Id không hợp lệ", 400));
                 }
 
                 var productDetails = await _transactionDetailService.GetByTransactionId(Id);
                 if(productDetails.Count == 0)
                 {
-                    return NotFound(ApiResponse<TransactionOutputVM>.Fail("Không có thông tin cho giao dịch này.", 400));
+                    return NotFound(ApiResponse<FullTransactionVM>.Fail("Không có thông tin cho giao dịch này.", 400));
                 }
                 foreach (var item in productDetails)
                 {
@@ -171,7 +205,7 @@ namespace NB.API.Controllers
                 }).ToList();
 
                 transaction.list = listResult;
-                return Ok(ApiResponse<TransactionOutputVM>.Ok(transaction));
+                return Ok(ApiResponse<FullTransactionVM>.Ok(transaction));
             }
             catch (Exception ex)
             {
@@ -181,8 +215,8 @@ namespace NB.API.Controllers
         }
 
 
-            [HttpPost("GetStockBatch")]
-            public async Task<IActionResult> GetStockBatch([FromBody] StockBatchSearch search)
+        [HttpPost("GetStockBatch")]
+        public async Task<IActionResult> GetStockBatch([FromBody] StockBatchSearch search)
             {
                 if (!ModelState.IsValid)
                 {
@@ -245,12 +279,12 @@ namespace NB.API.Controllers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Lỗi khi lấy dữ liệu lô hàng");
-                    return BadRequest(ApiResponse<TransactionOutputVM>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+                    return BadRequest(ApiResponse<FullTransactionVM>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
                 }
             }
 
-            [HttpPost("GetStockBatchById/{Id}")]
-            public async Task<IActionResult> GetStockBatchById(int Id)
+        [HttpGet("GetStockBatchById/{Id}")]
+        public async Task<IActionResult> GetStockBatchById(int Id)
             {
                 if (!ModelState.IsValid)
                 {
@@ -280,8 +314,8 @@ namespace NB.API.Controllers
 
 
 
-            [HttpPost("CreateStockInputs")]
-            public async Task<IActionResult> CreateStockInputs([FromBody] StockBatchCreateWithProductsVM model)
+        [HttpPost("CreateStockInputs")]
+        public async Task<IActionResult> CreateStockInputs([FromBody] StockBatchCreateWithProductsVM model)
             {
                 if (!ModelState.IsValid)
                 {
@@ -498,8 +532,8 @@ namespace NB.API.Controllers
                 }
             }
 
-            [HttpPost("ImportFromExcel")]
-            public async Task<IActionResult> ImportFromExcel(IFormFile file)
+        [HttpPost("ImportFromExcel")]
+        public async Task<IActionResult> ImportFromExcel(IFormFile file)
             {
                 try
                 {
@@ -860,8 +894,8 @@ namespace NB.API.Controllers
                 }
             }
 
-            [HttpGet("DownloadTemplate")]
-            public IActionResult DownloadTemplate()
+        [HttpGet("DownloadTemplate")]
+        public IActionResult DownloadTemplate()
             {
                 try
                 {
@@ -880,6 +914,45 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail($"Có lỗi xảy ra khi tạo template: {ex.Message}"));
                 }
             }
+
+        [HttpDelete("DeleteImportTransaction/{Id}")]
+        public async Task<IActionResult> DeleteImportTransaction(int Id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+            if (Id <= 0)
+            {
+                return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Id không hợp lệ", 400));
+            }
+            try
+            {              
+                var transaction = await _transactionService.GetByTransactionId(Id);
+                if (transaction == null)
+                {
+                    return NotFound(ApiResponse<PagedList<SupplierDto>>.Fail("Không tìm thấy giao dịch nhập kho", 404));
+                }
+                if (transaction.Type == "Export")
+                {
+                    return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Giao dịch không phải là nhập kho", 400));
+                }
+                if(transaction.Status == 0)
+                {
+                    return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Giao dịch đã bị hủy từ trước.", 400));
+                }
+                transaction.Status = 0; // Đặt trạng thái là hủy
+                await _transactionService.UpdateAsync(transaction);
+                return Ok(ApiResponse<object>.Ok("Đã hủy giao dịch nhập kho thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi hủy giao dịch nhập kho");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi hủy giao dịch nhập kho.", 400));
+
+            }
+        }
     }
+
 }
 

@@ -250,10 +250,31 @@ namespace NB.Service.ProductService
                 {
                     baseQuery = baseQuery.Where(p => p.IsAvailable == search.IsAvailable);
                 }
-                if (search.SupplierId.HasValue)
+                if (search.SupplierId > 0)
                 {
                     baseQuery = baseQuery.Where(p => p.SupplierId == search.SupplierId);
                 }
+                if(search.CategoryId > 0)
+                {
+                    baseQuery = baseQuery.Where(p => p.CategoryId == search.CategoryId);
+                }
+                if (search.MinWeightPerUnit.HasValue)
+                {
+                    baseQuery = baseQuery.Where(p => p.WeightPerUnit >= search.MinWeightPerUnit);
+                }
+                if (search.MaxWeightPerUnit.HasValue)
+                {
+                    baseQuery = baseQuery.Where(p => p.WeightPerUnit <= search.MaxWeightPerUnit);
+                }
+                if (search.CreatedFrom.HasValue)
+                {
+                    baseQuery = baseQuery.Where(p => p.CreatedAt >= search.CreatedFrom);
+                }
+                if (search.CreatedTo.HasValue)
+                {
+                    baseQuery = baseQuery.Where(p => p.CreatedAt <= search.CreatedTo);
+                }
+
             }
 
             var query = baseQuery.Select(p => new ProductDto()
