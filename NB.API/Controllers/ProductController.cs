@@ -423,7 +423,7 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpDelete("DeleteProduct/{id}")]
+        [HttpDelete("DeleteProduct/{Id}")]
         public async Task<IActionResult> Delete(int Id)
         {
             if (!ModelState.IsValid)

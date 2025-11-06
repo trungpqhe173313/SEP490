@@ -914,6 +914,45 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail($"Có lỗi xảy ra khi tạo template: {ex.Message}"));
                 }
             }
+
+        [HttpDelete("DeleteImportTransaction/{Id}")]
+        public async Task<IActionResult> DeleteImportTransaction(int Id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+            if (Id <= 0)
+            {
+                return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Id không hợp lệ", 400));
+            }
+            try
+            {              
+                var transaction = await _transactionService.GetByTransactionId(Id);
+                if (transaction == null)
+                {
+                    return NotFound(ApiResponse<PagedList<SupplierDto>>.Fail("Không tìm thấy giao dịch nhập kho", 404));
+                }
+                if (transaction.Type == "Export")
+                {
+                    return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Giao dịch không phải là nhập kho", 400));
+                }
+                if(transaction.Status == 0)
+                {
+                    return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Giao dịch đã bị hủy từ trước.", 400));
+                }
+                transaction.Status = 0; // Đặt trạng thái là hủy
+                await _transactionService.UpdateAsync(transaction);
+                return Ok(ApiResponse<object>.Ok("Đã hủy giao dịch nhập kho thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi hủy giao dịch nhập kho");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi hủy giao dịch nhập kho.", 400));
+
+            }
+        }
     }
+
 }
 
