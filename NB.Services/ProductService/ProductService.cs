@@ -273,7 +273,6 @@ namespace NB.Service.ProductService
                             UpdatedAt = p.UpdatedAt
                         });
             
-            
             query = query.OrderBy(p => p.CreatedAt);
             return await PagedList<ProductDto>.CreateAsync(query, search);
         }

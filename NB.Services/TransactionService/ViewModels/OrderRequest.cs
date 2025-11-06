@@ -11,5 +11,6 @@ namespace NB.Service.TransactionService.ViewModels
     {
         public List<ProductOrder> ListProductOrder { get; set; } = new();
         public string? Note { get; set; }
+
     }
 }

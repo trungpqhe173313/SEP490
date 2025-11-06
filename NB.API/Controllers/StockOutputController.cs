@@ -66,7 +66,7 @@ namespace NB.API.Controllers
             try
             {
                 search.Type = transactionType;
-                var result = await _transactionService.GetDataForExport(search);
+                var result = await _transactionService.GetData(search);
                 var listWarehouseId = result.Items.Select(t => t.WarehouseId).ToList();
                 var listWareHouse = await _warehouseService.GetByListWarehouseId(listWarehouseId);
                 if (listWareHouse == null || !listWareHouse.Any())
@@ -267,36 +267,15 @@ namespace NB.API.Controllers
                         ProductId = po.ProductId,
                         TransactionId = transactionEntity.TransactionId,
                         Quantity = (int)(po.Quantity ?? 0),
-                        UnitPrice = inventory?.AverageCost ?? 0,
-                        Subtotal = (inventory?.AverageCost ?? 0) * (po.Quantity ?? 0)
+                        UnitPrice = (decimal)(po.UnitPrice ?? 0),
+                        Subtotal = (po.UnitPrice ?? 0) * (po.Quantity ?? 0)
                     };
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
                     await _transactionDetailService.CreateAsync(tranDetailEntity);
                 }
 
                 // 6️ Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
-                return Ok(ApiResponse<Transaction>.Ok(new Transaction
-                {
-                    TransactionId = transactionEntity.TransactionId,
-
-                    CustomerId = transactionEntity.CustomerId,
-
-                    WarehouseInId = transactionEntity.WarehouseInId,
-
-                    SupplierId = transactionEntity.SupplierId,
-
-                    WarehouseId = transactionEntity.WarehouseId,
-
-                    ConversionRate = transactionEntity.ConversionRate,
-
-                    Type = transactionEntity.Type,
-
-                    Status = transactionEntity.Status,
-
-                    TransactionDate = transactionEntity.TransactionDate,
-
-                    Note = transactionEntity.Note
-                }));
+                return Ok(ApiResponse<string>.Ok("Tạo đơn hàng thành công"));
             }
             catch (Exception ex)
             {
@@ -387,7 +366,7 @@ namespace NB.API.Controllers
                         ProductId = po.ProductId,
                         TransactionId = transactionId,
                         Quantity = (int)(po.Quantity ?? 0),
-                        UnitPrice = inventory?.AverageCost ?? 0,
+                        UnitPrice = (decimal)(po.Quantity ?? 0),
                         Subtotal = (inventory?.AverageCost ?? 0) * (po.Quantity ?? 0)
                     };
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
