@@ -8,6 +8,8 @@ namespace NB.Service.ProductService.Dto
 
         public string? ProductName { get; set; }
 
+        public string? Code { get; set; }
+
         public int? SupplierId { get; set; }
 
         public bool? IsAvailable { get; set; }

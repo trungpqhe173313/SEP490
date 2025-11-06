@@ -246,6 +246,12 @@ namespace NB.Service.ProductService
                     baseQuery = baseQuery.Where(u => EF.Functions.Collate(u.ProductName, "SQL_Latin1_General_CP1_CI_AI")
                     .Contains(keyword));
                 }
+                if(!string.IsNullOrEmpty(search.Code))
+                {
+                    var keyword = search.Code.Trim();
+                    baseQuery = baseQuery.Where(u => EF.Functions.Collate(u.Code, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
+                }
                 if (search.IsAvailable.HasValue)
                 {
                     baseQuery = baseQuery.Where(p => p.IsAvailable == search.IsAvailable);
