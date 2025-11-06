@@ -20,6 +20,6 @@ namespace NB.Service.TransactionDetailService.ViewModels
 
         public DateTime? ExpireDate { get; set; }
 
-        public string Note { get; set; }
+        public string? Note { get; set; }
     }
 }
