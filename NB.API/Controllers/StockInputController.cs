@@ -74,16 +74,11 @@ namespace NB.API.Controllers
 
             try
             {
-                
+
                 var result = await _transactionService.GetData(search);
-                var filteredItems = result.Items.ToList();
                 List<TransactionOutputVM> list = new List<TransactionOutputVM>();
-                foreach (var item in filteredItems)
+                foreach (var item in result.Items)
                 {
-                    if(item.Type == "Export")
-                    {
-                        continue;
-                    }
                     list.Add(new TransactionOutputVM
                     {
                         TransactionId = item.TransactionId,
@@ -104,9 +99,9 @@ namespace NB.API.Controllers
 
                 var pagedList = new PagedList<TransactionOutputVM>(
                     items: list,
-                    pageIndex: search.PageIndex,
-                    pageSize: search.PageSize,
-                    totalCount: list.Count
+                    pageIndex: result.PageIndex,
+                    pageSize: result.PageSize,
+                    totalCount: result.TotalCount
                 );
                 return Ok(ApiResponse<PagedList<TransactionOutputVM>>.Ok(pagedList));
             }

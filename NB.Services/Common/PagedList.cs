@@ -1,5 +1,6 @@
-﻿using NB.Service.Dto;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using NB.Service.Dto;
+using NB.Service.TransactionService.Dto;
 
 namespace NB.Service.Common
 {
@@ -41,5 +42,6 @@ namespace NB.Service.Common
         {
             return CreateFromList(source, search.PageIndex, search.PageSize);
         }
+
     }
 }
