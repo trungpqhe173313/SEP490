@@ -147,6 +147,10 @@ namespace NB.Service.TransactionService
                         };
             if(search != null)
             {
+                if (search.CustomerId.HasValue)
+                {
+                    query = query.Where(t => t.CustomerId == search.CustomerId);
+                }
                 if(search.SupplierId.HasValue)
                 {
                     query = query.Where(t => t.SupplierId == search.SupplierId);

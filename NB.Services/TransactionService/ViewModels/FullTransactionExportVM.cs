@@ -15,6 +15,7 @@ namespace NB.Service.TransactionService.ViewModels
         public DateTime TransactionDate { get; set; }
 
         public string WarehouseName { get; set; }
+        public int? Status { get; set; }
         public CustomerOutputVM Customer { get; set; }
         public List<TransactionDetailOutputVM?> list { get; set; }
     }
