@@ -134,6 +134,7 @@ namespace NB.API.Controllers
                     var detail = await _transactionService.GetByTransactionId(Id);
                     if (detail != null)
                     {
+                        transaction.Status = detail.Status;
                         transaction.TransactionId = detail.TransactionId;
                         transaction.TransactionDate = detail.TransactionDate ?? DateTime.MinValue;
                         transaction.WarehouseName = (await _warehouseService.GetById(detail.WarehouseId))?.WarehouseName ?? "N/A";
@@ -485,7 +486,7 @@ namespace NB.API.Controllers
                         ProductId = po.ProductId,
                         TransactionId = transactionId,
                         Quantity = (int)(po.Quantity ?? 0),
-                        UnitPrice = (decimal)(po.Quantity ?? 0),
+                        UnitPrice = (decimal)(po.UnitPrice ?? 0),
                         Subtotal = (inventory?.AverageCost ?? 0) * (po.Quantity ?? 0)
                     };
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
