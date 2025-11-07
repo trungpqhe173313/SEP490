@@ -4,6 +4,7 @@ using NB.Model.Entities;
 using NB.Repository.Common;
 using NB.Service.Common;
 using NB.Service.TransactionService.Dto;
+using System.Linq;
 
 
 namespace NB.Service.TransactionService
@@ -31,6 +32,61 @@ namespace NB.Service.TransactionService
                             Note = t.Note
                         };
             return await query.ToListAsync();
+        }
+
+        public async Task<PagedList<TransactionDto>> GetByListStatus(TransactionSearch search, List<int> listStatus)
+        {
+            var query = from t in GetQueryable()
+                        where listStatus.Contains((int)t.Status)
+                        select new TransactionDto()
+                        {
+                            TransactionId = t.TransactionId,
+                            CustomerId = t.CustomerId,
+                            WarehouseInId = t.WarehouseInId,
+                            SupplierId = t.SupplierId,
+                            WarehouseId = t.WarehouseId,
+                            ConversionRate = t.ConversionRate,
+                            Type = t.Type,
+                            Status = t.Status,
+                            TransactionDate = t.TransactionDate,
+                            Note = t.Note
+                        };
+            if (search != null)
+            {
+                if (search.CustomerId.HasValue)
+                {
+                    query = query.Where(t => t.CustomerId == search.CustomerId);
+                }
+                if (search.SupplierId.HasValue)
+                {
+                    query = query.Where(t => t.SupplierId == search.SupplierId);
+                }
+                if (search.WarehouseId.HasValue)
+                {
+                    query = query.Where(t => t.WarehouseId == search.WarehouseId);
+                }
+                if (search.Status.HasValue)
+                {
+                    query = query.Where(t => t.Status.Value == search.Status.Value);
+                }
+                if (!string.IsNullOrEmpty(search.Type))
+                {
+                    var keyword = search.Type.Trim();
+                    query = query.Where(t => EF.Functions.Collate(t.Type, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
+                }
+                if (search.TransactionFromDate.HasValue)
+                {
+                    query = query.Where(t => t.TransactionDate >= search.TransactionFromDate);
+                }
+                if (search.TransactionToDate.HasValue)
+                {
+                    query = query.Where(t => t.TransactionDate <= search.TransactionToDate);
+                }
+            }
+
+            query = query.OrderByDescending(t => t.TransactionDate);
+            return await PagedList<TransactionDto>.CreateAsync(query, search);
         }
 
         public async Task<TransactionDto?> GetByTransactionId(int? id)
