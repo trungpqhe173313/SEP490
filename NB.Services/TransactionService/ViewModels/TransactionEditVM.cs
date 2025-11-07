@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NB.Service.ProductService.Dto;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,5 +9,9 @@ namespace NB.Service.TransactionService.ViewModels
 {
     public class TransactionEditVM
     {
+        public List<ProductOrder> ListProductOrder { get; set; } = new();
+        public string? Note { get; set; }
+
+        public int? Status { get; set; }
     }
 }

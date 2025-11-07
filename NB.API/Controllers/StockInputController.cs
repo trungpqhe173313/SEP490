@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using NB.Model.Entities;
+using NB.Model.Enums;
 using NB.Repository.WarehouseRepository;
 using NB.Service.Common;
+using NB.Service.Core.Enum;
 using NB.Service.Core.Forms;
 using NB.Service.Core.Mapper;
 using NB.Service.Dto;
@@ -26,6 +28,7 @@ using NB.Services.StockBatchService.ViewModels;
 using OfficeOpenXml;
 using System.Globalization;
 using System.Security.Permissions;
+
 
 namespace NB.API.Controllers
 {
@@ -79,6 +82,8 @@ namespace NB.API.Controllers
                 List<TransactionOutputVM> list = new List<TransactionOutputVM>();
                 foreach (var item in result.Items)
                 {
+                    TransactionStatus status = (TransactionStatus)item.Status;
+                    var description = status.GetDescription();
                     list.Add(new TransactionOutputVM
                     {
                         TransactionId = item.TransactionId,
@@ -87,13 +92,8 @@ namespace NB.API.Controllers
                         WarehouseName = (await _warehouseService.GetById(item.WarehouseId))?.WarehouseName ?? "N/A",
                         SupplierName = (await _supplierService.GetBySupplierId(item.SupplierId ?? 0))?.SupplierName ?? "N/A",
                         Type = item.Type,
-                        Status = item.Status switch
-                        {
-                            0 => "Đã ngừng hoạt động",
-                            1 => "Đã thanh toán",
-                            2 => "Đang thanh toán",
-                            _ => "Unknown"
-                        }
+                        Status = description,
+                        Note = item.Note
                     });
                 }
 
@@ -361,7 +361,7 @@ namespace NB.API.Controllers
                         SupplierId = model.SupplierId,
                         WarehouseId = model.WarehouseId,
                         Type = "Import",
-                        Status = 1, // Mặc định
+                        Status = 6, // Mặc định
                         TransactionDate = DateTime.UtcNow,
                         Note = model.Note
                     };
@@ -909,6 +909,69 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail($"Có lỗi xảy ra khi tạo template: {ex.Message}"));
                 }
             }
+
+        [HttpPut("UpdateImportTransaction/{transactionId}")]
+        public async Task<IActionResult> UpdateImport(int transactionId, [FromBody] TransactionEditVM model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            var listProductOrder = model.ListProductOrder;
+            try
+            {
+                var transaction = await _transactionService.GetByIdAsync(transactionId);
+                if (transaction == null)
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn hàng nhập kho.", 404));
+                if(transaction.Status == 6)
+                    return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn hàng đã kiểm.", 400));
+                if(transaction.Type != null && transaction.Type == "Export")
+                    return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn hàng này.", 400));
+                if(model.Status != 5 && model.Status != 6)
+                    return BadRequest(ApiResponse<string>.Fail("Trạng thái đơn hàng không hợp lệ.", 400));
+                var oldDetails = await _transactionDetailService.GetByTransactionId(transactionId);
+                if (oldDetails == null || !oldDetails.Any())
+                {
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy chi tiết đơn hàng.", 404));
+                }
+
+                await _transactionDetailService.DeleteRange(oldDetails);
+
+                var listProductId = listProductOrder.Select(p => p.ProductId).ToList();
+
+                foreach (var po in listProductOrder)
+                {
+                    var inventory = await _inventoryService.GetByProductIdRetriveOneObject(po.ProductId);
+
+                    var tranDetail = new TransactionDetailCreateVM
+                    {
+                        ProductId = po.ProductId,
+                        TransactionId = transaction.TransactionId,
+                        Quantity = (int)(po.Quantity ?? 0),
+                        UnitPrice = (decimal)(po.UnitPrice ?? 0),
+                        Subtotal = (po.UnitPrice ?? 0) * (po.Quantity ?? 0)
+                    };
+                    var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
+                    await _transactionDetailService.CreateAsync(tranDetailEntity);
+                }
+
+                transaction.Status = model.Status;
+
+                if (!string.IsNullOrEmpty(model.Note))
+                {
+                    transaction.Note = model.Note;
+                }
+                await _transactionService.UpdateAsync(transaction);
+
+                return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật đơn hàng");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật đơn hàng."));
+            }
+        }
 
         [HttpDelete("DeleteImportTransaction/{Id}")]
         public async Task<IActionResult> DeleteImportTransaction(int Id)
