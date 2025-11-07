@@ -82,7 +82,7 @@ namespace NB.Service.TransactionService
                 {
                     query = query.Where(t => t.WarehouseId == search.WarehouseId);
                 }
-                if (search.Status.HasValue && (search.Status.Value == 0 || search.Status.Value == 1))
+                if (search.Status >= 0)
                 {
                     query = query.Where(t => t.Status == search.Status);
                 }
