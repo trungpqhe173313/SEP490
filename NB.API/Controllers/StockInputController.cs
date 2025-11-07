@@ -313,8 +313,6 @@ namespace NB.API.Controllers
                 }
             }
 
-
-
         [HttpPost("CreateStockInputs")]
         public async Task<IActionResult> CreateStockInputs([FromBody] StockBatchCreateWithProductsVM model)
             {
@@ -367,7 +365,7 @@ namespace NB.API.Controllers
                         SupplierId = model.SupplierId,
                         WarehouseId = model.WarehouseId,
                         Type = "Import",
-                        Status = 6, // Mặc định
+                        Status = 5, // Mặc định
                         TransactionDate = DateTime.UtcNow,
                         Note = model.Note
                     };
