@@ -147,17 +147,17 @@ namespace NB.Service.TransactionService
                         };
             if(search != null)
             {
-                if(search.SupplierId > 0)
+                if(search.SupplierId.HasValue)
                 {
                     query = query.Where(t => t.SupplierId == search.SupplierId);
                 }
-                if(search.WarehouseId > 0)
+                if(search.WarehouseId.HasValue)
                 {
                     query = query.Where(t => t.WarehouseId == search.WarehouseId);
                 }
                 if (search.Status.HasValue)
                 {
-                    query = query.Where(t => t.Status.Value == search.Status);
+                    query = query.Where(t => t.Status.Value == search.Status.Value);
                 }
                 if (!string.IsNullOrEmpty(search.Type))
                 {
