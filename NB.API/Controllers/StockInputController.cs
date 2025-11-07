@@ -130,6 +130,7 @@ namespace NB.API.Controllers
                         transaction.TransactionId = detail.TransactionId;
                         transaction.TransactionDate = detail.TransactionDate ?? DateTime.MinValue;
                         transaction.WarehouseName = (await _warehouseService.GetById(detail.WarehouseId))?.WarehouseName ?? "N/A";
+                        transaction.Status = detail.Status;
                         int id = detail.SupplierId ?? 0;
                         var supplier = await _supplierService.GetBySupplierId(id);
                         if(supplier != null)
@@ -184,7 +185,12 @@ namespace NB.API.Controllers
 
                 }
                 var batches = await _stockBatchService.GetByTransactionId(Id);
+                if(batches.Count == 0)
+                {
+                    return NotFound(ApiResponse<FullTransactionVM>.Fail("Không có lô hàng nào cho giao dịch này.", 400));
+                }
                 var batch = batches.FirstOrDefault();
+
 
                 var listResult = productDetails.Select(item => new TransactionDetailOutputVM
                 {
