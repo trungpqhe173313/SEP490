@@ -10,6 +10,7 @@ namespace NB.Service.TransactionService.ViewModels
     public class OrderRequest
     {
         public List<ProductOrder> ListProductOrder { get; set; } = new();
+        public int? Status { get; set; }
         public string? Note { get; set; }
 
     }

@@ -492,9 +492,15 @@ namespace NB.API.Controllers
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
                     await _transactionDetailService.CreateAsync(tranDetailEntity);
                 }
-
-                // --- 5️ Cập nhật thông tin đơn hàng ---
-                transaction.Status = (int?)TransactionStatus.draft; // đang xử lý lại
+                if (or.Status.HasValue)
+                {
+                    transaction.Status = or.Status;
+                }
+                else
+                {
+                    // --- 5️ Cập nhật thông tin đơn hàng ---
+                    transaction.Status = (int?)TransactionStatus.draft; // đang xử lý lại
+                }
                 // --- 6 cập nhật lại note nếu có ---
                 if (!string.IsNullOrEmpty(or.Note))
                 {
@@ -511,6 +517,31 @@ namespace NB.API.Controllers
             }
         }
 
+        [HttpGet("GetTransactionStatus")]
+        public async Task<IActionResult> GetTransactionStatus()
+        {
+            try
+            {
+                var listStatus = new List<TransactionStatus>
+        {
+            TransactionStatus.draft,
+            TransactionStatus.order,
+            TransactionStatus.delivering
+        };
+
+                // Tạo danh sách trả về gồm int + string
+                var result = listStatus
+                    .Select(s => new KeyValuePair<int, string>((int)s, s.GetDescription()))
+                    .ToList();
+
+                return Ok(ApiResponse<List<KeyValuePair<int, string>>>.Ok(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách trạng thái đơn hàng");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra"));
+            }
+        }
 
     }
 }
