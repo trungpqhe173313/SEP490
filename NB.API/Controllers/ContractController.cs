@@ -68,8 +68,8 @@ namespace NB.API.Controllers
                 foreach (var contract in contracts)
                 {
                     var customer = await _userService.GetByUserId((int)contract.UserId);
-                    
-                        
+
+
                     var supplier = await _supplierService.GetBySupplierId((int)contract.SupplierId);
                     var output = new ContractOutputVM
                     {
@@ -164,7 +164,7 @@ namespace NB.API.Controllers
             var customer = await _userService.GetByUserId(request.UserId);
             var customerRole = await _userRoleService.GetByRoleId(role);
             bool isInRole = customerRole.Any(cus => cus.UserId == customer.UserId);
-            if(customer == null)
+            if (customer == null)
             {
                 return BadRequest(ApiResponse<object>.Fail("Khách hàng không tồn tại", 400));
             }
@@ -185,7 +185,7 @@ namespace NB.API.Controllers
                     SupplierId = request.SupplierId,
                     Image = request.Image,
                     Pdf = request.Pdf,
-                    
+
                 };
                 contract.CreatedAt = DateTime.UtcNow;
                 contract.UpdatedAt = DateTime.UtcNow;
@@ -220,7 +220,7 @@ namespace NB.API.Controllers
             {
                 return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
-            if(ContractId <= 0)
+            if (ContractId <= 0)
             {
                 return BadRequest(ApiResponse<object>.Fail("Mã hợp đồng không hợp lệ", 400));
             }
@@ -242,6 +242,31 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi cập nhật hợp đồng");
                 return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi cập nhật hợp đồng", 400));
+            }
+        }
+
+        [HttpDelete("DeleteContract/{ContractId}")]
+        public async Task<IActionResult> DeleteContract(int ContractId)
+        {
+            if (ContractId <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Mã hợp đồng không hợp lệ", 400));
+            }
+            try
+            {
+                var contract = await _contractService.GetByContractId(ContractId);
+                if (contract == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Hợp đồng không tồn tại", 404));
+                }
+                contract.IsActive = false;
+                await _contractService.UpdateAsync(contract);
+                return Ok(ApiResponse<object>.Ok("Xóa hợp đồng thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa hợp đồng");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi xóa hợp đồng", 400));
             }
         }
     }
