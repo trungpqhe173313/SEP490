@@ -14,6 +14,6 @@ namespace NB.Service.ContractService.ViewModels
 
         public bool? IsActive { get; set; }
 
-        public DateTime? UpdatedAt { get; set; }
+
     }
 }
