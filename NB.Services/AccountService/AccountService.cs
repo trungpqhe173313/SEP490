@@ -1,7 +1,9 @@
-﻿using NB.Model.Entities;
+﻿using Microsoft.Extensions.Logging;
+using NB.Model.Entities;
 using NB.Repository.RoleRepository;
 using NB.Repository.UserRolerRepository;
 using NB.Service.AccountService.Dto;
+using NB.Service.Core.EmailService;
 using NB.Service.Core.JwtService;
 using NB.Service.Dto;
 using NB.Service.UserService;
@@ -9,6 +11,7 @@ using NB.Service.UserService.Dto;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -20,15 +23,21 @@ namespace NB.Service.AccountService
         private readonly IJwtService _jwtService;
         private readonly IUserRolerRepository _userRoleRepository;
         private readonly IRoleRepository _roleRepository;
+        private readonly IEmailService _emailService;
+        private readonly ILogger<AccountService> _logger;
         public AccountService(IUserService userService, 
             IJwtService jwtService, 
             IUserRolerRepository userRolerRepository, 
-            IRoleRepository roleRepository)
+            IRoleRepository roleRepository,
+            IEmailService emailService,
+            ILogger<AccountService> logger)
         {
             _userService = userService;
             _jwtService = jwtService;
             _userRoleRepository = userRolerRepository;
             _roleRepository = roleRepository;
+            _emailService = emailService;
+            _logger = logger;
         }
         public Task<UserInfo?> GetUserByIdAsync(string userId)
         {
@@ -106,6 +115,172 @@ namespace NB.Service.AccountService
         {
             throw new NotImplementedException();
         }
+
+        public async Task<ApiResponse<bool>> ChangePasswordAsync(int userId, string oldPassword, string newPassword)
+        {
+            if (string.IsNullOrEmpty(oldPassword))
+                return ApiResponse<bool>.Fail("Mật khẩu cũ không được để trống", 400);
+
+            if (string.IsNullOrEmpty(newPassword))
+                return ApiResponse<bool>.Fail("Mật khẩu mới không được để trống", 400);
+
+            var user = await _userService.GetByUserId(userId);
+            if (user == null)
+                return ApiResponse<bool>.Fail("Không tìm thấy người dùng", 404);
+            var isOldPasswordCorrect = await _userService.CheckPasswordAsync(user, oldPassword);
+            if (!isOldPasswordCorrect)
+                return ApiResponse<bool>.Fail("Mật khẩu cũ không chính xác", 400);
+
+            if (oldPassword == newPassword)
+                return ApiResponse<bool>.Fail("Mật khẩu mới phải khác mật khẩu cũ", 400);
+
+            user.Password = newPassword;
+            await _userService.UpdateAsync(user);
+
+            return ApiResponse<bool>.Ok(true);
+        }
+
+        public async Task<ApiResponse<ForgotPasswordResponse>> ForgotPasswordAsync(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+                return ApiResponse<ForgotPasswordResponse>.Fail("Email không được để trống", 400);
+
+            var user = await _userService.GetByEmail(email);
+            if (user == null)
+            {
+                // Trả về success để không tiết lộ email có tồn tại hay không (security best practice)
+                return ApiResponse<ForgotPasswordResponse>.Ok(new ForgotPasswordResponse
+                {
+                    OtpCode = string.Empty,
+                    ExpiresAt = DateTime.Now,
+                    Message = "Nếu email tồn tại, chúng tôi đã gửi mã OTP đến email của bạn"
+                });
+            }
+
+            // Tạo mã OTP 6 số
+            var otpCode = GenerateOtpCode();
+            var otpExpiry = DateTime.Now.AddMinutes(10); // OTP có hiệu lực 10 phút
+
+            // Lưu OTP vào RefreshToken field với prefix để phân biệt
+            var otpWithPrefix = $"OTP_{otpCode}";
+            
+            var userEntity = await _userService.GetByIdAsync(user.UserId);
+            if (userEntity != null)
+            {
+                userEntity.RefreshToken = otpWithPrefix;
+                userEntity.RefreshTokenExpiryDate = otpExpiry;
+                await _userService.UpdateAsync(userEntity);
+            }
+
+            // Gửi email với mã OTP
+            try
+            {
+                var emailSent = await _emailService.SendOtpEmailAsync(user.Email, otpCode, user.FullName);
+                if (!emailSent)
+                {
+                    _logger.LogWarning("Không thể gửi email OTP tới {Email} vào {Time}", user.Email, DateTime.Now);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi gửi email OTP cho {Email} vào {Time}", user.Email, DateTime.Now);
+            }
+            return ApiResponse<ForgotPasswordResponse>.Ok(new ForgotPasswordResponse
+            {
+                OtpCode = string.Empty, // Không trả về OTP trong response (bảo mật)
+                ExpiresAt = otpExpiry,
+                Message = "Đã gửi mã OTP đến email của bạn"
+            });
+        }
+
+        public async Task<ApiResponse<VerifyOtpResponse>> VerifyOtpAsync(string email, string otpCode)
+        {
+            if (string.IsNullOrEmpty(email))
+                return ApiResponse<VerifyOtpResponse>.Fail("Email không được để trống", 400);
+
+            if (string.IsNullOrEmpty(otpCode))
+                return ApiResponse<VerifyOtpResponse>.Fail("Mã OTP không được để trống", 400);
+
+            // Tìm user theo email
+            var user = await _userService.GetByEmail(email);
+            if (user == null)
+                return ApiResponse<VerifyOtpResponse>.Fail("Email không tồn tại", 404);
+
+            // Kiểm tra OTP
+            var otpWithPrefix = $"OTP_{otpCode}";
+            var userEntity = await _userService.GetByIdAsync(user.UserId);
+            
+            if (userEntity == null)
+                return ApiResponse<VerifyOtpResponse>.Fail("Không tìm thấy người dùng", 404);
+
+            // Kiểm tra OTP có khớp không
+            if (userEntity.RefreshToken != otpWithPrefix)
+                return ApiResponse<VerifyOtpResponse>.Fail("Mã OTP không chính xác", 400);
+
+            // Kiểm tra OTP còn hiệu lực không
+            if (userEntity.RefreshTokenExpiryDate == null || userEntity.RefreshTokenExpiryDate < DateTime.Now)
+                return ApiResponse<VerifyOtpResponse>.Fail("Mã OTP đã hết hạn", 400);
+
+            // OTP đúng, tạo reset token để cho phép reset password
+            var resetToken = _jwtService.GenerateRefreshToken();
+            var resetTokenExpiry = DateTime.Now.AddMinutes(15); // Reset token có hiệu lực 15 phút
+
+            // Lưu reset token vào RefreshToken field (thay thế OTP)
+            var resetTokenWithPrefix = $"RESET_{resetToken}";
+            userEntity.RefreshToken = resetTokenWithPrefix;
+            userEntity.RefreshTokenExpiryDate = resetTokenExpiry;
+            await _userService.UpdateAsync(userEntity);
+
+            return ApiResponse<VerifyOtpResponse>.Ok(new VerifyOtpResponse
+            {
+                ResetToken = resetToken,
+                ExpiresAt = resetTokenExpiry,
+                Message = "Xác thực OTP thành công. Bạn có thể đặt lại mật khẩu."
+            });
+        }
+
+        public async Task<ApiResponse<bool>> ResetPasswordAsync(string resetToken, string newPassword)
+        {
+            if (string.IsNullOrEmpty(resetToken))
+                return ApiResponse<bool>.Fail("Reset token không được để trống", 400);
+
+            if (string.IsNullOrEmpty(newPassword))
+                return ApiResponse<bool>.Fail("Mật khẩu mới không được để trống", 400);
+
+            // Tìm user có reset token matching
+            var resetTokenWithPrefix = $"RESET_{resetToken}";
+            var user = await _userService.GetByRefreshTokenAsync(resetTokenWithPrefix);
+            
+            if (user == null)
+                return ApiResponse<bool>.Fail("Reset token không hợp lệ hoặc đã hết hạn", 400);
+
+            // Kiểm tra token còn hiệu lực không
+            if (user.RefreshTokenExpiryDate == null || user.RefreshTokenExpiryDate < DateTime.Now)
+                return ApiResponse<bool>.Fail("Reset token đã hết hạn", 400);
+
+            // Đặt lại mật khẩu
+            var userEntity = await _userService.GetByIdAsync(user.UserId);
+            if (userEntity != null)
+            {
+                userEntity.Password = newPassword;
+                // Xóa reset token sau khi đã sử dụng
+                userEntity.RefreshToken = null;
+                userEntity.RefreshTokenExpiryDate = null;
+                await _userService.UpdateAsync(userEntity);
+            }
+
+            return ApiResponse<bool>.Ok(true);
+        }
+
+        /// <summary>
+        /// Tạo mã OTP 6 số ngẫu nhiên
+        /// </summary>
+        private string GenerateOtpCode()
+        {
+            var random = new Random();
+            return random.Next(100000, 999999).ToString(); // Tạo số từ 100000 đến 999999
+        }
+
         private async Task<ApiResponse<LoginResponse>> GenToken(UserDto? user)
         {
             if (user == null)
