@@ -67,15 +67,18 @@ namespace NB.API.Controllers
                 List<ContractOutputVM> outputs = new List<ContractOutputVM>();
                 foreach (var contract in contracts)
                 {
-                    var customer = await _userService.GetByUserId((int)contract.UserId);
+                    var customer = contract.UserId.HasValue
+                               ? await _userService.GetByUserId(contract.UserId.Value)
+                               : null;
 
-
-                    var supplier = await _supplierService.GetBySupplierId((int)contract.SupplierId);
+                    var supplier = contract.SupplierId.HasValue
+                                   ? await _supplierService.GetBySupplierId(contract.SupplierId.Value)
+                                   : null;
                     var output = new ContractOutputVM
                     {
                         ContractId = contract.ContractId,
-                        CustomerName = customer != null ? customer.FullName : "N/A",
-                        SupplierName = supplier != null ? supplier.SupplierName : "N/A",
+                        CustomerName = customer?.FullName,
+                        SupplierName = supplier?.SupplierName,
                         Image = contract.Image,
                         Pdf = contract.Pdf,
                         IsActive = contract.IsActive,
@@ -114,8 +117,13 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<object>.Fail("Hợp đồng không tồn tại", 404));
                 }
-                var customer = await _userService.GetByUserId((int)contract.UserId);
-                var supplier = await _supplierService.GetBySupplierId((int)contract.SupplierId);
+                var customer = contract.UserId.HasValue
+                               ? await _userService.GetByUserId(contract.UserId.Value)
+                               : null;
+
+                var supplier = contract.SupplierId.HasValue
+                               ? await _supplierService.GetBySupplierId(contract.SupplierId.Value)
+                               : null;
                 var contractDetail = new ContractDetailVM
                 {
                     ContractId = contract.ContractId,
@@ -126,23 +134,24 @@ namespace NB.API.Controllers
                     UpdatedAt = contract.UpdatedAt,
                     Customer = new CustomerOutputVM
                     {
-                        UserId = customer.UserId,
-                        Email = customer.Email,
-                        FullName = customer.FullName,
-                        Phone = customer.Phone,
-                        Image = customer.Image
+                        UserId = customer?.UserId,
+                        Email = customer?.Email,
+                        FullName = customer?.FullName,
+                        Phone = customer?.Phone,
+                        Image = customer?.Image
                     },
                     Supplier = new SupplierOutputVM
                     {
-                        SupplierId = supplier.SupplierId,
-                        SupplierName = supplier.SupplierName,
-                        Email = supplier.Email,
-                        Phone = supplier.Phone,
-                        Status = supplier.IsActive switch
+                        SupplierId = supplier?.SupplierId,
+                        SupplierName = supplier?.SupplierName,
+                        Email = supplier?.Email,
+                        Phone = supplier?.Phone,
+                        Status = supplier?.IsActive switch
                         {
                             false => "Ngừng hoạt động",
-                            true => "Đang hoạt động"
-                        }
+                            true => "Đang hoạt động",
+                            _ => null,
+                        } 
                     }
                 };
                 return Ok(ApiResponse<ContractDetailVM>.Ok(contractDetail));
