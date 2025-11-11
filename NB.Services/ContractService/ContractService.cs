@@ -47,14 +47,21 @@ namespace NB.Service.ContractService
                         };
             if (search != null)
             {
-                
-                if (search.CustomerId.HasValue)
+
+                if (search.CustomerId.HasValue && !search.SupplierId.HasValue)
                 {
-                    query = query.Where(c => c.UserId == search.CustomerId);
+                    //Lấy records của customer 
+                    query = query.Where(c => c.UserId == search.CustomerId && c.SupplierId == null);
                 }
-                if (search.SupplierId.HasValue)
+                else if (!search.CustomerId.HasValue && search.SupplierId.HasValue)
                 {
-                    query = query.Where(c => c.SupplierId == search.SupplierId);
+                    //Lấy records của supplier 
+                    query = query.Where(c => c.SupplierId == search.SupplierId && c.UserId == null);
+                }
+                else if (search.CustomerId.HasValue && search.SupplierId.HasValue)
+                {
+                    //Lấy records có cả customer, supplier
+                    query = query.Where(c => c.UserId == search.CustomerId && c.SupplierId == search.SupplierId);
                 }
                 if (search.FromDate.HasValue)
                 {
