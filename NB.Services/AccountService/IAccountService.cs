@@ -14,5 +14,9 @@ namespace NB.Service.AccountService
         Task<ApiResponse<RefreshTokenResponse>> RefreshTokenAsync(string refreshToken);
         Task<UserInfo?> GetUserByIdAsync(string userId);
         Task<bool> ValidateUserAsync(string username, string password);
+        Task<ApiResponse<bool>> ChangePasswordAsync(int userId, string oldPassword, string newPassword);
+        Task<ApiResponse<ForgotPasswordResponse>> ForgotPasswordAsync(string email);
+        Task<ApiResponse<VerifyOtpResponse>> VerifyOtpAsync(string email, string otpCode);
+        Task<ApiResponse<bool>> ResetPasswordAsync(string resetToken, string newPassword);
     }
 }

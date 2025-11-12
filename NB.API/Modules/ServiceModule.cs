@@ -10,11 +10,8 @@ namespace NB.API.Modules
         {
 
             builder.RegisterAssemblyTypes(Assembly.Load("NB.Service"))
-
                       .Where(t => t.Name.EndsWith("Service"))
-
                       .AsImplementedInterfaces()
-
                       .InstancePerLifetimeScope();
 
         }
