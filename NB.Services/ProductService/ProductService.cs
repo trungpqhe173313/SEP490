@@ -295,6 +295,7 @@ namespace NB.Service.ProductService
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
+                            SellingPrice = p.SellingPrice,
                             IsAvailable = p.IsAvailable,
                             CreatedAt = p.CreatedAt,
                             UpdatedAt = p.UpdatedAt
