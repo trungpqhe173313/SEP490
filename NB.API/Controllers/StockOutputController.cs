@@ -98,14 +98,17 @@ namespace NB.API.Controllers
                     }
 
                     //lay tên kho
-                    var warehouse = listWareHouse.FirstOrDefault(w => w.WarehouseId == t.WarehouseId);
+                    var warehouse = listWareHouse?.FirstOrDefault(w => w != null && w.WarehouseId == t.WarehouseId);
                     if (warehouse != null)
                     {
                         t.WarehouseName = warehouse.WarehouseName;
                     }
                     //gắn statusName cho transaction
-                    TransactionStatus status = (TransactionStatus)t.Status;
-                    t.StatusName = status.GetDescription();
+                    if (t.Status.HasValue)
+                    {
+                        TransactionStatus status = (TransactionStatus)t.Status.Value;
+                        t.StatusName = status.GetDescription();
+                    }
                 }
                 return Ok(ApiResponse<PagedList<TransactionDto>>.Ok(result));
             }
@@ -198,16 +201,16 @@ namespace NB.API.Controllers
                 {
                     TransactionDetailId = item.Id,
                     ProductId = item.ProductId,
-                    ProductName = item.ProductName,
+                    ProductName = item.ProductName ?? "N/A",
                     UnitPrice = item.UnitPrice,
                     WeightPerUnit = item.WeightPerUnit,
                     Quantity = item.Quantity,
                     SubTotal = item.Subtotal
                     //,ExpireDate = batch.ExpireDate,
                     //Note = batch.Note
-                }).ToList();
+                }).ToList<TransactionDetailOutputVM?>();
 
-                transaction.list = listResult;
+                transaction.list = listResult ?? new List<TransactionDetailOutputVM?>();
                 return Ok(ApiResponse<FullTransactionExportVM>.Ok(transaction));
             }
             catch (Exception ex)
@@ -234,11 +237,14 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<PagedList<WarehouseDto>>.Fail("Không tìm thấy kho"));
                 }
                 //gắn tên warehouse
-                result.WarehouseName = warehouse.WarehouseName;
+                result.WarehouseName = warehouse?.WarehouseName ?? "N/A";
 
                 //gắn status cho transaction
-                TransactionStatus status = (TransactionStatus)result.Status;
-                result.StatusName = status.ToString();
+                if (result.Status.HasValue)
+                {
+                    TransactionStatus status = (TransactionStatus)result.Status.Value;
+                    result.StatusName = status.ToString();
+                }
 
                 return Ok(ApiResponse<TransactionDto>.Ok(result));
             }
@@ -318,8 +324,9 @@ namespace NB.API.Controllers
                 if (orderQty > invenQty)
                 {
                     var productCheck = await _productService.GetByIdAsync(po.ProductId);
+                    var productName = productCheck?.ProductName ?? $"Sản phẩm {po.ProductId}";
                     return BadRequest(ApiResponse<InventoryDto>.Fail(
-                        $"Sản phẩm '{productCheck.ProductName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu.",
+                        $"Sản phẩm '{productName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu.",
                         400));
                 }
             }
@@ -328,6 +335,11 @@ namespace NB.API.Controllers
             {
                 // 1️ Lấy tất cả các lô hàng còn hàng và còn hạn
                 var listStockBatch = await _stockBatchService.GetByProductIdForOrder(listProductId);
+                
+                if (listStockBatch == null || !listStockBatch.Any())
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Không tìm thấy lô hàng khả dụng cho các sản phẩm này", 404));
+                }
 
                 // 2️ Tạo transaction (đơn hàng)
                 var tranCreate = new TransactionCreateVM
@@ -450,8 +462,9 @@ namespace NB.API.Controllers
                 if (orderQty > invenQty)
                 {
                     var productCheck = await _productService.GetByIdAsync(po.ProductId);
+                    var productName = productCheck?.ProductName ?? $"Sản phẩm {po.ProductId}";
                     return BadRequest(ApiResponse<InventoryDto>.Fail(
-                        $"Sản phẩm '{productCheck.ProductName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu.",
+                        $"Sản phẩm '{productName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu.",
                         400));
                 }
             }
