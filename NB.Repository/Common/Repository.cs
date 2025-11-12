@@ -32,7 +32,8 @@ namespace NB.Repository.Common
         }
         public virtual IQueryable<T> GetQueryable()
         {
-            return _dbset.AsQueryable<T>();
+            //sửa
+            return _dbset.AsQueryable<T>().AsNoTracking();
         }
 
         public IQueryable<T> Where(Expression<Func<T, bool>> predicate)
@@ -63,6 +64,26 @@ namespace NB.Repository.Common
             //}
 
             //entry.State = EntityState.Modified;
+        }
+
+        //Duc Anh 
+        //Ham de tranh tracking
+        public virtual void UpdateNoTracking(T entity)
+        {
+            var keyName = _entities.Model.FindEntityType(typeof(T))
+                .FindPrimaryKey().Properties.First().Name;
+
+            var local = _dbset.Local.FirstOrDefault(e =>
+                _entities.Entry(e).Property(keyName).CurrentValue ==
+                _entities.Entry(entity).Property(keyName).CurrentValue);
+
+            if (local != null)
+            {
+                _entities.Entry(local).State = EntityState.Detached;
+            }
+
+            _dbset.Attach(entity);
+            _entities.Entry(entity).State = EntityState.Modified;
         }
 
         public virtual async Task SaveAsync()

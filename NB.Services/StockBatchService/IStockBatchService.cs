@@ -16,6 +16,7 @@ namespace NB.Service.StockBatchService
         Task<List<StockBatchDto>> GetByTransactionId(int id);
         //Duc Anh
         Task<List<StockBatchDto>> GetByProductIdForOrder(List<int> ids);
+        Task<List<StockBatchDto>> GetByProductId(int? ids);
 
         Task<StockBatchDto?> GetByName(string name);
         //Task<List<StockBatchDto?>> GetByProductIdForTransaction(int productId, int transactionId);

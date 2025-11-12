@@ -169,7 +169,7 @@ namespace NB.Service.StockBatchService
         /// <returns>trả về các stock batch theo product</returns>
         public async Task<List<StockBatchDto>> GetByProductIdForOrder(List<int> ids)
         {
-            var query = from sb in GetQueryable()
+            var query = from sb in GetQueryable().AsNoTracking()
                         where ids.Contains(sb.ProductId)
                         //where sb.ExpireDate > DateTime.Today
                         //where sb.QuantityIn > sb.QuantityOut
@@ -193,6 +193,35 @@ namespace NB.Service.StockBatchService
 
             query = query.OrderBy(sb => sb.ProductId)
                 .ThenBy(sb => sb.ImportDate);
+            return await query.ToListAsync();
+        }
+
+        public async Task<List<StockBatchDto>> GetByProductId(int? ids)
+        {
+            var query = from sb in GetQueryable().AsNoTracking()
+                        where sb.ProductId == ids
+                        //where sb.ExpireDate > DateTime.Today
+                        //where sb.QuantityIn > sb.QuantityOut
+                        select new StockBatchDto()
+                        {
+                            BatchId = sb.BatchId,
+                            WarehouseId = sb.WarehouseId,
+                            ProductId = sb.ProductId,
+                            TransactionId = sb.TransactionId,
+                            ProductionFinishId = sb.ProductionFinishId,
+                            BatchCode = sb.BatchCode,
+                            ImportDate = sb.ImportDate,
+                            ExpireDate = sb.ExpireDate,
+                            QuantityIn = sb.QuantityIn,
+                            QuantityOut = sb.QuantityOut,
+                            Status = sb.Status,
+                            IsActive = sb.IsActive,
+                            Note = sb.Note,
+                            LastUpdated = sb.LastUpdated
+                        };
+
+            query = query
+                .OrderByDescending(sb => sb.ImportDate);
             return await query.ToListAsync();
         }
     }
