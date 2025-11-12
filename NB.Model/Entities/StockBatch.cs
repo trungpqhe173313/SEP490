@@ -25,13 +25,15 @@ public partial class StockBatch
 
     public decimal? QuantityOut { get; set; }
 
-    public int? Status { get; set; }
+    public decimal? UnitCost { get; set; }
 
-    public bool? IsActive { get; set; }
+    public int? Status { get; set; }
 
     public string? Note { get; set; }
 
     public DateTime? LastUpdated { get; set; }
+
+    public bool? IsActive { get; set; }
 
     public virtual Product Product { get; set; } = null!;
 

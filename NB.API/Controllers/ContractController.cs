@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using NB.API.Utils;
 using NB.Model.Entities;
 using NB.Service.Common;
 using NB.Service.ContractService;
@@ -9,10 +10,12 @@ using NB.Service.ContractService.ViewModels;
 using NB.Service.Dto;
 using NB.Service.RoleService;
 using NB.Service.SupplierService;
+using NB.Service.SupplierService.Dto;
 using NB.Service.SupplierService.ViewModels;
 using NB.Service.TransactionService;
 using NB.Service.UserRoleService;
 using NB.Service.UserService;
+using NB.Service.UserService.Dto;
 using NB.Service.UserService.ViewModels;
 
 namespace NB.API.Controllers
@@ -27,6 +30,7 @@ namespace NB.API.Controllers
         private readonly IContractService _contractService;
         private readonly ILogger<ContractController> _logger;
         private readonly IMapper _mapper;
+        private readonly ICloudinaryService _cloudinaryService;
         private readonly int role = 4;
 
         public ContractController(
@@ -36,7 +40,8 @@ namespace NB.API.Controllers
             ISupplierService supplierService,
             IContractService contractService,
             ILogger<ContractController> logger,
-            IMapper mapper)
+            IMapper mapper,
+            ICloudinaryService cloudinaryService)
         {
             _userService = userService;
             _userRoleService = userRoleService;
@@ -45,6 +50,7 @@ namespace NB.API.Controllers
             _contractService = contractService;
             _logger = logger;
             _mapper = mapper;
+            _cloudinaryService = cloudinaryService;
         }
 
         [HttpPost("GetData")]
@@ -80,7 +86,6 @@ namespace NB.API.Controllers
                         CustomerName = customer?.FullName,
                         SupplierName = supplier?.SupplierName,
                         Image = contract.Image,
-                        Pdf = contract.Pdf,
                         IsActive = contract.IsActive,
                         CreatedAt = contract.CreatedAt,
                         UpdatedAt = contract.UpdatedAt
@@ -128,7 +133,6 @@ namespace NB.API.Controllers
                 {
                     ContractId = contract.ContractId,
                     Image = contract.Image,
-                    Pdf = contract.Pdf,
                     IsActive = contract.IsActive,
                     CreatedAt = contract.CreatedAt,
                     UpdatedAt = contract.UpdatedAt,
@@ -164,54 +168,101 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("CreateContract")]
-        public async Task<IActionResult> CreateContract([FromBody] CreateContractVM request)
+        public async Task<IActionResult> CreateContract([FromForm] CreateContractVM request)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
-            var customer = await _userService.GetByUserId(request.UserId);
-            var customerRole = await _userRoleService.GetByRoleId(role);
-            bool isInRole = customerRole.Any(cus => cus.UserId == customer.UserId);
-            if (customer == null)
+
+            if (!request.UserId.HasValue && !request.SupplierId.HasValue)
             {
-                return BadRequest(ApiResponse<object>.Fail("Khách hàng không tồn tại", 400));
+                return BadRequest(ApiResponse<object>.Fail("Hợp đồng phải có ít nhất một bên", 400));
             }
-            if (isInRole == false)
+            if (request.UserId.HasValue && request.SupplierId.HasValue)
             {
-                return BadRequest(ApiResponse<object>.Fail("Người dùng không phải khách hàng", 400));
+                return BadRequest(ApiResponse<object>.Fail(
+                    "Hợp đồng chỉ có thể có một bên (Khách hàng HOẶC Nhà cung cấp), không thể có cả hai",
+                    400));
             }
-            var supplier = await _supplierService.GetBySupplierId(request.SupplierId);
-            if (supplier == null)
+            if (request.Image != null)
             {
-                return BadRequest(ApiResponse<object>.Fail("Nhà cung cấp không tồn tại", 400));
+                var imageExtension = Path.GetExtension(request.Image.FileName).ToLowerInvariant();
+                var allowedImageExtensions = new[] { ".png", ".jpg", ".jpeg" }; 
+
+                if (!allowedImageExtensions.Contains(imageExtension))
+                {
+                    return BadRequest(ApiResponse<object>.Fail(
+                        $"File ảnh phải có định dạng PNG, JPG hoặc JPEG. File hiện tại: {imageExtension}",
+                        400));
+                }
             }
+
             try
             {
+                // Vallidate file và upload song song
+                var imageUploadTask = request.Image != null
+                    ? _cloudinaryService.UploadImageAsync(request.Image)
+                    : Task.FromResult<string?>(null);
+
+                //Validate User và Supplier
+                UserDto? customer = null;
+                SupplierDto? supplier = null;
+
+                if (request.UserId.HasValue)
+                {
+                    customer = await _userService.GetByUserId(request.UserId.Value);
+                    if (customer == null)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail("Khách hàng không tồn tại", 400));
+                    }
+
+                    var customerRole = await _userRoleService.GetByRoleId(role);
+                    bool isInRole = customerRole.Any(cus => cus.UserId == customer.UserId);
+                    if (!isInRole)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail("Người dùng không phải khách hàng", 400));
+                    }
+                }
+
+                if (request.SupplierId.HasValue)
+                {
+                    supplier = await _supplierService.GetBySupplierId(request.SupplierId.Value);
+                    if (supplier == null)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail("Nhà cung cấp không tồn tại", 400));
+                    }
+                }
+                
+                string? imageUrl = await imageUploadTask;
+
+                if (request.Image != null && imageUrl == null)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Không thể upload ảnh", 400));
+                }
                 var contract = new Contract
                 {
                     UserId = request.UserId,
                     SupplierId = request.SupplierId,
-                    Image = request.Image,
-                    Pdf = request.Pdf,
-
+                    Image = imageUrl,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    IsActive = true
                 };
-                contract.CreatedAt = DateTime.UtcNow;
-                contract.UpdatedAt = DateTime.UtcNow;
-                contract.IsActive = true;
+
                 await _contractService.CreateAsync(contract);
 
                 var result = new ContractOutputVM
                 {
                     ContractId = contract.ContractId,
-                    CustomerName = (await _userService.GetByUserId((int)contract.UserId)).FullName,
-                    SupplierName = (await _supplierService.GetBySupplierId((int)contract.SupplierId)).SupplierName,
+                    CustomerName = customer?.FullName,
+                    SupplierName = supplier?.SupplierName,
                     Image = contract.Image,
-                    Pdf = contract.Pdf,
                     IsActive = contract.IsActive,
                     CreatedAt = contract.CreatedAt,
                     UpdatedAt = contract.UpdatedAt,
                 };
+
                 return Ok(ApiResponse<ContractOutputVM>.Ok(result));
             }
             catch (Exception ex)
@@ -222,17 +273,34 @@ namespace NB.API.Controllers
         }
 
         [HttpPut("UpdateContract/{ContractId}")]
-
-        public async Task<IActionResult> UpdateContract(int ContractId, [FromBody] UpdateContractVM request)
+        public async Task<IActionResult> UpdateContract(int ContractId, [FromForm] UpdateContractVM request)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
+
             if (ContractId <= 0)
             {
                 return BadRequest(ApiResponse<object>.Fail("Mã hợp đồng không hợp lệ", 400));
             }
+
+            // Validate file type
+            if (request.Image != null)
+            {
+                var imageExtension = Path.GetExtension(request.Image.FileName).ToLowerInvariant();
+                var allowedImageExtensions = new[] { ".png", ".jpg", ".jpeg" };
+
+                if (!allowedImageExtensions.Contains(imageExtension))
+                {
+                    return BadRequest(ApiResponse<object>.Fail(
+                        $"File ảnh phải có định dạng PNG, JPG hoặc JPEG. File hiện tại: {imageExtension}",
+                        400));
+                }
+
+            }
+
+
             try
             {
                 var contract = await _contractService.GetByContractId(ContractId);
@@ -240,11 +308,54 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<object>.Fail("Hợp đồng không tồn tại", 404));
                 }
-                contract.Image = request.Image;
-                contract.Pdf = request.Pdf;
-                contract.IsActive = request.IsActive;
+
+                // Lưu URL cũ để xóa nếu cần
+                string? oldImageUrl = contract.Image;
+
+                // Vallidate và upload file 
+                var imageUploadTask = request.Image != null
+                    ? _cloudinaryService.UploadImageAsync(request.Image)
+                    : Task.FromResult<string?>(null);
+                
+                string? newImageUrl = await imageUploadTask;
+
+                /* 
+                    Validate upload thành công nếu có file mới
+                 */
+                if (request.Image != null && newImageUrl == null)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Không thể upload ảnh", 400));
+                }
+
+
+                if (request.Image != null && newImageUrl != null)
+                {
+                    contract.Image = newImageUrl;
+                }
+
+                if (request.IsActive.HasValue)
+                {
+                    contract.IsActive = request.IsActive;
+                }
+
                 contract.UpdatedAt = DateTime.UtcNow;
                 await _contractService.UpdateAsync(contract);
+
+                if (request.Image != null && newImageUrl != null && !string.IsNullOrEmpty(oldImageUrl))
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _cloudinaryService.DeleteFileAsync(oldImageUrl);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, $"Không thể xóa ảnh cũ: {oldImageUrl}");
+                        }
+                    });
+                }
+
                 return Ok(ApiResponse<object>.Ok("Cập nhật hợp đồng thành công"));
             }
             catch (Exception ex)

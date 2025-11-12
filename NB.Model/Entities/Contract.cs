@@ -13,8 +13,6 @@ public partial class Contract
 
     public string? Image { get; set; }
 
-    public string? Pdf { get; set; }
-
     public bool? IsActive { get; set; }
 
     public DateTime? CreatedAt { get; set; }

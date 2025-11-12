@@ -93,7 +93,8 @@ namespace NB.API.Controllers
                         SupplierName = (await _supplierService.GetBySupplierId(item.SupplierId ?? 0))?.SupplierName ?? "N/A",
                         Type = item.Type,
                         Status = description,
-                        Note = item.Note
+                        Note = item.Note,
+                        TotalCost = item.TotalCost
                     });
                 }
 
@@ -131,6 +132,8 @@ namespace NB.API.Controllers
                         transaction.TransactionDate = detail.TransactionDate ?? DateTime.MinValue;
                         transaction.WarehouseName = (await _warehouseService.GetById(detail.WarehouseId))?.WarehouseName ?? "N/A";
                         transaction.Status = detail.Status;
+                        transaction.Note = detail.Note;
+                        transaction.TotalCost = detail.TotalCost;
                         int id = detail.SupplierId ?? 0;
                         var supplier = await _supplierService.GetBySupplierId(id);
                         if(supplier != null)
@@ -280,7 +283,7 @@ namespace NB.API.Controllers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Lỗi khi lấy dữ liệu lô hàng");
-                    return BadRequest(ApiResponse<FullTransactionVM>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+                    return BadRequest(ApiResponse<StockOutputVM>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
                 }
             }
 
@@ -441,7 +444,6 @@ namespace NB.API.Controllers
                                     WarehouseId = model.WarehouseId,
                                     ProductId = product.ProductId,
                                     Quantity = product.Quantity,
-                                    AverageCost = product.UnitPrice,
                                     LastUpdated = DateTime.UtcNow
                                 };
                                 inventoryCache[inventoryKey] = newInventory;
@@ -449,9 +451,7 @@ namespace NB.API.Controllers
                             else
                             {
                                 // Đã tồn tại trong DB: Update với weighted average cost
-                                decimal? totalCost = (existInventory.Quantity * existInventory.AverageCost) + (product.Quantity * product.UnitPrice);
                                 decimal? totalQuantity = existInventory.Quantity + product.Quantity;
-                                existInventory.AverageCost = totalCost / totalQuantity;
                                 existInventory.Quantity = totalQuantity;
                                 existInventory.LastUpdated = DateTime.UtcNow;
                                 inventoryCache[inventoryKey] = existInventory;
@@ -461,9 +461,7 @@ namespace NB.API.Controllers
                         {
                             // Đã gặp ProductId này trong request : Cộng dồn trong cache
                             var cachedInventory = inventoryCache[inventoryKey];
-                            decimal? totalCost = (cachedInventory.Quantity * cachedInventory.AverageCost) + (product.Quantity * product.UnitPrice);
                             decimal? totalQuantity = cachedInventory.Quantity + product.Quantity;
-                            cachedInventory.AverageCost = totalCost / totalQuantity;
                             cachedInventory.Quantity = totalQuantity;
                             cachedInventory.LastUpdated = DateTime.UtcNow;
                         }
@@ -800,7 +798,6 @@ namespace NB.API.Controllers
                                             WarehouseId = warehouse.WarehouseId,
                                             ProductId = product.productId,
                                             Quantity = product.quantity,
-                                            AverageCost = product.unitPrice,
                                             LastUpdated = DateTime.UtcNow
                                         };
                                         inventoryCache[inventoryKey] = newInventory;
@@ -808,9 +805,7 @@ namespace NB.API.Controllers
                                     else
                                     {
                                         // Update với weighted average cost
-                                        decimal? totalCost = (existInventory.Quantity * existInventory.AverageCost) + (product.quantity * product.unitPrice);
                                         decimal? totalQuantity = existInventory.Quantity + product.quantity;
-                                        existInventory.AverageCost = totalCost / totalQuantity;
                                         existInventory.Quantity = totalQuantity;
                                         existInventory.LastUpdated = DateTime.UtcNow;
                                         inventoryCache[inventoryKey] = existInventory;
@@ -820,9 +815,7 @@ namespace NB.API.Controllers
                                 {
                                     // Cộng dồn trong cache với weighted average
                                     var cachedInventory = inventoryCache[inventoryKey];
-                                    decimal? totalCost = (cachedInventory.Quantity * cachedInventory.AverageCost) + (product.quantity * product.unitPrice);
                                     decimal? totalQuantity = cachedInventory.Quantity + product.quantity;
-                                    cachedInventory.AverageCost = totalCost / totalQuantity;
                                     cachedInventory.Quantity = totalQuantity;
                                     cachedInventory.LastUpdated = DateTime.UtcNow;
                                 }
