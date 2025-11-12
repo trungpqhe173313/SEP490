@@ -18,6 +18,10 @@ namespace NB.Service.TransactionService.ViewModels
         
         public int? Status { get; set; }
         public string WarehouseName { get; set; }
+
+        public string? Note { get; set; }
+
+        public decimal? TotalCost { get; set; }
         public SupplierOutputVM Supplier { get; set; }
         public List<TransactionDetailOutputVM?> list { get; set; }
     }

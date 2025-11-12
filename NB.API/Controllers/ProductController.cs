@@ -112,7 +112,7 @@ namespace NB.API.Controllers
                     var inventory = listInventory.FirstOrDefault(i => i.ProductId == p.ProductId);
                     if (inventory is not null)
                     {
-                        p.AverageCost = inventory.AverageCost;
+                        p.AverageCost = p.AverageCost;
                         p.Quantity = inventory.Quantity;
                     }
                 }

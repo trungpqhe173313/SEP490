@@ -6,14 +6,12 @@ namespace NB.Model.Entities;
 public partial class Inventory
 {
     public int InventoryId { get; set; }
-    
+
     public int WarehouseId { get; set; }
 
     public int ProductId { get; set; }
 
     public decimal? Quantity { get; set; }
-
-    public decimal? AverageCost { get; set; }
 
     public DateTime? LastUpdated { get; set; }
 

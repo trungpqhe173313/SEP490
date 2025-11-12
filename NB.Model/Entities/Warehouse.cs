@@ -15,11 +15,11 @@ public partial class Warehouse
 
     public int? Status { get; set; }
 
-    public bool? IsActive { get; set; }
-
     public string? Note { get; set; }
 
     public DateTime? CreatedAt { get; set; }
+
+    public bool? IsActive { get; set; }
 
     public virtual ICollection<Finishproduct> Finishproducts { get; set; } = new List<Finishproduct>();
 

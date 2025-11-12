@@ -21,5 +21,7 @@ namespace NB.Service.TransactionService.ViewModels
         public DateTime? TransactionDate { get; set; }
 
         public string? Note { get; set; }
+
+        public decimal? TotalCost { get; set; }
     }
 }

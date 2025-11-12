@@ -31,8 +31,6 @@ public partial class User
 
     public virtual ICollection<Contract> Contracts { get; set; } = new List<Contract>();
 
-    public virtual ICollection<CustomerPrice> CustomerPrices { get; set; } = new List<CustomerPrice>();
-
     public virtual ICollection<Payroll> Payrolls { get; set; } = new List<Payroll>();
 
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();

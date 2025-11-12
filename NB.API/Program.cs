@@ -52,7 +52,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 
-builder.Services.AddDbContext<NutriBarnContext>(options =>
+builder.Services.AddDbContext<NutriBarn2025Context>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     if (string.IsNullOrEmpty(connectionString))
@@ -71,6 +71,7 @@ builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
 
 //add DI
 builder.Services.AddScoped<IMapper, Mapper>();
+builder.Services.AddScoped<NB.API.Utils.ICloudinaryService, NB.API.Utils.CloudinaryService>();
 
 builder.Services.AddAutoMapper(cfg => cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
 
