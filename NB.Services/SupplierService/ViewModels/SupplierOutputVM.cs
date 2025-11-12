@@ -8,7 +8,7 @@ namespace NB.Service.SupplierService.ViewModels
 {
     public class SupplierOutputVM
     {
-        public int SupplierId { get; set; }
+        public int? SupplierId { get; set; }
 
         public string? SupplierName { get; set; }
 

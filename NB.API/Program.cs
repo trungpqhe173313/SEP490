@@ -54,10 +54,12 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddDbContext<NutriBarnContext>(options =>
 {
-
-    options.UseSqlServer("Server=localhost;Database=NutriBarn;User Id=sa;Password=123456;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true")
-           .EnableSensitiveDataLogging()  // Hiển thị giá trị parameters
-           .LogTo(Console.WriteLine, LogLevel.Information); // Log ra console
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        throw new InvalidOperationException("Connection string 'DefaultConnection' not found in appsettings.json");
+    }
+    options.UseSqlServer(connectionString);
 });
 
 builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
@@ -69,7 +71,6 @@ builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
 
 //add DI
 builder.Services.AddScoped<IMapper, Mapper>();
-
 
 builder.Services.AddAutoMapper(cfg => cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
 

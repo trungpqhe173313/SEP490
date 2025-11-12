@@ -17,7 +17,6 @@ namespace NB.API.Modules
             builder.RegisterGeneric(typeof(Service<>))
                .As(typeof(IService<>))
                .InstancePerLifetimeScope();
-
         }
     }
 }
