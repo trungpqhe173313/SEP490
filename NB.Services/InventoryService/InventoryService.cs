@@ -182,5 +182,14 @@ namespace NB.Service.InventoryService
                         };
             return await query.AsNoTracking().FirstOrDefaultAsync();
         }
+
+        public async Task<Inventory?> GetEntityByProductIdAsync(int productId)
+        {
+            // Lấy entity không tracking để tránh conflict khi update
+            var query = from i in GetQueryable()
+                        where i.ProductId == productId
+                        select i;
+            return await query.AsNoTracking().FirstOrDefaultAsync();
+        }
     }
 }
