@@ -31,5 +31,7 @@ namespace NB.Service.InventoryService
         Task<List<InventoryDto>> GetByWarehouseId(int warehouseId);
 
         Task<List<ProductInWarehouseDto>> GetFromList(List<InventoryDto> list);
+
+        Task<Inventory?> GetEntityByProductIdAsync(int productId);
     }
 }
