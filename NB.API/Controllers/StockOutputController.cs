@@ -346,7 +346,8 @@ namespace NB.API.Controllers
                 {
                     CustomerId = userId,
                     WarehouseId = listStockBatch.First().WarehouseId, // hoặc lấy theo input từ FE
-                    Note = or.Note
+                    Note = or.Note,
+                    TotalCost = or.TotalCost
                 };
                 var transactionEntity = _mapper.Map<TransactionCreateVM, Transaction>(tranCreate);
 
@@ -888,6 +889,10 @@ namespace NB.API.Controllers
                 if (!string.IsNullOrEmpty(or.Note))
                 {
                     transaction.Note = or.Note;
+                }
+                if (or.TotalCost.HasValue)
+                {
+                    transaction.TotalCost = or.TotalCost;
                 }
                 await _transactionService.UpdateAsync(transaction);
 

@@ -9,6 +9,7 @@ using NB.Service.UserService;
 using NB.Service.UserService.Dto;
 using NB.Service.UserService.ViewModels;
 using NB.Service.UserRoleService.ViewModels;
+using NB.API.Utils;
 
 namespace NB.API.Controllers
 {
@@ -19,6 +20,7 @@ namespace NB.API.Controllers
         private readonly IUserRoleService _userRoleService;
         private readonly IRoleService _roleService;
         private readonly ILogger<EmployeeController> _logger;
+        private readonly ICloudinaryService _cloudinaryService;
         private readonly IMapper _mapper;
         private readonly string roleName = "Employee";
         public EmployeeController(
@@ -26,13 +28,15 @@ namespace NB.API.Controllers
             IUserRoleService userRoleService,
             IRoleService roleService,
             IMapper mapper,
-            ILogger<EmployeeController> logger)
+            ILogger<EmployeeController> logger,
+            ICloudinaryService cloudinaryService)
         {
             _userService = userService;
             _userRoleService = userRoleService;
             _roleService = roleService;
             _mapper = mapper;
             _logger = logger;
+            _cloudinaryService = cloudinaryService;
         }
 
         [HttpPost("GetData")]
@@ -105,15 +109,31 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("CreateEmployee")]
-        public async Task<IActionResult> CreateEmployee([FromBody] UserCreateVM model)
+        public async Task<IActionResult> CreateEmployee([FromForm] UserCreateVM model)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<User>.Fail("Dữ liệu không hợp lệ"));
             }
 
+            //nếu ảnh không null thì kiểm tra định dạng
+            if (model.Image != null)
+            {
+                var imageExtension = Path.GetExtension(model.Image.FileName).ToLowerInvariant();
+                var allowedImageExtensions = new[] { ".png", ".jpg", ".jpeg" };
+
+                if (!allowedImageExtensions.Contains(imageExtension))
+                {
+                    return BadRequest(ApiResponse<object>.Fail(
+                        $"File ảnh phải có định dạng PNG, JPG hoặc JPEG. File hiện tại: {imageExtension}",
+                        400));
+                }
+            }
+
+            string? uploadedImageUrl = null;
             try
             {
+                // Validate email và username TRƯỚC khi upload ảnh
                 // Kiểm tra email da ton tai chua
                 if (!string.IsNullOrEmpty(model.Email))
                 {
@@ -125,16 +145,27 @@ namespace NB.API.Controllers
                 }
                 
                 // Kiểm tra username đã tồn tại chưa
-                    var existingUsername = await _userService.GetByUsername(model.Username);
-                    if (existingUsername != null)
+                var existingUsername = await _userService.GetByUsername(model.Username);
+                if (existingUsername != null)
+                {
+                    return BadRequest(ApiResponse<User>.Fail("Username đã tồn tại"));
+                }
+
+                // Chỉ upload ảnh sau khi đã pass tất cả validation
+                if (model.Image != null)
+                {
+                    uploadedImageUrl = await _cloudinaryService.UploadImageAsync(model.Image);
+                    if (uploadedImageUrl == null)
                     {
-                        return BadRequest(ApiResponse<User>.Fail("Username đã tồn tại"));
+                        return BadRequest(ApiResponse<object>.Fail("Không thể upload ảnh", 400));
                     }
+                }
 
                 var entity = _mapper.Map<UserCreateVM, User>(model);
                 entity.Password = "123"; // Mật khẩu mặc định
                 entity.IsActive = true;
                 entity.CreatedAt = DateTime.Now;
+                entity.Image = uploadedImageUrl;
                 await _userService.CreateAsync(entity);
 
                 // Gán role cho nhân viên
@@ -157,24 +188,59 @@ namespace NB.API.Controllers
                     Image = entity.Image,
                     Username = entity.Username,
                     Password = entity.Password,
+                    Phone = entity.Phone,
                     IsActive = entity.IsActive,
                     CreatedAt = entity.CreatedAt
                 }));
             }
             catch (Exception ex)
             {
+                // Nếu có lỗi sau khi upload ảnh, xóa ảnh đã upload để tránh lãng phí storage
+                if (uploadedImageUrl != null)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _cloudinaryService.DeleteFileAsync(uploadedImageUrl);
+                            _logger.LogInformation($"Đã xóa ảnh không sử dụng: {uploadedImageUrl}");
+                        }
+                        catch (Exception deleteEx)
+                        {
+                            _logger.LogWarning(deleteEx, $"Không thể xóa ảnh đã upload: {uploadedImageUrl}");
+                        }
+                    });
+                }
+
                 _logger.LogError(ex, "Lỗi khi tạo nhân viên");
                 return BadRequest(ApiResponse<User>.Fail("Có lỗi xảy ra khi tạo nhân viên"));
             }
         }
 
         [HttpPut("UpdateEmployee/{id}")]
-        public async Task<IActionResult> UpdateEmployee(int id,[FromBody] UserEditVM model)
+        public async Task<IActionResult> UpdateEmployee(int id, [FromForm] UserEditVM model)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<User>.Fail("Dữ liệu không hợp lệ"));
             }
+
+            //nếu ảnh không null thì kiểm tra định dạng
+            if (model.Image != null)
+            {
+                var imageExtension = Path.GetExtension(model.Image.FileName).ToLowerInvariant();
+                var allowedImageExtensions = new[] { ".png", ".jpg", ".jpeg" };
+
+                if (!allowedImageExtensions.Contains(imageExtension))
+                {
+                    return BadRequest(ApiResponse<object>.Fail(
+                        $"File ảnh phải có định dạng PNG, JPG hoặc JPEG. File hiện tại: {imageExtension}",
+                        400));
+                }
+            }
+
+            string? uploadedImageUrl = null;
+            string? oldImageUrl = null;
             try
             {
                 var entity = await _userService.GetByIdAsync(id);
@@ -183,6 +249,10 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<User>.Fail("Không tìm thấy nhân viên"));
                 }
 
+                // Lưu URL ảnh cũ để xóa nếu cần
+                oldImageUrl = entity.Image;
+
+                // Validate tất cả TRƯỚC khi upload ảnh
                 // Kiểm tra nếu username thay đổi thì username đã tồn tại chưa
                 if (!string.IsNullOrEmpty(model.Username)
                     && entity.Username != model.Username)
@@ -208,12 +278,88 @@ namespace NB.API.Controllers
                     }
                 }
 
-                _mapper.Map(model, entity);
+                // Chỉ upload ảnh sau khi đã pass tất cả validation
+                if (model.Image != null)
+                {
+                    uploadedImageUrl = await _cloudinaryService.UploadImageAsync(model.Image);
+                    if (uploadedImageUrl == null)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail("Không thể upload ảnh", 400));
+                    }
+                }
+
+                // Map các thông tin khác từ model vào entity
+                if (!string.IsNullOrEmpty(model.Username))
+                {
+                    entity.Username = model.Username;
+                }
+                if (!string.IsNullOrEmpty(model.Email))
+                {
+                    entity.Email = model.Email;
+                }
+                if (!string.IsNullOrEmpty(model.Password))
+                {
+                    entity.Password = model.Password;
+                }
+                if (!string.IsNullOrEmpty(model.FullName))
+                {
+                    entity.FullName = model.FullName;
+                }
+                if (!string.IsNullOrEmpty(model.Phone))
+                {
+                    entity.Phone = model.Phone;
+                }
+                if (model.IsActive.HasValue)
+                {
+                    entity.IsActive = model.IsActive.Value;
+                }
+
+                // Cập nhật ảnh nếu có ảnh mới
+                if (uploadedImageUrl != null)
+                {
+                    entity.Image = uploadedImageUrl;
+                }
+
                 await _userService.UpdateAsync(entity);
+
+                // Xóa ảnh cũ nếu có ảnh mới
+                if (uploadedImageUrl != null && !string.IsNullOrEmpty(oldImageUrl))
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _cloudinaryService.DeleteFileAsync(oldImageUrl);
+                            _logger.LogInformation($"Đã xóa ảnh cũ: {oldImageUrl}");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, $"Không thể xóa ảnh cũ: {oldImageUrl}");
+                        }
+                    });
+                }
+
                 return Ok(ApiResponse<User>.Ok(entity));
             }
             catch (Exception ex)
             {
+                // Nếu có lỗi sau khi upload ảnh mới, xóa ảnh đã upload để tránh lãng phí storage
+                if (uploadedImageUrl != null)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _cloudinaryService.DeleteFileAsync(uploadedImageUrl);
+                            _logger.LogInformation($"Đã xóa ảnh không sử dụng: {uploadedImageUrl}");
+                        }
+                        catch (Exception deleteEx)
+                        {
+                            _logger.LogWarning(deleteEx, $"Không thể xóa ảnh đã upload: {uploadedImageUrl}");
+                        }
+                    });
+                }
+
                 _logger.LogError(ex, "Lỗi khi cập nhật nhân viên");
                 return BadRequest(ApiResponse<User>.Fail("Có lỗi xảy ra khi cập nhật nhân viên"));
             }
