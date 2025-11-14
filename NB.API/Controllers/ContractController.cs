@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+﻿using NB.Service.Core.Mapper;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using NB.API.Utils;
@@ -272,15 +272,15 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpPut("UpdateContract/{ContractId}")]
-        public async Task<IActionResult> UpdateContract(int ContractId, [FromForm] UpdateContractVM request)
+        [HttpPut("UpdateContract/{contractId}")]
+        public async Task<IActionResult> UpdateContract(int contractId, [FromForm] UpdateContractVM request)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
 
-            if (ContractId <= 0)
+            if (contractId <= 0)
             {
                 return BadRequest(ApiResponse<object>.Fail("Mã hợp đồng không hợp lệ", 400));
             }
@@ -303,7 +303,7 @@ namespace NB.API.Controllers
 
             try
             {
-                var contract = await _contractService.GetByContractId(ContractId);
+                var contract = await _contractService.GetByContractId(contractId);
                 if (contract == null)
                 {
                     return NotFound(ApiResponse<object>.Fail("Hợp đồng không tồn tại", 404));
@@ -365,16 +365,16 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpDelete("DeleteContract/{ContractId}")]
-        public async Task<IActionResult> DeleteContract(int ContractId)
+        [HttpDelete("DeleteContract/{contractId}")]
+        public async Task<IActionResult> DeleteContract(int contractId)
         {
-            if (ContractId <= 0)
+            if (contractId <= 0)
             {
                 return BadRequest(ApiResponse<object>.Fail("Mã hợp đồng không hợp lệ", 400));
             }
             try
             {
-                var contract = await _contractService.GetByContractId(ContractId);
+                var contract = await _contractService.GetByContractId(contractId);
                 if (contract == null)
                 {
                     return NotFound(ApiResponse<object>.Fail("Hợp đồng không tồn tại", 404));
