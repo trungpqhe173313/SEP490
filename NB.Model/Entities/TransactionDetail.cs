@@ -15,8 +15,6 @@ public partial class TransactionDetail
 
     public decimal UnitPrice { get; set; }
 
-    public decimal? Subtotal { get; set; }
-
     public virtual Product Product { get; set; } = null!;
 
     public virtual Transaction Transaction { get; set; } = null!;
