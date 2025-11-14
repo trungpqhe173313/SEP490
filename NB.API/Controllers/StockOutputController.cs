@@ -145,6 +145,7 @@ namespace NB.API.Controllers
                         transaction.TransactionId = detail.TransactionId;
                         transaction.TransactionDate = detail.TransactionDate ?? DateTime.MinValue;
                         transaction.WarehouseName = (await _warehouseService.GetById(detail.WarehouseId))?.WarehouseName ?? "N/A";
+                        transaction.TotalCost = detail.TotalCost ?? 0;
                         int id = detail.SupplierId ?? 0;
                         var customer = await _userService.GetByIdAsync(detail.CustomerId);
                         if (customer != null)
@@ -204,10 +205,7 @@ namespace NB.API.Controllers
                     ProductName = item.ProductName ?? "N/A",
                     UnitPrice = item.UnitPrice,
                     WeightPerUnit = item.WeightPerUnit,
-                    Quantity = item.Quantity,
-                    SubTotal = item.Subtotal
-                    //,ExpireDate = batch.ExpireDate,
-                    //Note = batch.Note
+                    Quantity = item.Quantity
                 }).ToList<TransactionDetailOutputVM?>();
 
                 transaction.list = listResult ?? new List<TransactionDetailOutputVM?>();

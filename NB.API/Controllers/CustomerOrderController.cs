@@ -272,8 +272,7 @@ namespace NB.API.Controllers
                         ProductName = item.ProductName,
                         UnitPrice = item.UnitPrice,
                         WeightPerUnit = item.WeightPerUnit,
-                        Quantity = item.Quantity,
-                        SubTotal = item.Subtotal
+                        Quantity = item.Quantity
                     }).ToList();
                 }
 

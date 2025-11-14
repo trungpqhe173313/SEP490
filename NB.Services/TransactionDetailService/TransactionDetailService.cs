@@ -33,8 +33,7 @@ namespace NB.Service.TransactionDetailService
                             TransactionId = td.TransactionId,
                             ProductId = td.ProductId,
                             Quantity = td.Quantity,
-                            UnitPrice = td.UnitPrice,
-                            Subtotal = td.Subtotal
+                            UnitPrice = td.UnitPrice
                         };
             return await query.ToListAsync();
         }
@@ -54,8 +53,7 @@ namespace NB.Service.TransactionDetailService
                             ImageUrl = td.Product.ImageUrl,
                             WeightPerUnit = td.Product.WeightPerUnit,
                             Quantity = td.Quantity,
-                            UnitPrice = td.UnitPrice,
-                            Subtotal = td.Subtotal
+                            UnitPrice = td.UnitPrice
                         };
             
             query = query.OrderByDescending(td => td.Id);
