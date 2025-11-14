@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="PriceListDetailService\Dto\" />
     <Folder Include="RoleService\ViewModels\" />
   </ItemGroup>
 
