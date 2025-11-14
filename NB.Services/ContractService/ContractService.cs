@@ -40,7 +40,6 @@ namespace NB.Service.ContractService
                             SupplierId = c.SupplierId,
                             Supplier = c.Supplier,
                             Image = c.Image,
-                            Pdf = c.Pdf,
                             IsActive = c.IsActive,
                             CreatedAt = c.CreatedAt,
                             UpdatedAt = c.UpdatedAt
@@ -87,7 +86,6 @@ namespace NB.Service.ContractService
                             SupplierId = c.SupplierId,
                             Supplier = c.Supplier,
                             Image = c.Image,
-                            Pdf = c.Pdf,
                             IsActive = c.IsActive,
                             CreatedAt = c.CreatedAt,
                             UpdatedAt = c.UpdatedAt

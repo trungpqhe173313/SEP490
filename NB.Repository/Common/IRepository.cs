@@ -26,6 +26,7 @@ namespace NB.Repository.Common
         T Delete(T entity);
 
         void Update(T entity);
+        void UpdateNoTracking(T entity);
 
         Task SaveAsync();
 

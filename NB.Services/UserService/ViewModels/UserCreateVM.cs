@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -15,7 +16,9 @@ namespace NB.Service.UserService.ViewModels
         public string? Email { get; set; }
         [Required(ErrorMessage = "Tên người dùng là bắt buộc")]
         public string FullName { get; set; } = null!;
+        [Required(ErrorMessage = "Số điện thoại người dùng là bắt buộc")]
+        public string Phone { get; set; }
 
-        public string? Image { get; set; }
+        public IFormFile? Image { get; set; }
     }
 }

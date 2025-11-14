@@ -10,13 +10,11 @@ namespace NB.Service.ContractService.ViewModels
     {
         public int ContractId { get; set; }
 
-        public string CustomerName { get; set; }
+        public string? CustomerName { get; set; }
 
-        public string SupplierName { get; set; }
+        public string? SupplierName { get; set; }
 
         public string? Image { get; set; }
-
-        public string? Pdf { get; set; }
 
         public bool? IsActive { get; set; }
 

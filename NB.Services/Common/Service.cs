@@ -61,6 +61,13 @@ namespace NB.Service.Common
             await _repository.SaveAsync();
         }
 
+        //DucAh
+        public virtual async Task UpdateNoTracking(T entity)
+        {
+            _repository.UpdateNoTracking(entity);
+            await _repository.SaveAsync();
+        }
+
         public virtual async Task UpdateAsync(IEnumerable<T> entities)
         {
             foreach (var entity in entities)
@@ -78,7 +85,7 @@ namespace NB.Service.Common
 
         public IQueryable<T> GetQueryable()
         {
-            return _repository.GetQueryable();
+            return _repository.GetQueryable().AsNoTracking();
         }
         public async Task DeleteAsync(IEnumerable<T> entities)
         {

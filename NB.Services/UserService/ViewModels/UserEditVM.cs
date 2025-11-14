@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Http;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 
 namespace NB.Service.UserService.ViewModels
@@ -15,7 +16,8 @@ namespace NB.Service.UserService.ViewModels
         [AllowNull]
         public string? FullName { get; set; }
         [AllowNull]
-        public string? Image { get; set; }
+        public string? Phone { get; set; }
+        public IFormFile? Image { get; set; }
         [AllowNull]
         public bool? IsActive { get; set; }
     }

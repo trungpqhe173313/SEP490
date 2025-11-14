@@ -19,5 +19,7 @@ namespace NB.Service.TransactionService.ViewModels
         public decimal? ConversionRate { get; set; }
 
         public string? Note { get; set; }
+
+        public decimal? TotalCost { get; set; }
     }
 }
