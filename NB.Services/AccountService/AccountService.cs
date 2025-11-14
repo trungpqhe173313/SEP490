@@ -1,8 +1,11 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NB.Model.Entities;
+using NB.Repository.Common;
 using NB.Repository.RoleRepository;
 using NB.Repository.UserRolerRepository;
 using NB.Service.AccountService.Dto;
+using NB.Service.Common;
 using NB.Service.Core.EmailService;
 using NB.Service.Core.JwtService;
 using NB.Service.Dto;
@@ -17,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace NB.Service.AccountService
 {
-    public class AccountService : IAccountService
+    public class AccountService : Service<User>,IAccountService
     {
         private readonly IUserService _userService;
         private readonly IJwtService _jwtService;
@@ -25,12 +28,14 @@ namespace NB.Service.AccountService
         private readonly IRoleRepository _roleRepository;
         private readonly IEmailService _emailService;
         private readonly ILogger<AccountService> _logger;
-        public AccountService(IUserService userService, 
+        
+        public AccountService(IUserService userService,
+            IRepository<User> userRepository,
             IJwtService jwtService, 
             IUserRolerRepository userRolerRepository, 
             IRoleRepository roleRepository,
             IEmailService emailService,
-            ILogger<AccountService> logger)
+            ILogger<AccountService> logger) : base(userRepository)
         {
             _userService = userService;
             _jwtService = jwtService;
@@ -38,10 +43,6 @@ namespace NB.Service.AccountService
             _roleRepository = roleRepository;
             _emailService = emailService;
             _logger = logger;
-        }
-        public Task<UserInfo?> GetUserByIdAsync(string userId)
-        {
-            throw new NotImplementedException();
         }
 
         public async Task<ApiResponse<LoginResponse>> LoginAsync(string username, string password)
@@ -52,13 +53,13 @@ namespace NB.Service.AccountService
             var user = await _userService.GetByUsername(username);
             if (user == null)
                 return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 401);
-
+            if (user.IsActive != true) 
+               return ApiResponse<LoginResponse>.Fail("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.", 403); 
             var result = await _userService.CheckPasswordAsync(user, password);
             if (!result)
             {
                 return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 401);
             }
-
             return await GenToken(user);
         }
 
@@ -111,11 +112,6 @@ namespace NB.Service.AccountService
             });
         }
 
-        public Task<bool> ValidateUserAsync(string username, string password)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<ApiResponse<bool>> ChangePasswordAsync(int userId, string oldPassword, string newPassword)
         {
             if (string.IsNullOrEmpty(oldPassword))
@@ -124,7 +120,7 @@ namespace NB.Service.AccountService
             if (string.IsNullOrEmpty(newPassword))
                 return ApiResponse<bool>.Fail("Mật khẩu mới không được để trống", 400);
 
-            var user = await _userService.GetByUserId(userId);
+            var user = await GetQueryable().FirstOrDefaultAsync(x => x.UserId == userId);
             if (user == null)
                 return ApiResponse<bool>.Fail("Không tìm thấy người dùng", 404);
             var isOldPasswordCorrect = await _userService.CheckPasswordAsync(user, oldPassword);
@@ -293,6 +289,7 @@ namespace NB.Service.AccountService
             {
                 Id = user.UserId,
                 Username = user.Username,
+                FullName = user.FullName,
                 Email = user.Email,
             };
 
@@ -326,5 +323,69 @@ namespace NB.Service.AccountService
                 UserInfo = userDto
             });
         }
+
+        public async Task<ApiResponse<bool>> LogoutAsync(int userId)
+        {
+            var user = await GetQueryable().FirstOrDefaultAsync(u => u.UserId == userId); ;
+            if (user == null)
+                return ApiResponse<bool>.Fail("Không tìm thấy người dùng", 404);
+
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryDate = null;
+            await _userService.UpdateAsync(user);
+
+            return ApiResponse<bool>.Ok(true);
+        }
+        public async Task<ApiResponse<UserInfo>> GetProfileAsync(int userId)
+        {
+            var user = await GetQueryable()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.UserId == userId);
+
+            if (user == null)
+                return ApiResponse<UserInfo>.Fail("Không tìm thấy người dùng", 404);
+
+            var roles = _userRoleRepository.GetQueryable()
+                .Where(x => x.UserId == userId)
+                .Join(_roleRepository.GetQueryable(),
+                    ur => ur.RoleId,
+                    r => r.RoleId,
+                    (ur, r) => r.RoleName)
+                .Distinct()
+                .ToList();
+
+            var userDto = new UserInfo
+            {
+                Id = user.UserId,
+                Username = user.Username,
+                Email = user.Email,
+                FullName = user.FullName,
+                Phone = user.Phone,
+                Image = user.Image,
+                Roles = roles
+            };
+
+            return ApiResponse<UserInfo>.Ok(userDto);
+        }
+
+        public async Task<ApiResponse<bool>> UpdateProfileAsync(int userId, UpdateProfileDto request)
+        {
+            if (request == null)
+                return ApiResponse<bool>.Fail("Dữ liệu không hợp lệ", 400);
+
+            var user = await GetQueryable().FirstOrDefaultAsync(u => u.UserId == userId);
+            if (user == null)
+                return ApiResponse<bool>.Fail("Không tìm thấy người dùng", 404);
+
+            user.FullName = request.FullName ?? user.FullName;
+            user.Email = request.Email ?? user.Email;
+            user.Phone = request.Phone ?? user.Phone;
+            user.Image = request.Image ?? user.Image;
+
+            await _userService.UpdateAsync(user);
+
+            return ApiResponse<bool>.Ok(true);
+        }
+
     }
 }

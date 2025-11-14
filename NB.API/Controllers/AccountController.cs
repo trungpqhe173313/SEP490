@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using NB.Service.AccountService;
 using NB.Service.AccountService.Dto;
 using NB.Service.Dto;
+using NB.Service.UserService.Dto;
 using System.Security.Claims;
 
 namespace NB.API.Controllers
@@ -22,6 +23,18 @@ namespace NB.API.Controllers
         public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
             var result = await _accountService.LoginAsync(request.Username, request.Password);
+            return StatusCode(result.StatusCode, result);
+        }
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("Không thể xác định người dùng");
+
+            var userId = int.Parse(userIdClaim);
+            var result = await _accountService.LogoutAsync(userId);
             return StatusCode(result.StatusCode, result);
         }
         [HttpPost("refresh")]
@@ -127,6 +140,37 @@ namespace NB.API.Controllers
             {
                 return StatusCode(500, ApiResponse<bool>.Fail("Lỗi hệ thống", 500));
             }
+        }
+        [Authorize]
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetProfile()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized(ApiResponse<UserDto>.Fail("Không thể xác định người dùng", 401));
+
+            var userId = int.Parse(userIdClaim);
+            var result = await _accountService.GetProfileAsync(userId);
+
+            return StatusCode(result.StatusCode, result);
+        }
+
+
+        [Authorize]
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ApiResponse<bool>.Fail("Dữ liệu không hợp lệ", 400));
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized(ApiResponse<bool>.Fail("Không thể xác định người dùng", 401));
+
+            var userId = int.Parse(userIdClaim);
+            var result = await _accountService.UpdateProfileAsync(userId, request);
+
+            return StatusCode(result.StatusCode, result);
         }
     }
 }

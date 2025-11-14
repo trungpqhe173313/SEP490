@@ -8,7 +8,7 @@ namespace NB.Service.AccountService.Dto
 {
     public class VerifyOtpResponse
     {
-        public string ResetToken { get; set; } = string.Empty; // Token để reset password sau khi verify OTP thành công
+        public string ResetToken { get; set; } = string.Empty; 
         public DateTime ExpiresAt { get; set; }
         public string Message { get; set; } = string.Empty;
     }
