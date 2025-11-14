@@ -29,7 +29,8 @@ namespace NB.Service.TransactionService
                             Type = t.Type,
                             Status = t.Status,
                             TransactionDate = t.TransactionDate,
-                            Note = t.Note
+                            Note = t.Note,
+                            TotalCost = t.TotalCost
                         };
             return await query.ToListAsync();
         }
@@ -49,7 +50,8 @@ namespace NB.Service.TransactionService
                             Type = t.Type,
                             Status = t.Status,
                             TransactionDate = t.TransactionDate,
-                            Note = t.Note
+                            Note = t.Note,
+                            TotalCost = t.TotalCost
                         };
             if (search != null)
             {
@@ -104,7 +106,8 @@ namespace NB.Service.TransactionService
                             Type = t.Type,
                             Status = t.Status,
                             TransactionDate = t.TransactionDate,
-                            Note = t.Note
+                            Note = t.Note,
+                            TotalCost = t.TotalCost
                         };
 
             return await query.FirstOrDefaultAsync();
@@ -126,7 +129,8 @@ namespace NB.Service.TransactionService
                             Type = t.Type,
                             Status = t.Status,
                             TransactionDate = t.TransactionDate,
-                            Note = t.Note
+                            Note = t.Note,
+                            TotalCost = t.TotalCost
                         };
             if (search != null)
             {
@@ -199,7 +203,8 @@ namespace NB.Service.TransactionService
                             Type = t.Type,
                             Status = t.Status,
                             TransactionDate = t.TransactionDate,
-                            Note = t.Note
+                            Note = t.Note,
+                            TotalCost = t.TotalCost
                         };
             if(search != null)
             {

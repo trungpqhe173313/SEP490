@@ -11,6 +11,8 @@ namespace NB.Service.Common
         Task CreateAsync(T entity);
         Task CreateAsync(IEnumerable<T> entities);
         Task UpdateAsync(T entity);
+        //Duc Ah
+        Task UpdateNoTracking(T entity);
         Task UpdateAsync(IEnumerable<T> entities);
         Task DeleteAsync(T entity);
         IQueryable<T> GetQueryable();

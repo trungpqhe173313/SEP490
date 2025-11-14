@@ -92,7 +92,7 @@ namespace NB.API.Controllers
         /// Hàm để lấy ra danh sách các sản phẩm có sẵn cho chức năng tạo đơn khách hàng
         /// </summary>
         /// <param name="search">thêm isAvailable</param>
-        /// <returns>Sanh sách sản phẩm có sẵn</returns>
+        /// <returns>Danh sách sản phẩm có sẵn</returns>
         [HttpPost("GetProductAvailable")]
         public async Task<IActionResult> GetProductAvailable([FromBody] ProductSearch search)
         {
@@ -112,7 +112,7 @@ namespace NB.API.Controllers
                     var inventory = listInventory.FirstOrDefault(i => i.ProductId == p.ProductId);
                     if (inventory is not null)
                     {
-                        p.AverageCost = inventory.AverageCost;
+                        p.AverageCost = p.SellingPrice;
                         p.Quantity = inventory.Quantity;
                     }
                 }

@@ -160,7 +160,6 @@ namespace NB.Service.InventoryService
                             InventoryId = i.InventoryId,
                             ProductId = i.ProductId,
                             WarehouseId = i.WarehouseId,
-                            AverageCost = i.AverageCost,
                             Quantity = i.Quantity,
                             LastUpdated = i.LastUpdated
                         };
@@ -179,9 +178,17 @@ namespace NB.Service.InventoryService
                             ProductId = i.ProductId,
                             Quantity = i.Quantity,
                             LastUpdated = i.LastUpdated,
-                            AverageCost = i.AverageCost,
                             Product = i.Product
                         };
+            return await query.AsNoTracking().FirstOrDefaultAsync();
+        }
+
+        public async Task<Inventory?> GetEntityByProductIdAsync(int productId)
+        {
+            // Lấy entity không tracking để tránh conflict khi update
+            var query = from i in GetQueryable()
+                        where i.ProductId == productId
+                        select i;
             return await query.AsNoTracking().FirstOrDefaultAsync();
         }
     }

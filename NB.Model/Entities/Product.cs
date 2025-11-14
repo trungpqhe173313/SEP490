@@ -19,6 +19,8 @@ public partial class Product
 
     public decimal? WeightPerUnit { get; set; }
 
+    public decimal? SellingPrice { get; set; }
+
     public string? Description { get; set; }
 
     public bool? IsAvailable { get; set; }
@@ -29,13 +31,13 @@ public partial class Product
 
     public virtual Category Category { get; set; } = null!;
 
-    public virtual ICollection<CustomerPrice> CustomerPrices { get; set; } = new List<CustomerPrice>();
-
     public virtual ICollection<Finishproduct> Finishproducts { get; set; } = new List<Finishproduct>();
 
     public virtual ICollection<Inventory> Inventories { get; set; } = new List<Inventory>();
 
     public virtual ICollection<Material> Materials { get; set; } = new List<Material>();
+
+    public virtual ICollection<PriceListDetail> PriceListDetails { get; set; } = new List<PriceListDetail>();
 
     public virtual ICollection<StockAdjustment> StockAdjustments { get; set; } = new List<StockAdjustment>();
 

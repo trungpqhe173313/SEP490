@@ -85,11 +85,16 @@ namespace NB.API.Controllers
                 };
                 //Danh sách các transaction
                 var result = await _transactionService.GetByListStatus(search, listStatus);
-                var listWarehouseId = result.Items.Select(t => t.WarehouseId).ToList();
+                if (result?.Items == null || !result.Items.Any())
+                {
+                    return Ok(ApiResponse<PagedList<TransactionDto>>.Ok(result ?? new PagedList<TransactionDto>(new List<TransactionDto>(), 1, 10, 0)));
+                }
+                var listWarehouseId = result.Items.Select(t => t.WarehouseId).Distinct().ToList();
                 var listWareHouse = await _warehouseService.GetByListWarehouseId(listWarehouseId);
                 if (listWareHouse == null || !listWareHouse.Any())
                 {
-                    return NotFound(ApiResponse<PagedList<WarehouseDto>>.Fail("Không tìm thấy kho"));
+                    // Không tìm thấy kho nhưng vẫn trả về kết quả với warehouse name là null/empty
+                    _logger.LogWarning($"Không tìm thấy warehouse cho các ID: {string.Join(", ", listWarehouseId)}");
                 }
                 foreach (var t in result.Items)
                 {
@@ -99,10 +104,13 @@ namespace NB.API.Controllers
                     }
 
                     //lay tên kho
-                    var warehouse = listWareHouse.FirstOrDefault(w => w.WarehouseId == t.WarehouseId);
-                    if (warehouse != null)
+                    if (listWareHouse != null && listWareHouse.Any())
                     {
-                        t.WarehouseName = warehouse.WarehouseName;
+                        var warehouse = listWareHouse.FirstOrDefault(w => w.WarehouseId == t.WarehouseId);
+                        if (warehouse != null)
+                        {
+                            t.WarehouseName = warehouse.WarehouseName;
+                        }
                     }
                     //gắn statusName cho transaction
                     TransactionStatus statusName = (TransactionStatus)t.Status;
@@ -138,7 +146,7 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<PagedList<UserDto>>.Fail("Không tìm thấy người dùng"));
                 }
-                //tạo danh sách các trạng thái của view order list bao gồm: đơn nháp, lên đơn, đang giao
+                //tạo danh sách các trạng thái của view order history bao gồm: hoàn thành, hủy
                 List<int> listStatus = new List<int>
                 {
                     (int)TransactionStatus.done,
@@ -146,11 +154,16 @@ namespace NB.API.Controllers
                 };
                 //Danh sách các transaction
                 var result = await _transactionService.GetByListStatus(search, listStatus);
-                var listWarehouseId = result.Items.Select(t => t.WarehouseId).ToList();
+                if (result?.Items == null || !result.Items.Any())
+                {
+                    return Ok(ApiResponse<PagedList<TransactionDto>>.Ok(result ?? new PagedList<TransactionDto>(new List<TransactionDto>(), 1, 10, 0)));
+                }
+                var listWarehouseId = result.Items.Select(t => t.WarehouseId).Distinct().ToList();
                 var listWareHouse = await _warehouseService.GetByListWarehouseId(listWarehouseId);
                 if (listWareHouse == null || !listWareHouse.Any())
                 {
-                    return NotFound(ApiResponse<PagedList<WarehouseDto>>.Fail("Không tìm thấy kho"));
+                    // Không tìm thấy kho nhưng vẫn trả về kết quả với warehouse name là null/empty
+                    _logger.LogWarning($"Không tìm thấy warehouse cho các ID: {string.Join(", ", listWarehouseId)}");
                 }
                 foreach (var t in result.Items)
                 {
@@ -160,10 +173,13 @@ namespace NB.API.Controllers
                     }
 
                     //lay tên kho
-                    var warehouse = listWareHouse.FirstOrDefault(w => w.WarehouseId == t.WarehouseId);
-                    if (warehouse != null)
+                    if (listWareHouse != null && listWareHouse.Any())
                     {
-                        t.WarehouseName = warehouse.WarehouseName;
+                        var warehouse = listWareHouse.FirstOrDefault(w => w.WarehouseId == t.WarehouseId);
+                        if (warehouse != null)
+                        {
+                            t.WarehouseName = warehouse.WarehouseName;
+                        }
                     }
                     //gắn statusName cho transaction
                     TransactionStatus statusName = (TransactionStatus)t.Status;
@@ -192,82 +208,74 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
             }
 
+            // Kiểm tra Id hợp lệ trước
+            if (Id <= 0)
+            {
+                return BadRequest(ApiResponse<FullTransactionExportVM>.Fail("Id không hợp lệ", 400));
+            }
+
             try
             {
                 var transaction = new FullTransactionExportVM();
-                if (Id > 0)
+                var detail = await _transactionService.GetByTransactionId(Id);
+                if (detail == null)
                 {
-                    var detail = await _transactionService.GetByTransactionId(Id);
-                    if (detail != null)
-                    {
-                        transaction.Status = detail.Status;
-                        transaction.TransactionId = detail.TransactionId;
-                        transaction.TransactionDate = detail.TransactionDate ?? DateTime.MinValue;
-                        transaction.WarehouseName = (await _warehouseService.GetById(detail.WarehouseId))?.WarehouseName ?? "N/A";
-                        int id = detail.SupplierId ?? 0;
-                        var customer = await _userService.GetByIdAsync(detail.CustomerId);
-                        if (customer != null)
-                        {
-
-                            var customerResult = new CustomerOutputVM
-                            {
-                                UserId = customer.UserId,
-                                FullName = customer.FullName,
-                                Phone = customer.Phone,
-                                Email = customer.Email,
-                                Image = customer.Image
-                            };
-                            transaction.Customer = customerResult;
-                        }
-                        else
-                        {
-                            var customerResult = new CustomerOutputVM
-                            {
-                                UserId = null,
-                                FullName = "N/A",
-                                Phone = "N/A",
-                                Email = "N/A",
-                                Image = "N/A"
-                            };
-                            transaction.Customer = customerResult;
-                        }
-                    }
-                    else
-                    {
-                        return NotFound(ApiResponse<FullTransactionVM>.Fail("Không tìm thấy đơn hàng.", 404));
-                    }
+                    return NotFound(ApiResponse<FullTransactionExportVM>.Fail("Không tìm thấy đơn hàng.", 404));
                 }
-                else if (Id <= 0)
+
+                transaction.Status = detail.Status;
+                transaction.TransactionId = detail.TransactionId;
+                transaction.TransactionDate = detail.TransactionDate ?? DateTime.MinValue;
+                transaction.WarehouseName = (await _warehouseService.GetById(detail.WarehouseId))?.WarehouseName ?? "N/A";
+                
+                var customer = await _userService.GetByIdAsync(detail.CustomerId);
+                if (customer != null)
                 {
-                    return BadRequest(ApiResponse<FullTransactionVM>.Fail("Id không hợp lệ", 400));
+                    var customerResult = new CustomerOutputVM
+                    {
+                        UserId = customer.UserId,
+                        FullName = customer.FullName,
+                        Phone = customer.Phone,
+                        Email = customer.Email,
+                        Image = customer.Image
+                    };
+                    transaction.Customer = customerResult;
+                }
+                else
+                {
+                    var customerResult = new CustomerOutputVM
+                    {
+                        UserId = null,
+                        FullName = "N/A",
+                        Phone = "N/A",
+                        Email = "N/A",
+                        Image = "N/A"
+                    };
+                    transaction.Customer = customerResult;
                 }
 
                 var productDetails = await _transactionDetailService.GetByTransactionId(Id);
-                if (productDetails == null || !productDetails.Any())
+                // Đơn hàng có thể không có sản phẩm (đơn hàng trống), vẫn hợp lệ
+                var listResult = new List<TransactionDetailOutputVM>();
+                if (productDetails != null && productDetails.Any())
                 {
-                    return NotFound(ApiResponse<FullTransactionVM>.Fail("Không có thông tin cho giao dịch này.", 400));
-                }
-                foreach (var item in productDetails)
-                {
-                    var product = await _productService.GetById(item.ProductId);
-                    item.ProductName = product != null ? product.ProductName : "N/A";
+                    foreach (var item in productDetails)
+                    {
+                        var product = await _productService.GetById(item.ProductId);
+                        item.ProductName = product != null ? product.ProductName : "N/A";
+                    }
 
+                    listResult = productDetails.Select(item => new TransactionDetailOutputVM
+                    {
+                        TransactionDetailId = item.Id,
+                        ProductId = item.ProductId,
+                        ProductName = item.ProductName,
+                        UnitPrice = item.UnitPrice,
+                        WeightPerUnit = item.WeightPerUnit,
+                        Quantity = item.Quantity,
+                        SubTotal = item.Subtotal
+                    }).ToList();
                 }
-                //var batches = await _stockBatchService.GetByTransactionId(Id);
-                //var batch = batches.FirstOrDefault();
-
-                var listResult = productDetails.Select(item => new TransactionDetailOutputVM
-                {
-                    TransactionDetailId = item.Id,
-                    ProductId = item.ProductId,
-                    ProductName = item.ProductName,
-                    UnitPrice = item.UnitPrice,
-                    WeightPerUnit = item.WeightPerUnit,
-                    Quantity = item.Quantity,
-                    SubTotal = item.Subtotal
-                    //,ExpireDate = batch.ExpireDate,
-                    //Note = batch.Note
-                }).ToList();
 
                 transaction.list = listResult;
                 return Ok(ApiResponse<FullTransactionExportVM>.Ok(transaction));
@@ -275,7 +283,7 @@ namespace NB.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy dữ liệu đơn hàng");
-                return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+                return BadRequest(ApiResponse<FullTransactionExportVM>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
             }
         }
     }

@@ -38,6 +38,7 @@ namespace NB.Service.UserService
                             //Password = u.Password,
                             Email = u.Email,
                             Image = u.Image,
+                            Phone = u.Phone,
                             CreatedAt = u.CreatedAt,
                             IsActive = u.IsActive
                         };
@@ -76,6 +77,7 @@ namespace NB.Service.UserService
                             Password = u.Password,
                             Email = u.Email,
                             Image = u.Image,
+                            Phone = u.Phone,
                             CreatedAt = u.CreatedAt,
                             IsActive = u.IsActive,
                             RefreshToken = u.RefreshToken,
@@ -96,6 +98,7 @@ namespace NB.Service.UserService
                             Password = u.Password,
                             Email = u.Email,
                             Image = u.Image,
+                            Phone = u.Phone,
                             CreatedAt = u.CreatedAt,
                             IsActive = u.IsActive
                         };
@@ -133,6 +136,7 @@ namespace NB.Service.UserService
                             FullName = u.FullName,
                             Email = u.Email,
                             Image = u.Image,
+                            Phone = u.Phone,
                             CreatedAt = u.CreatedAt,
                             IsActive = u.IsActive
                         };
@@ -151,6 +155,7 @@ namespace NB.Service.UserService
                             FullName = u.FullName,
                             Email = u.Email,
                             Image = u.Image,
+                            Phone = u.Phone,
                             CreatedAt = u.CreatedAt,
                             IsActive = u.IsActive
                         };
@@ -183,6 +188,7 @@ namespace NB.Service.UserService
                             FullName = u.FullName,
                             Email = u.Email,
                             Image = u.Image,
+                            Phone = u.Phone,
                             CreatedAt = u.CreatedAt,
                             IsActive = u.IsActive,
                             RefreshToken = u.RefreshToken,

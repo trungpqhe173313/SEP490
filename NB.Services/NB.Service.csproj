@@ -10,6 +10,7 @@
     <PackageReference Include="EPPlus" Version="8.2.1" />
     <PackageReference Include="MailKit" Version="4.8.0" />
     <PackageReference Include="MimeKit" Version="4.8.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
 	  <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.1.2" />
 	  <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.1.2" />
@@ -22,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="PriceListDetailService\Dto\" />
     <Folder Include="RoleService\ViewModels\" />
   </ItemGroup>
 
