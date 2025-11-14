@@ -77,7 +77,9 @@ namespace NB.Service.UserService
                             Email = u.Email,
                             Image = u.Image,
                             CreatedAt = u.CreatedAt,
-                            IsActive = u.IsActive
+                            IsActive = u.IsActive,
+                            RefreshToken = u.RefreshToken,
+                            RefreshTokenExpiryDate = u.RefreshTokenExpiryDate
                         };
 
             return await query.FirstOrDefaultAsync();
@@ -156,13 +158,13 @@ namespace NB.Service.UserService
             return await query.FirstOrDefaultAsync();
         }
 
-        public async Task<bool> CheckPasswordAsync(UserDto user, string password)
+        public async Task<bool> CheckPasswordAsync(User user, string password)
         {
             if (user == null || string.IsNullOrEmpty(password))
                 return await Task.FromResult(false);
 
-            var entity = await _userRepository
-                .GetQueryable()
+            var entity = await 
+                GetQueryable()
                 .FirstOrDefaultAsync(x => x.UserId == user.UserId);
 
             if (entity == null) return await Task.FromResult(false);
