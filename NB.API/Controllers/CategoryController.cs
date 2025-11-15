@@ -2,6 +2,7 @@
 using NB.API.Utils;
 using NB.Service.CategoryService;
 using NB.Service.CategoryService.Dto;
+using NB.Service.CategoryService.ViewModels;
 using NB.Service.Common;
 using NB.Service.Dto;
 
