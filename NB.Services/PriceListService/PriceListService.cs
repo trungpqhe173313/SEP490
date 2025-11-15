@@ -3,7 +3,6 @@ using NB.Model.Entities;
 using NB.Repository.Common;
 using NB.Service.Common;
 using NB.Service.PriceListService.Dto;
-using NB.Service.PriceListService.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,16 +13,17 @@ namespace NB.Service.PriceListService
 {
     public class PriceListService : Service<PriceList>, IPriceListService
     {
-        private readonly IRepository<PriceList> _PriceListRepository;
+        private readonly IRepository<PriceList> _priceListRepository;
 
         public PriceListService(IRepository<PriceList> priceListRepository) : base(priceListRepository)
         {
-            _PriceListRepository = priceListRepository;
+            _priceListRepository = priceListRepository;
         }
 
-        public async Task<PriceListDto?> GetData(PriceListSearch search)
+        public async Task<PriceListDto?> GetByPriceListId(int? priceListId)
         {
             var query = from pl in GetQueryable()
+                        where pl.PriceListId == priceListId
                         select new PriceListDto{
                             PriceListId = pl.PriceListId,
                             PriceListName = pl.PriceListName,
@@ -32,36 +32,6 @@ namespace NB.Service.PriceListService
                             EndDate = pl.EndDate,
                             CreatedAt = pl.CreatedAt
                         };
-            if (search.PriceListId.HasValue)
-            {
-                if(search.PriceListId.Value > 0)
-                {
-                    query = query.Where(x => x.PriceListId == search.PriceListId.Value);
-                }
-
-                if(search.IsActive.HasValue)
-                {
-                    query = query.Where(x => x.IsActive == search.IsActive.Value);
-                }
-
-                if(!string.IsNullOrEmpty(search.PriceListName))
-                {
-                    var keyword = search.PriceListName.Trim();
-                    query = query.Where(x => EF.Functions.Collate(x.PriceListName, "SQL_Latin1_General_CP1_CI_AI")
-                    .Contains(keyword));
-                }
-
-                if(search.FromDate.HasValue)
-                {
-                    query = query.Where(x => x.StartDate >= search.FromDate.Value);
-                }
-
-                if(search.ToDate.HasValue)
-                {
-                    query = query.Where(x => x.EndDate <= search.ToDate.Value);
-                }
-            }
-            query = query.OrderByDescending(x => x.CreatedAt);
             return await query.FirstOrDefaultAsync();
         }
 
@@ -93,13 +63,13 @@ namespace NB.Service.PriceListService
                 {
                     query = query.Where(x => x.IsActive == search.IsActive.Value);
                 }
-                if (search.FromDate.HasValue)
+                if (search.StartDate.HasValue)
                 {
-                    query = query.Where(x => x.StartDate >= search.FromDate.Value);
+                    query = query.Where(x => x.StartDate >= search.StartDate.Value);
                 }
-                if (search.ToDate.HasValue)
+                if (search.EndDate.HasValue)
                 {
-                    query = query.Where(x => x.EndDate <= search.ToDate.Value);
+                    query = query.Where(x => x.EndDate <= search.EndDate.Value);
                 }
             }
             query = query.OrderByDescending(x => x.CreatedAt);

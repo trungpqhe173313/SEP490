@@ -1,7 +1,7 @@
 ﻿using NB.Model.Entities;
 using NB.Service.Common;
 using NB.Service.PriceListService.Dto;
-using NB.Service.PriceListService.ViewModels;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +12,7 @@ namespace NB.Service.PriceListService
 {
     public interface IPriceListService : IService<PriceList>
     {
-        Task<PriceListDto?> GetData(PriceListSearch search);
+        Task<PriceListDto?> GetByPriceListId(int? PriceListId);
 
         Task<List<PriceListDto?>> GetAllData(PriceListSearch search);
     }
