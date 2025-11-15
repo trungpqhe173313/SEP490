@@ -48,17 +48,17 @@ namespace NB.Service.AccountService
         public async Task<ApiResponse<LoginResponse>> LoginAsync(string username, string password)
         {
             if (string.IsNullOrEmpty(password))
-                return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 401);
+                return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 400);
 
             var user = await _userService.GetByUsername(username);
             if (user == null)
-                return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 401);
+                return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 400);
             if (user.IsActive != true) 
                return ApiResponse<LoginResponse>.Fail("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.", 403); 
             var result = await _userService.CheckPasswordAsync(user, password);
             if (!result)
             {
-                return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 401);
+                return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 400);
             }
             return await GenToken(user);
         }
@@ -376,7 +376,22 @@ namespace NB.Service.AccountService
             var user = await GetQueryable().FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null)
                 return ApiResponse<bool>.Fail("Không tìm thấy người dùng", 404);
+            if (!string.IsNullOrWhiteSpace(request.Phone))
+            {
+                bool phoneExists = await GetQueryable()
+                    .AnyAsync(u => u.Phone == request.Phone && u.UserId != userId);
 
+                if (phoneExists)
+                    return ApiResponse<bool>.Fail("Số điện thoại đã tồn tại", 409);
+            }
+            if (!string.IsNullOrWhiteSpace(request.Email))
+            {
+                bool emailExists = await GetQueryable()
+                    .AnyAsync(u => u.Email == request.Email && u.UserId != userId);
+
+                if (emailExists)
+                    return ApiResponse<bool>.Fail("Email đã tồn tại", 409);
+            }
             user.FullName = request.FullName ?? user.FullName;
             user.Email = request.Email ?? user.Email;
             user.Phone = request.Phone ?? user.Phone;

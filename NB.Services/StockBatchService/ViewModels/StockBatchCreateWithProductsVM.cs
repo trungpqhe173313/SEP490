@@ -22,5 +22,7 @@ namespace NB.Service.StockBatchService.ViewModels
         [Required(ErrorMessage = "Danh sách sản phẩm là bắt buộc")]
         [MinLength(1, ErrorMessage = "Phải có ít nhất 1 sản phẩm")]
         public List<ProductInputItem> Products { get; set; } = new List<ProductInputItem>();
+
+        public decimal? TotalCost { get; set; }
     }
 }

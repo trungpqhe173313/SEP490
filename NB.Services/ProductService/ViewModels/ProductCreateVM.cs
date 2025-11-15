@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 
 namespace NB.Service.ProductService.ViewModels
@@ -6,26 +7,28 @@ namespace NB.Service.ProductService.ViewModels
     public class ProductCreateVM
     {
         [Required(ErrorMessage = "Mã nhà kho là bắt buộc")]
-        public int WarehouseId { get; set; }
+        public int warehouseId { get; set; }
 
         [Required(ErrorMessage = "Mã sản phẩm không được trống")]
-        public string Code { get; set; } 
+        public string code { get; set; }
 
         [Required(ErrorMessage = "Danh mục là bắt buộc")]
-        public int CategoryId { get; set; } 
+        public int categoryId { get; set; }
 
         [Required(ErrorMessage = "Nhà cung cấp là bắt buộc")]
-        public int SupplierId { get; set; }
+        public int supplierId { get; set; }
 
         [Required(ErrorMessage = "Tên sản phẩm không được trống")]
-        public string ProductName { get; set; } = null!;
+        public string productName { get; set; } = null!;
 
-        public string? Description { get; set; }
+        public string? description { get; set; }
 
-        [Required(ErrorMessage = "URL hình ảnh là bắt buộc")]
-        public string ImageUrl { get; set; } = null!;
+        public IFormFile? image { get; set; }
 
         [Required(ErrorMessage = "Trọng lượng trên đơn vị là bắt buộc")]
-        public decimal WeightPerUnit { get; set; }
+        public decimal weightPerUnit { get; set; }
+
+        [Required(ErrorMessage = "Giá bán là bắt buộc")]
+        public decimal sellingPrice { get; set; }
     }
 }

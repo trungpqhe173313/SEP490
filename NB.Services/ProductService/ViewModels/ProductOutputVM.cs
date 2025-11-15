@@ -18,6 +18,7 @@ namespace NB.Service.ProductService.ViewModels
         public string CategoryName { get; set; } = null!;
         public string? Description { get; set; }
 
+        public decimal? SellingPrice { get; set; }
         public bool? IsAvailable { get; set; }
         public decimal? WeightPerUnit { get; set; }
        // Thời gian tạo

@@ -31,5 +31,7 @@ namespace NB.Service.ProductService
 
         Task<PagedList<ProductDto>> GetData(ProductSearch search);
 
+        Task<List<ProductDto>> GetProductsBySupplierIds(List<int> supplierIds);
+
     }
 }
