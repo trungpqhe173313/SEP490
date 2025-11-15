@@ -16,7 +16,7 @@ namespace NB.Service.TransactionService.ViewModels
 
         public string? SupplierName { get; set; }
 
-        public string? Status { get; set; }
+        public int? Status { get; set; }
         public string Type { get; set; }
         public DateTime? TransactionDate { get; set; }
 

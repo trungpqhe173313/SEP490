@@ -82,8 +82,6 @@ namespace NB.API.Controllers
                 List<TransactionOutputVM> list = new List<TransactionOutputVM>();
                 foreach (var item in result.Items)
                 {
-                    TransactionStatus status = (TransactionStatus)item.Status;
-                    var description = status.GetDescription();
                     list.Add(new TransactionOutputVM
                     {
                         TransactionId = item.TransactionId,
@@ -92,7 +90,7 @@ namespace NB.API.Controllers
                         WarehouseName = (await _warehouseService.GetById(item.WarehouseId))?.WarehouseName ?? "N/A",
                         SupplierName = (await _supplierService.GetBySupplierId(item.SupplierId ?? 0))?.SupplierName ?? "N/A",
                         Type = item.Type,
-                        Status = description,
+                        Status = item.Status,
                         Note = item.Note,
                         TotalCost = item.TotalCost
                     });
@@ -369,7 +367,7 @@ namespace NB.API.Controllers
                         SupplierId = model.SupplierId,
                         WarehouseId = model.WarehouseId,
                         Type = "Import",
-                        Status = 5, // Mặc định
+                        Status = 1, // Mặc định - Đang kiểm
                         TransactionDate = DateTime.UtcNow,
                         Note = model.Note,
                         TotalCost = model.TotalCost
