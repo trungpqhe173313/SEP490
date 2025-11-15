@@ -20,3 +20,4 @@
 .vs/NutriBarn/config/applicationhost.config
 NB.API/appsettings.json
 .vs/NutriBarn/copilot-chat
+.vscode/settings.json
