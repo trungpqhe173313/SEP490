@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Service.PriceListService.ViewModels
+namespace NB.Service.PriceListService.Dto
 {
     public class PriceListSearch : SearchBase
     {
@@ -13,10 +13,10 @@ namespace NB.Service.PriceListService.ViewModels
 
         public string? PriceListName { get; set; }
 
-        public bool? IsActive { get; set; } 
+        public DateTime? StartDate { get; set; }
 
-        public DateTime? FromDate { get; set; }
+        public bool? IsActive { get; set; }
 
-        public DateTime? ToDate { get; set; }
+        public DateTime? EndDate { get; set; }
     }
 }
