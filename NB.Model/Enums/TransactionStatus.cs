@@ -20,7 +20,8 @@ namespace NB.Model.Enums
         done,
         [Description("Hủy")]
         cancel,
-
+        [Description("Thất bại")]
+        failure,
         //nhập kho
         [Description("Đang kiểm")]
         checking,

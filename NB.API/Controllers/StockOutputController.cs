@@ -357,45 +357,6 @@ namespace NB.API.Controllers
                 // 3️ Duyệt từng sản phẩm để lấy lô & cập nhật tồn
                 foreach (var po in listProductOrder)
                 {
-                    //var batches = listStockBatch
-                    //    .Where(sb => sb.ProductId == po.ProductId
-                    //                 && sb.QuantityIn > sb.QuantityOut
-                    //                 && sb.ExpireDate > DateTime.Today)
-                    //    .OrderBy(sb => sb.ImportDate)
-                    //    .ToList();
-
-                    //decimal remaining = po.Quantity ?? 0;
-                    //var taken = new List<(StockBatchDto, decimal)>();
-
-                    //foreach (var batch in batches)
-                    //{
-                    //    decimal available = (batch.QuantityIn - batch.QuantityOut) ?? 0;
-                    //    if (available <= 0) continue;
-
-                    //    decimal take = Math.Min(available, remaining);
-                    //    taken.Add((batch, take));
-
-                    //    // cập nhật lại lô hàng
-                    //    var entity = await _stockBatchService.GetByIdAsync(batch.BatchId);
-                    //    if (entity != null)
-                    //    {
-                    //        entity.QuantityOut += take;
-                    //        entity.LastUpdated = DateTime.Now;
-                    //        await _stockBatchService.UpdateAsync(entity);
-                    //    }
-
-                    //    remaining -= take;
-                    //    if (remaining <= 0) break;
-                    //}
-
-                    // 4️ Cập nhật inventory (tồn kho)
-                    var inventory = await _inventoryService.GetByProductIdRetriveOneObject(po.ProductId);
-                    //if (inventory != null)
-                    //{
-                    //    inventory.Quantity -= po.Quantity ?? 0;
-                    //    await _inventoryService.UpdateAsync(inventory);
-                    //}
-
                     // 5️ Tạo transaction detail
                     var tranDetail = new TransactionDetailCreateVM
                     {
@@ -415,6 +376,89 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi tạo đơn hàng");
                 return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi tạo đơn hàng"));
+            }
+        }
+
+        [HttpPost("UpdateOrderInDraftStatus/{transactionId}")]
+        public async Task<IActionResult> UpdateOrderInDraftStatus(int transactionId, [FromBody] OrderRequest or)
+        {
+            var listProductOrder = or.ListProductOrder;
+            var transaction = await _transactionService.GetByTransactionId(transactionId);
+            if (transaction == null)
+            {
+                return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));
+            }
+            if (listProductOrder == null || !listProductOrder.Any())
+            {
+                return BadRequest(ApiResponse<ProductDto>.Fail("Không có sản phẩm nào", 404));
+            }
+            var listProductId = listProductOrder.Select(p => p.ProductId).ToList();
+            var listProduct = await _productService.GetByIds(listProductId);
+            if (!listProduct.Any())
+                return BadRequest(ApiResponse<ProductDto>.Fail("Không tìm thấy sản phẩm nào", 404));
+            // Lấy tất cả inventory theo danh sách sản phẩm để kiểm tra xem lượng hàng hóa trong kho còn đủ không
+            var listInventory = await _inventoryService.GetByProductIds(listProductOrder.Select(po => po.ProductId).ToList());
+
+            foreach (var po in listProductOrder)
+            {
+                var orderQty = po.Quantity ?? 0;
+                var inven = listInventory.FirstOrDefault(p => p.ProductId == po.ProductId);
+
+                if (inven == null)
+                {
+                    return BadRequest(ApiResponse<InventoryDto>.Fail($"Không tìm thấy tồn kho cho sản phẩm {po.ProductId}", 404));
+                }
+
+                var invenQty = inven.Quantity ?? 0;
+
+                if (orderQty > invenQty)
+                {
+                    var productCheck = await _productService.GetByIdAsync(po.ProductId);
+                    var productName = productCheck?.ProductName ?? $"Sản phẩm {po.ProductId}";
+                    return BadRequest(ApiResponse<InventoryDto>.Fail(
+                        $"Sản phẩm '{productName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu.",
+                        400));
+                }
+            }
+            try
+            {
+                // Xóa chi tiết đơn hàng cũ
+                var existingDetails = await _transactionDetailService.GetByTransactionId(transactionId);
+                if (existingDetails == null || !existingDetails.Any())
+                {
+                    return BadRequest(ApiResponse<TransactionDetailDto>.Fail($"Không tìm thấy chi tiết đơn hàng", 404));
+                    
+                }
+                await _transactionDetailService.DeleteRange(existingDetails);
+                // Thêm chi tiết đơn hàng mới
+                foreach (var po in listProductOrder)
+                {
+                    var tranDetail = new TransactionDetailCreateVM
+                    {
+                        ProductId = po.ProductId,
+                        TransactionId = transaction.TransactionId,
+                        Quantity = (int)(po.Quantity ?? 0),
+                        UnitPrice = (decimal)(po.UnitPrice ?? 0),
+                    };
+                    var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
+                    await _transactionDetailService.CreateAsync(tranDetailEntity);
+                }
+                // Cập nhật thông tin đơn hàng
+                if (!string.IsNullOrEmpty(or.Note))
+                {
+                    transaction.Note = or.Note;
+                }
+                if (or.TotalCost.HasValue)
+                {
+                    transaction.TotalCost = or.TotalCost;
+                }
+                await _transactionService.UpdateAsync(transaction);
+                return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật đơn hàng");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật đơn hàng"));
             }
         }
 
@@ -532,8 +576,8 @@ namespace NB.API.Controllers
         }
 
 
-        [HttpPut("UpdateOrder/{transactionId}")]
-        public async Task<IActionResult> UpdateOrder(int transactionId, [FromBody] OrderRequest or)
+        [HttpPut("UpdateTransactionInOrderStatus/{transactionId}")]
+        public async Task<IActionResult> UpdateTransactionInOrderStatus(int transactionId, [FromBody] OrderRequest or)
         {
             // Bảo vệ trường hợp request không có sản phẩm
             if (or?.ListProductOrder == null || !or.ListProductOrder.Any())
@@ -901,6 +945,51 @@ namespace NB.API.Controllers
             }
         }
 
+        [HttpPost("UpdateToDoneStatus/{transactionId}")]
+        public async Task<IActionResult> UpdateToDoneStatus(int transactionId)
+        {
+            var transaction = await _transactionService.GetByTransactionId(transactionId);
+            if (transaction == null)
+            {
+                return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));
+            }
+            try
+            {
+                //cap nhat trang thai cho don hang
+                transaction.Status = (int)TransactionStatus.done;
+                await _transactionService.UpdateAsync(transaction);
+                // 6️ Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
+                return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái đơn hàng");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"));
+            }
+        }
+
+        [HttpPost("UpdateToDeliveringStatus/{transactionId}")]
+        public async Task<IActionResult> UpdateToDeliveringStatus(int transactionId)
+        {
+            var transaction = await _transactionService.GetByTransactionId(transactionId);
+            if (transaction == null)
+            {
+                return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));
+            }
+            try
+            {
+                //cap nhat trang thai cho don hang
+                transaction.Status = (int)TransactionStatus.delivering;
+                await _transactionService.UpdateAsync(transaction);
+                // 6️ Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
+                return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái đơn hàng");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"));
+            }
+        }
 
 
 

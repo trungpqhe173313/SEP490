@@ -14,6 +14,7 @@ namespace NB.Service.UserService
         Task<PagedList<UserDto>> GetData(UserSearch search);
         Task<UserDto?> GetByUserId(int id);
         Task<List<UserDto>?> GetAllUser(UserSearch search);
+        Task<List<UserDto>?> GetAllUserForAdmin(UserSearch search);
         Task<UserDto?> GetByEmail(string email);
         Task<UserDto?> GetByUsername(string username);
         Task<UserDto?> GetByRefreshTokenAsync(string RefreshToken);

@@ -95,7 +95,6 @@ namespace NB.Service.UserService
                             UserId = u.UserId,
                             FullName = u.FullName,
                             Username = u.Username,
-                            Password = u.Password,
                             Email = u.Email,
                             Image = u.Image,
                             Phone = u.Phone,
@@ -195,6 +194,45 @@ namespace NB.Service.UserService
                             RefreshTokenExpiryDate = u.RefreshTokenExpiryDate
                         };
             return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<List<UserDto>?> GetAllUserForAdmin(UserSearch search)
+        {
+            var query = from u in GetQueryable()
+                        select new UserDto
+                        {
+                            UserId = u.UserId,
+                            FullName = u.FullName,
+                            Username = u.Username,
+                            Password = u.Password,
+                            Email = u.Email,
+                            Image = u.Image,
+                            Phone = u.Phone,
+                            CreatedAt = u.CreatedAt,
+                            IsActive = u.IsActive
+                        };
+            if (search != null)
+            {
+                if (!string.IsNullOrEmpty(search.FullName))
+                {
+                    var keyword = search.FullName.Trim();
+                    query = query.Where(u => EF.Functions.Collate(u.FullName, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
+                }
+                if (!string.IsNullOrEmpty(search.Email))
+                {
+                    var keyword = search.Email.Trim();
+                    query = query.Where(u => EF.Functions.Collate(u.Email, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
+                }
+                if (search.IsActive.HasValue)
+                {
+                    query = query.Where(u => u.IsActive == search.IsActive);
+                }
+            }
+
+            query = query.OrderByDescending(u => u.CreatedAt);
+            return await query.ToListAsync();
         }
     }
 }
