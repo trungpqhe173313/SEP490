@@ -73,6 +73,40 @@ namespace NB.API.Controllers
             }
         }
 
+        [HttpPost("GetDataForAdmin")]
+        public async Task<IActionResult> GetDataForAdmin([FromBody] UserSearch search)
+        {
+            try
+            {
+                var listUser = await _userService.GetAllUserForAdmin(search) ?? new List<UserDto>();
+                var role = await _roleService.GetByRoleName(roleName);
+                var userRole = await _userRoleService.GetByRoleId(role.RoleId) ?? new List<UserRole>();
+                List<UserDto> listEmployee = new List<UserDto>();
+                foreach (var ur in userRole)
+                {
+                    var user = listUser.FirstOrDefault(u => u.UserId == ur.UserId);
+                    if (user != null)
+                    {
+                        user.RoleName = roleName;
+                        listEmployee.Add(user);
+                    }
+                }
+                var pagedResult = new PagedList<UserDto>(
+                    items: listEmployee,
+                    pageIndex: search.PageIndex,
+                    pageSize: search.PageSize,
+                    totalCount: listEmployee.Count
+                );
+
+                return Ok(ApiResponse<PagedList<UserDto>>.Ok(pagedResult));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy dữ liệu khách hàng");
+                return BadRequest(ApiResponse<PagedList<UserDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+            }
+        }
+
         [HttpGet("GetByUserId/{id}")]
         public async Task<IActionResult> GetByUserId(int id)
         {
