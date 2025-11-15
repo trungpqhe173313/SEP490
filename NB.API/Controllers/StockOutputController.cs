@@ -452,6 +452,7 @@ namespace NB.API.Controllers
                 {
                     transaction.TotalCost = or.TotalCost;
                 }
+                transaction.Status = (int)TransactionStatus.draft;
                 await _transactionService.UpdateAsync(transaction);
                 return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công"));
             }
