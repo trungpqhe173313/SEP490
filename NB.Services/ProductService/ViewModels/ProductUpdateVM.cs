@@ -7,21 +7,21 @@ namespace NB.Service.ProductService.ViewModels
     public class ProductUpdateVM
     {
         [Required(ErrorMessage = "Mã nhà kho là bắt buộc")]
-        public int WarehouseId { get; set; }
+        public int warehouseId { get; set; }
         [Required(ErrorMessage = "Mã danh mục là bắt buộc")]
-        public string Code { get; set; } = null!;
+        public string code { get; set; } = null!;
         [Required(ErrorMessage = "Tên sản phẩm là bắt buộc")]
-        public string ProductName { get; set; } = null!;
+        public string productName { get; set; } = null!;
         [Required(ErrorMessage = "Tên nhà cung cấp là bắt buộc")]
-        public int SupplierId { get; set; }
+        public int supplierId { get; set; }
         [Required(ErrorMessage = "Tên danh mục là bắt buộc")]
-        public int CategoryId { get; set; }
-        public string Description { get; set; } = null!;
-        public bool? IsAvailable { get; set; }
-        public IFormFile? Image { get; set; }
-        public decimal? WeightPerUnit { get; set; }
+        public int categoryId { get; set; }
+        public string description { get; set; } = null!;
+        public bool? isAvailable { get; set; }
+        public IFormFile? image { get; set; }
+        public decimal? weightPerUnit { get; set; }
 
-        public decimal? SellingPrice { get; set; }
-        public DateTime? UpdatedAt { get; set; }
+        public decimal? sellingPrice { get; set; }
+        public DateTime? updatedAt { get; set; }
     }
 }
