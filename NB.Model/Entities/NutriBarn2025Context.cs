@@ -541,9 +541,6 @@ public partial class NutriBarn2025Context : DbContext
 
             entity.Property(e => e.Id).HasColumnName("ID");
             entity.Property(e => e.ProductId).HasColumnName("ProductID");
-            entity.Property(e => e.Subtotal)
-                .HasComputedColumnSql("([Quantity]*[UnitPrice])", true)
-                .HasColumnType("decimal(23, 2)");
             entity.Property(e => e.TransactionId).HasColumnName("TransactionID");
             entity.Property(e => e.UnitPrice).HasColumnType("decimal(12, 2)");
 

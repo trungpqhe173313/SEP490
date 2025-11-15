@@ -16,7 +16,6 @@ namespace NB.Service.TransactionDetailService.ViewModels
 
         public decimal? WeightPerUnit { get; set; }
         public int Quantity { get; set; }
-        public decimal? SubTotal { get; set; }
 
         public DateTime? ExpireDate { get; set; }
 

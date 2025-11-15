@@ -203,7 +203,6 @@ namespace NB.API.Controllers
                     UnitPrice = item.UnitPrice,
                     WeightPerUnit = item.WeightPerUnit,
                     Quantity = item.Quantity,
-                    SubTotal = item.Subtotal,
                     ExpireDate = batch.ExpireDate,
                     Note = batch.Note
                 }).ToList();
@@ -383,8 +382,8 @@ namespace NB.API.Controllers
                             TransactionId = transactionId,
                             ProductId = product.ProductId,
                             Quantity = product.Quantity,
-                            UnitPrice = product.UnitPrice,
-                            Subtotal = product.Quantity * product.UnitPrice
+                            UnitPrice = product.UnitPrice
+                            //,Subtotal = product.Quantity * product.UnitPrice
                         };
                         await _transactionDetailService.CreateAsync(transactionDetail);
                     }
@@ -752,8 +751,8 @@ namespace NB.API.Controllers
                                     TransactionId = transactionId,
                                     ProductId = product.productId,
                                     Quantity = product.quantity,
-                                    UnitPrice = product.unitPrice,
-                                    Subtotal = product.quantity * product.unitPrice
+                                    UnitPrice = product.unitPrice
+                                    //,Subtotal = product.quantity * product.unitPrice
                                 };
                                 await _transactionDetailService.CreateAsync(transactionDetail);
 
