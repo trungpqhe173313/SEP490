@@ -1115,6 +1115,11 @@ namespace NB.API.Controllers
                     transaction.TotalCost = or.TotalCost;
                     if (transaction.TotalCost < 0) transaction.TotalCost = 0;
                 }
+                // Cập nhật note
+                if (!string.IsNullOrEmpty(or.Note))
+                {
+                    transaction.Note = or.Note;
+                }
 
                 // Kiểm tra nếu trả hết tất cả sản phẩm thì chuyển trạng thái về draft hoặc cancelled
                 var remainingDetails = await _transactionDetailService.GetByTransactionId(transactionId);
