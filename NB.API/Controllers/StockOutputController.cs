@@ -403,7 +403,6 @@ namespace NB.API.Controllers
                         TransactionId = transactionEntity.TransactionId,
                         Quantity = (int)(po.Quantity ?? 0),
                         UnitPrice = (decimal)(po.UnitPrice ?? 0),
-                        Subtotal = (po.UnitPrice ?? 0) * (po.Quantity ?? 0)
                     };
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
                     await _transactionDetailService.CreateAsync(tranDetailEntity);
@@ -869,7 +868,6 @@ namespace NB.API.Controllers
                         TransactionId = transactionId,
                         Quantity = (int)(po.Quantity ?? 0),
                         UnitPrice = (decimal)(po.UnitPrice ?? 0),
-                        Subtotal = (po.UnitPrice ?? 0) * (po.Quantity ?? 0)
                     };
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
                     await _transactionDetailService.CreateAsync(tranDetailEntity);

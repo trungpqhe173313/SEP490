@@ -46,6 +46,7 @@ namespace NB.Service.ProductService
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
+                            SellingPrice = p.SellingPrice,
                             IsAvailable = p.IsAvailable,
                             CreatedAt = p.CreatedAt,
                             UpdatedAt = p.UpdatedAt
@@ -69,6 +70,7 @@ namespace NB.Service.ProductService
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
+                            SellingPrice = p.SellingPrice,
                             IsAvailable = p.IsAvailable,
                             CreatedAt = p.CreatedAt,
                             UpdatedAt = p.UpdatedAt
@@ -93,6 +95,7 @@ namespace NB.Service.ProductService
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
+                            SellingPrice = p.SellingPrice,
                             IsAvailable = p.IsAvailable,
                             CreatedAt = p.CreatedAt,
                             UpdatedAt = p.UpdatedAt
@@ -127,6 +130,7 @@ namespace NB.Service.ProductService
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
+                            SellingPrice = p.SellingPrice,
                             IsAvailable = p.IsAvailable,
                             CreatedAt = p.CreatedAt,
                             UpdatedAt = p.UpdatedAt
@@ -150,6 +154,7 @@ namespace NB.Service.ProductService
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
+                            SellingPrice = p.SellingPrice,
                             IsAvailable = p.IsAvailable,
                             CreatedAt = p.CreatedAt,
                             UpdatedAt = p.UpdatedAt
@@ -173,6 +178,7 @@ namespace NB.Service.ProductService
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
+                            SellingPrice = p.SellingPrice,
                             IsAvailable = p.IsAvailable,
                             CreatedAt = p.CreatedAt,
                             UpdatedAt = p.UpdatedAt
@@ -223,6 +229,7 @@ namespace NB.Service.ProductService
                             ImageUrl = p.ImageUrl,
                             Description = p.Description,
                             WeightPerUnit = p.WeightPerUnit,
+                            SellingPrice = p.SellingPrice,
                             IsAvailable = p.IsAvailable,
                             CreatedAt = p.CreatedAt,
                             UpdatedAt = p.UpdatedAt
@@ -303,6 +310,33 @@ namespace NB.Service.ProductService
             
             query = query.OrderBy(p => p.CreatedAt);
             return await PagedList<ProductDto>.CreateAsync(query, search);
+        }
+
+        public async Task<List<ProductDto>> GetProductsBySupplierIds(List<int> supplierIds)
+        {
+            var query = GetQueryable()
+                .Include(p => p.Supplier)    
+                .Include(p => p.Category)    
+                .Where(p => supplierIds.Contains(p.SupplierId))
+                .Select(p => new ProductDto
+                {
+                    ProductId = p.ProductId,
+                    ProductName = p.ProductName,
+                    Code = p.Code,
+                    SupplierId = p.SupplierId,
+                    SupplierName = p.Supplier.SupplierName,
+                    CategoryId = p.CategoryId,
+                    CategoryName = p.Category.CategoryName,
+                    ImageUrl = p.ImageUrl,
+                    Description = p.Description,
+                    WeightPerUnit = p.WeightPerUnit,
+                    SellingPrice = p.SellingPrice,
+                    IsAvailable = p.IsAvailable,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                });
+
+            return await query.ToListAsync();
         }
     }
 }
