@@ -48,17 +48,17 @@ namespace NB.Service.AccountService
         public async Task<ApiResponse<LoginResponse>> LoginAsync(string username, string password)
         {
             if (string.IsNullOrEmpty(password))
-                return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 401);
+                return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 400);
 
             var user = await _userService.GetByUsername(username);
             if (user == null)
-                return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 401);
+                return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 400);
             if (user.IsActive != true) 
                return ApiResponse<LoginResponse>.Fail("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.", 403); 
             var result = await _userService.CheckPasswordAsync(user, password);
             if (!result)
             {
-                return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 401);
+                return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 400);
             }
             return await GenToken(user);
         }
