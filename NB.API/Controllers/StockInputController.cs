@@ -82,8 +82,6 @@ namespace NB.API.Controllers
                 List<TransactionOutputVM> list = new List<TransactionOutputVM>();
                 foreach (var item in result.Items)
                 {
-                    TransactionStatus status = (TransactionStatus)item.Status;
-                    var description = status.GetDescription();
                     list.Add(new TransactionOutputVM
                     {
                         TransactionId = item.TransactionId,
@@ -92,7 +90,7 @@ namespace NB.API.Controllers
                         WarehouseName = (await _warehouseService.GetById(item.WarehouseId))?.WarehouseName ?? "N/A",
                         SupplierName = (await _supplierService.GetBySupplierId(item.SupplierId ?? 0))?.SupplierName ?? "N/A",
                         Type = item.Type,
-                        Status = description,
+                        Status = item.Status,
                         Note = item.Note,
                         TotalCost = item.TotalCost
                     });
@@ -349,6 +347,8 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail("Danh sách sản phẩm không được để trống.", 400));
                 }
 
+                
+
                 // Validate từng product trong list
                 foreach (var product in model.Products)
                 {
@@ -367,9 +367,10 @@ namespace NB.API.Controllers
                         SupplierId = model.SupplierId,
                         WarehouseId = model.WarehouseId,
                         Type = "Import",
-                        Status = 5, // Mặc định
+                        Status = 1, // Mặc định - Đang kiểm
                         TransactionDate = DateTime.UtcNow,
-                        Note = model.Note
+                        Note = model.Note,
+                        TotalCost = model.TotalCost
                     };
                     await _transactionService.CreateAsync(newTransaction);
                     int transactionId = newTransaction.TransactionId;
@@ -931,7 +932,9 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<string>.Fail("Không tìm thấy chi tiết đơn hàng.", 404));
                 }
+                transaction.TotalCost = model.TotalCost;
 
+                await _transactionService.UpdateAsync(transaction);
                 await _transactionDetailService.DeleteRange(oldDetails);
 
                 var listProductId = listProductOrder.Select(p => p.ProductId).ToList();
@@ -946,7 +949,6 @@ namespace NB.API.Controllers
                         TransactionId = transaction.TransactionId,
                         Quantity = (int)(po.Quantity ?? 0),
                         UnitPrice = (decimal)(po.UnitPrice ?? 0),
-                        Subtotal = (po.UnitPrice ?? 0) * (po.Quantity ?? 0)
                     };
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
                     await _transactionDetailService.CreateAsync(tranDetailEntity);

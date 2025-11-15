@@ -16,6 +16,6 @@ namespace NB.Service.TransactionDetailService.ViewModels
 
         public decimal UnitPrice { get; set; }
 
-        public decimal? Subtotal { get; set; }
+        public decimal TotalPrice { get; set; }
     }
 }
