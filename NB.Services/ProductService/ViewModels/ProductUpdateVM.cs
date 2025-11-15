@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 
 namespace NB.Service.ProductService.ViewModels
@@ -12,13 +13,15 @@ namespace NB.Service.ProductService.ViewModels
         [Required(ErrorMessage = "Tên sản phẩm là bắt buộc")]
         public string ProductName { get; set; } = null!;
         [Required(ErrorMessage = "Tên nhà cung cấp là bắt buộc")]
-        public int SupplierId { get; set; } 
+        public int SupplierId { get; set; }
         [Required(ErrorMessage = "Tên danh mục là bắt buộc")]
         public int CategoryId { get; set; }
         public string Description { get; set; } = null!;
         public bool? IsAvailable { get; set; }
-        public string ImageUrl { get; set; } = null!;
+        public IFormFile? Image { get; set; }
         public decimal? WeightPerUnit { get; set; }
+
+        public decimal? SellingPrice { get; set; }
         public DateTime? UpdatedAt { get; set; }
     }
 }

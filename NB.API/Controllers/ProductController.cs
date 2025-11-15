@@ -23,6 +23,7 @@ namespace NB.API.Controllers
         private readonly ISupplierService _supplierService;
         private readonly ICategoryService _categoryService;
         private readonly IWarehouseService _warehouseService;
+        private readonly ICloudinaryService _cloudinaryService;
         private readonly ILogger<ProductController> _logger;
 
         public ProductController(
@@ -31,13 +32,15 @@ namespace NB.API.Controllers
             ISupplierService supplierService,
             ICategoryService categoryService,
             IWarehouseService warehouseService,
-        ILogger<ProductController> logger)
+            ICloudinaryService cloudinaryService,
+            ILogger<ProductController> logger)
         {
             _productService = productService;
             _inventoryService = inventoryService;
             _supplierService = supplierService;
             _categoryService = categoryService;
             _warehouseService = warehouseService;
+            _cloudinaryService = cloudinaryService;
             _logger = logger;
         }
 
@@ -67,6 +70,7 @@ namespace NB.API.Controllers
                         CategoryId = p.CategoryId,
                         CategoryName = p.CategoryName,
                         WeightPerUnit = p.WeightPerUnit,
+                        SellingPrice = p.SellingPrice,
                         IsAvailable = p.IsAvailable,
                         CreatedAt = p.CreatedAt
                     });
@@ -84,6 +88,94 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi lấy danh sách sản phẩm cho Kho");
                 return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi lấy danh sách sản phẩm.", 400));
+            }
+        }
+
+        [HttpGet("GetById/{Id}")]
+        public async Task<IActionResult> GetById(int Id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+            if (Id <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail($"ProductId {Id} không hợp lệ", 400));
+            }
+            try
+            {
+                var p = await _productService.GetById(Id);
+                if (p == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy sản phẩm", 404));
+                }
+                var result = new ProductOutputVM
+                {
+                    ProductId = p.ProductId,
+                    ProductName = p.ProductName,
+                    Code = p.Code,
+                    Description = p.Description,
+                    SupplierId = p.SupplierId,
+                    SupplierName = p.SupplierName,
+                    CategoryId = p.CategoryId,
+                    CategoryName = p.CategoryName,
+                    WeightPerUnit = p.WeightPerUnit,
+                    SellingPrice = p.SellingPrice,
+                    IsAvailable = p.IsAvailable,
+                    CreatedAt = p.CreatedAt
+                };
+                return Ok(ApiResponse<ProductOutputVM>.Ok(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy dữ liệu sản phẩm");
+                return BadRequest(ApiResponse<PagedList<ProductDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+            }
+        }
+
+        [HttpPost("GetProductBySupplier")]
+
+        public async Task<IActionResult> GetProductBySupplier([FromBody] List<int> supplierIds)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+            foreach (var id in supplierIds)
+            {
+                if (id <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail($"SupplierId {id} không hợp lệ", 400));
+                }
+            }
+            try
+            {
+                var products = await _productService.GetProductsBySupplierIds(supplierIds);
+                var resultList = new List<ProductOutputVM>(); 
+                foreach (var p in products)
+                {
+                    resultList.Add(new ProductOutputVM
+                    {
+                        ProductId = p.ProductId,
+                        ProductName = p.ProductName,
+                        Code = p.Code,
+                        Description = p.Description,
+                        SupplierId = p.SupplierId,
+                        SupplierName = p.SupplierName,
+                        CategoryId = p.CategoryId,
+                        CategoryName = p.CategoryName,
+                        WeightPerUnit = p.WeightPerUnit,
+                        SellingPrice = p.SellingPrice,
+                        IsAvailable = p.IsAvailable,
+                        CreatedAt = p.CreatedAt
+                    });
+                }
+                return Ok(ApiResponse<List<ProductOutputVM>>.Ok(resultList));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy dữ liệu sản phẩm theo nhà cung cấp");
+                return BadRequest(ApiResponse<PagedList<ProductDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
             }
         }
 
@@ -162,11 +254,25 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("CreateProduct")]
-        public async Task<IActionResult> Create([FromBody] ProductCreateVM model)
+        public async Task<IActionResult> Create([FromForm] ProductCreateVM model)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            // Validate image file type nếu có
+            if (model.Image != null)
+            {
+                var imageExtension = Path.GetExtension(model.Image.FileName).ToLowerInvariant();
+                var allowedImageExtensions = new[] { ".png", ".jpg", ".jpeg" };
+
+                if (!allowedImageExtensions.Contains(imageExtension))
+                {
+                    return BadRequest(ApiResponse<object>.Fail(
+                        $"File ảnh phải có định dạng PNG, JPG hoặc JPEG. File hiện tại: {imageExtension}",
+                        400));
+                }
             }
 
             // Validate WarehouseId
@@ -180,14 +286,14 @@ namespace NB.API.Controllers
             {
                 return NotFound(ApiResponse<object>.Fail($"Không tồn tại Warehouse {model.WarehouseId}.", 404));
             }
-            // Validate Supplier 
+            // Validate Supplier
             var supplier = await _supplierService.GetBySupplierId(model.SupplierId);
             if (model.SupplierId <= 0 || supplier  == null)
             {
                 return BadRequest(ApiResponse<object>.Fail("Danh mục không được để trống.", 400));
             }
 
-            // Validate Category           
+            // Validate Category
             var category = await _categoryService.GetById(model.CategoryId);
             if (model.CategoryId <= 0 || category == null)
             {
@@ -225,15 +331,27 @@ namespace NB.API.Controllers
 
             try
             {
+                // Upload image lên Cloudinary nếu có
+                string? imageUrl = null;
+                if (model.Image != null)
+                {
+                    imageUrl = await _cloudinaryService.UploadImageAsync(model.Image, "products/images");
+                    if (imageUrl == null)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail("Không thể upload ảnh", 400));
+                    }
+                }
+
                 var newProductEntity = new ProductDto
                 {
                     SupplierId = supplier.SupplierId,
                     CategoryId = category.CategoryId,
                     Code = code,
-                    ImageUrl = model.ImageUrl?.Trim().Replace(" ", "") ?? string.Empty,
+                    ImageUrl = imageUrl ?? string.Empty,
                     ProductName = productName,
                     Description = model.Description?.Trim(),
                     WeightPerUnit = model.WeightPerUnit,
+                    SellingPrice = model.SellingPrice,
                     IsAvailable = true,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -259,6 +377,7 @@ namespace NB.API.Controllers
                     CategoryId = category.CategoryId,
                     CategoryName = category.CategoryName,
                     WeightPerUnit = newProductEntity.WeightPerUnit,
+                    SellingPrice = newProductEntity.SellingPrice,
                     CreatedAt = newProductEntity.CreatedAt
                 };
 
@@ -273,11 +392,25 @@ namespace NB.API.Controllers
 
 
         [HttpPut("UpdateProduct/{Id}")]
-        public async Task<IActionResult> Update(int Id, [FromBody] ProductUpdateVM model)
+        public async Task<IActionResult> Update(int Id, [FromForm] ProductUpdateVM model)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            // Validate image file type nếu có
+            if (model.Image != null)
+            {
+                var imageExtension = Path.GetExtension(model.Image.FileName).ToLowerInvariant();
+                var allowedImageExtensions = new[] { ".png", ".jpg", ".jpeg" };
+
+                if (!allowedImageExtensions.Contains(imageExtension))
+                {
+                    return BadRequest(ApiResponse<object>.Fail(
+                        $"File ảnh phải có định dạng PNG, JPG hoặc JPEG. File hiện tại: {imageExtension}",
+                        400));
+                }
             }
 
             // Validate Product Code uniqueness
@@ -306,13 +439,13 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<object>.Fail($"Tên sản phẩm '{model.ProductName}' đã tồn tại.", 400));
             }
 
-            // Validate Supplier 
+            // Validate Supplier
             if (model.SupplierId <= 0 || await _supplierService.GetBySupplierId(model.CategoryId) == null)
             {
                 return BadRequest(ApiResponse<object>.Fail("Danh mục không được để trống.", 400));
             }
 
-            // Validate Category 
+            // Validate Category
             if (model.CategoryId <= 0 || await _categoryService.GetById(model.CategoryId) == null)
             {
                 return BadRequest(ApiResponse<object>.Fail("Danh mục không được để trống.", 400));
@@ -322,6 +455,11 @@ namespace NB.API.Controllers
             if (model.WeightPerUnit.HasValue && model.WeightPerUnit < 0)
             {
                 return BadRequest(ApiResponse<object>.Fail("Trọng lượng trên đơn vị phải lớn hơn hoặc bằng 0.", 400));
+            }
+
+            if (model.SellingPrice.HasValue && model.SellingPrice < 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Giá bán phải lớn hơn hoặc bằng 0.", 400));
             }
 
             // Validate Product exists
@@ -337,6 +475,7 @@ namespace NB.API.Controllers
                 var targetInventory = await _inventoryService.GetByWarehouseAndProductId(model.WarehouseId, Id);
 
                 bool isProductChanged = false;
+                string? oldImageUrl = productEntity.ImageUrl;
 
                 // Check và update từng field của Product
                 if (productEntity.Code != newCode)
@@ -365,9 +504,14 @@ namespace NB.API.Controllers
                     isProductChanged = true;
                 }
 
-                var newImageUrl = model.ImageUrl?.Trim().Replace(" ", "");
-                if (productEntity.ImageUrl != newImageUrl)
+                // Handle image update nếu có
+                if (model.Image != null)
                 {
+                    var newImageUrl = await _cloudinaryService.UpdateImageAsync(model.Image, oldImageUrl, "products/images");
+                    if (newImageUrl == null)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail("Không thể upload ảnh", 400));
+                    }
                     productEntity.ImageUrl = newImageUrl;
                     isProductChanged = true;
                 }
@@ -389,6 +533,11 @@ namespace NB.API.Controllers
                 if (productEntity.WeightPerUnit != model.WeightPerUnit)
                 {
                     productEntity.WeightPerUnit = model.WeightPerUnit;
+                    isProductChanged = true;
+                }
+                if (productEntity.SellingPrice != model.SellingPrice)
+                {
+                    productEntity.SellingPrice = model.SellingPrice;
                     isProductChanged = true;
                 }
 
