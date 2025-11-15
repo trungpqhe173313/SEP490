@@ -376,7 +376,22 @@ namespace NB.Service.AccountService
             var user = await GetQueryable().FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null)
                 return ApiResponse<bool>.Fail("Không tìm thấy người dùng", 404);
+            if (!string.IsNullOrWhiteSpace(request.Phone))
+            {
+                bool phoneExists = await GetQueryable()
+                    .AnyAsync(u => u.Phone == request.Phone && u.UserId != userId);
 
+                if (phoneExists)
+                    return ApiResponse<bool>.Fail("Số điện thoại đã tồn tại", 409);
+            }
+            if (!string.IsNullOrWhiteSpace(request.Email))
+            {
+                bool emailExists = await GetQueryable()
+                    .AnyAsync(u => u.Email == request.Email && u.UserId != userId);
+
+                if (emailExists)
+                    return ApiResponse<bool>.Fail("Email đã tồn tại", 409);
+            }
             user.FullName = request.FullName ?? user.FullName;
             user.Email = request.Email ?? user.Email;
             user.Phone = request.Phone ?? user.Phone;
