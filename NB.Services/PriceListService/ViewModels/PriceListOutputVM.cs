@@ -17,7 +17,7 @@ namespace NB.Service.PriceListService.ViewModels
 
         public DateTime? EndDate { get; set; }
 
-        public string? IsActive { get; set; }
+        public bool? IsActive { get; set; }
 
         public DateTime? CreatedAt { get; set; }
 
