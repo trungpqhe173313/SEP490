@@ -11,7 +11,7 @@ namespace NB.Model.Enums
     {
         //xuất kho
         [Description("Nháp")]
-        draft,
+        draft = 1,
         [Description("Lên đơn")]
         order,
         [Description("Đang giao")]
