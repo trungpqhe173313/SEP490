@@ -379,14 +379,18 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpPost("UpdateOrderInDraftStatus/{transactionId}")]
-        public async Task<IActionResult> UpdateOrderInDraftStatus(int transactionId, [FromBody] OrderRequest or)
+        [HttpPut("UpdateTransactionInDraftStatus/{transactionId}")]
+        public async Task<IActionResult> UpdateTransactionInDraftStatus(int transactionId, [FromBody] OrderRequest or)
         {
             var listProductOrder = or.ListProductOrder;
             var transaction = await _transactionService.GetByTransactionId(transactionId);
             if (transaction == null)
             {
                 return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));
+            }
+            if (transaction.Status != (int)TransactionStatus.draft)
+            {
+                return BadRequest(ApiResponse<string>.Fail("Đơn hàng không trong trạng thái nháp", 400));
             }
             if (listProductOrder == null || !listProductOrder.Any())
             {
@@ -463,7 +467,7 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpPost("UpdateToOrderStatus/{transactionId}")]
+        [HttpPut("UpdateToOrderStatus/{transactionId}")]
         public async Task<IActionResult> UpdateToOrderStatus(int transactionId)
         {
             var transaction = await _transactionService.GetByTransactionId(transactionId);
@@ -603,6 +607,10 @@ namespace NB.API.Controllers
                 var transaction = await _transactionService.GetByIdAsync(transactionId);
                 if (transaction == null)
                     return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn hàng", 404));
+                if (transaction.Status != (int)TransactionStatus.order)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Đơn hàng không trong trạng thái lên đơn", 400));
+                }
 
                 // --- 1️⃣ Lấy danh sách chi tiết cũ ---
                 var oldDetails = (await _transactionDetailService.GetByTransactionId(transactionId))
@@ -946,7 +954,7 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpPost("UpdateToDoneStatus/{transactionId}")]
+        [HttpPut("UpdateToDoneStatus/{transactionId}")]
         public async Task<IActionResult> UpdateToDoneStatus(int transactionId)
         {
             var transaction = await _transactionService.GetByTransactionId(transactionId);
@@ -969,7 +977,7 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpPost("UpdateToDeliveringStatus/{transactionId}")]
+        [HttpPut("UpdateToDeliveringStatus/{transactionId}")]
         public async Task<IActionResult> UpdateToDeliveringStatus(int transactionId)
         {
             var transaction = await _transactionService.GetByTransactionId(transactionId);
