@@ -11,9 +11,10 @@ namespace NB.Service.PriceListDetailService.ViewModels
     {
         public int PriceListDetailId { get; set; }
 
-        public int? PriceListId { get; set; }
+        public int? ProductId { get; set; }
         public string? ProductName { get; set; }
 
+        public string? ProductCode { get; set; }
         public decimal Price { get; set; }
 
         public string? Note { get; set; }
