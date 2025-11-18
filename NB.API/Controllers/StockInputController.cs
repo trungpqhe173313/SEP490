@@ -925,8 +925,6 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn hàng đã kiểm.", 400));
                 if(transaction.Type != null && transaction.Type == "Export")
                     return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn hàng này.", 400));
-                if(model.Status != 5 && model.Status != 6)
-                    return BadRequest(ApiResponse<string>.Fail("Trạng thái đơn hàng không hợp lệ.", 400));
                 var oldDetails = await _transactionDetailService.GetByTransactionId(transactionId);
                 if (oldDetails == null || !oldDetails.Any())
                 {
@@ -954,7 +952,6 @@ namespace NB.API.Controllers
                     await _transactionDetailService.CreateAsync(tranDetailEntity);
                 }
 
-                transaction.Status = model.Status;
 
                 if (!string.IsNullOrEmpty(model.Note))
                 {
@@ -983,7 +980,7 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Id không hợp lệ", 400));
             }
             try
-            {              
+            {
                 var transaction = await _transactionService.GetByTransactionId(Id);
                 if (transaction == null)
                 {
@@ -1006,6 +1003,105 @@ namespace NB.API.Controllers
                 _logger.LogError(ex, "Lỗi khi hủy giao dịch nhập kho");
                 return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi hủy giao dịch nhập kho.", 400));
 
+            }
+        }
+
+        [HttpPut("UpdateToCheckingStatus/{transactionId}")]
+        public async Task<IActionResult> SetStatusChecking(int transactionId)
+        {
+            try
+            {
+                if (transactionId <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Transaction ID không hợp lệ", 400));
+                }
+
+                var transaction = await _transactionService.GetByTransactionId(transactionId);
+                if (transaction == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch", 404));
+                }
+
+                if (string.IsNullOrEmpty(transaction.Type) || !transaction.Type.Equals("Import", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Giao dịch không phải là loại Import", 400));
+                }
+
+                transaction.Status = 1; // Đang kiểm hàng
+                await _transactionService.UpdateAsync(transaction);
+
+                return Ok(ApiResponse<object>.Ok("Đã cập nhật trạng thái: Đang kiểm hàng"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái Đang kiểm hàng");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi cập nhật trạng thái", 400));
+            }
+        }
+
+        [HttpPut("UpdateToCheckedStatus/{transactionId}")]
+        public async Task<IActionResult> SetStatusChecked(int transactionId)
+        {
+            try
+            {
+                if (transactionId <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Transaction ID không hợp lệ", 400));
+                }
+
+                var transaction = await _transactionService.GetByTransactionId(transactionId);
+                if (transaction == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch", 404));
+                }
+
+                if (string.IsNullOrEmpty(transaction.Type) || !transaction.Type.Equals("Import", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Giao dịch không phải là loại Import", 400));
+                }
+
+                transaction.Status = 2; // Đã kiểm hàng
+                await _transactionService.UpdateAsync(transaction);
+
+                return Ok(ApiResponse<object>.Ok("Đã cập nhật trạng thái: Đã kiểm hàng"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái Đã kiểm hàng");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi cập nhật trạng thái", 400));
+            }
+        }
+
+        [HttpPut("UpdateToRefundStatus/{transactionId}")]
+        public async Task<IActionResult> SetStatusRefund(int transactionId)
+        {
+            try
+            {
+                if (transactionId <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Transaction ID không hợp lệ", 400));
+                }
+
+                var transaction = await _transactionService.GetByTransactionId(transactionId);
+                if (transaction == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch", 404));
+                }
+
+                if (string.IsNullOrEmpty(transaction.Type) || !transaction.Type.Equals("Import", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Giao dịch không phải là loại Import", 400));
+                }
+
+                transaction.Status = 3; // Trả hàng
+                await _transactionService.UpdateAsync(transaction);
+
+                return Ok(ApiResponse<object>.Ok("Đã cập nhật trạng thái: Trả hàng"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái Trả hàng");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi cập nhật trạng thái", 400));
             }
         }
     }
