@@ -18,10 +18,10 @@ namespace NB.Model.Enums
         delivering,
         [Description("Hoàn thành")]
         done,
-        [Description("Hủy")]
-        cancel,
         [Description("Thất bại")]
         failure,
+        [Description("Hủy")]
+        cancel,
         //nhập kho
         [Description("Đang kiểm")]
         checking,
