@@ -1,5 +1,4 @@
-﻿using NB.Service.PriceListDetailService.ViewModels;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,6 +12,5 @@ namespace NB.Service.PriceListService.ViewModels
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public bool IsActive { get; set; }
-        public List<PriceListDetailInputVM>? PriceListDetails { get; set; }
     }
 }

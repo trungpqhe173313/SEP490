@@ -30,8 +30,9 @@ namespace NB.Service.PriceListDetailService
                         select new PriceListDetailOutputVM
                         {
                             PriceListDetailId = pld.PriceListDetailId,
-                            PriceListId = pld.PriceListId,
+                            ProductId = pld.ProductId,
                             ProductName = pld.Product.ProductName,
+                            ProductCode = pld.Product.Code,
                             Price = pld.Price,
                             Note = pld.Note
                         };
@@ -47,8 +48,9 @@ namespace NB.Service.PriceListDetailService
                         select new PriceListDetailOutputVM
                         {
                             PriceListDetailId = pld.PriceListDetailId,
-                            PriceListId = pld.PriceListId,
+                            ProductId = pld.ProductId,
                             ProductName = pld.Product.ProductName,
+                            ProductCode = pld.Product.Code,
                             Price = pld.Price,
                             Note = pld.Note
                         };
