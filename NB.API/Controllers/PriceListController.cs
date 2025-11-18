@@ -5,6 +5,7 @@ using NB.Service.Core.Mapper;
 using NB.Service.Dto;
 using NB.Service.PriceListDetailService;
 using NB.Service.PriceListDetailService.Dto;
+using NB.Service.PriceListDetailService.ViewModels;
 using NB.Service.PriceListService;
 using NB.Service.PriceListService.Dto;
 using NB.Service.PriceListService.ViewModels;
@@ -50,12 +51,7 @@ namespace NB.API.Controllers
                     PriceListName = pl.PriceListName,
                     StartDate = pl.StartDate,
                     EndDate = pl.EndDate,
-                    IsActive = pl.IsActive switch
-                    {
-                        true => "Đang hoạt động",
-                        false => "Ngừng hoạt động",
-                        _ => "Unknown"
-                    },
+                    IsActive = pl.IsActive,
                     CreatedAt = pl.CreatedAt
                 }).ToList();
 
@@ -98,12 +94,7 @@ namespace NB.API.Controllers
                     PriceListName = priceList.PriceListName,
                     StartDate = priceList.StartDate,
                     EndDate = priceList.EndDate,
-                    IsActive = priceList.IsActive switch
-                    {
-                        true => "Đang hoạt động",
-                        false => "Ngừng hoạt động",
-                        _ => "Unknown"
-                    },
+                    IsActive = priceList.IsActive,
                     CreatedAt = priceList.CreatedAt,
                     PriceListDetails = pricelistDetails
                 };
@@ -150,7 +141,7 @@ namespace NB.API.Controllers
                 {
                     foreach (var detail in model.PriceListDetails)
                     {
-                        // Validate product exists
+                        // Validate product có tồn tại
                         var product = await _productService.GetByIdAsync(detail.ProductId);
                         if (product == null)
                         {
@@ -188,20 +179,20 @@ namespace NB.API.Controllers
 
             try
             {
-                // Check if price list exists
+                // Kiểm tra nếu bảng giá tồn tại
                 var existingPriceList = await _priceListService.GetByPriceListId(priceListId);
                 if (existingPriceList == null)
                 {
                     return NotFound(ApiResponse<object>.Fail("Không tìm thấy bảng giá.", 404));
                 }
 
-                // Validate dates
+                // Kiểm tra ngày
                 if (model.StartDate >= model.EndDate)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Ngày bắt đầu phải nhỏ hơn ngày kết thúc.", 400));
                 }
 
-                // Update price list
+                // Update bảng giá
                 existingPriceList.PriceListName = model.PriceListName;
                 existingPriceList.StartDate = model.StartDate;
                 existingPriceList.EndDate = model.EndDate;
@@ -209,17 +200,43 @@ namespace NB.API.Controllers
 
                 await _priceListService.UpdateAsync(existingPriceList);
 
-                // Update price list details if provided
+                return Ok(ApiResponse<object>.Ok("Cập nhật bảng giá thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật bảng giá");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi cập nhật bảng giá.", 400));
+            }
+        }
+
+        [HttpPut("UpdatePriceListDetail/{priceListId}")]
+        public async Task<IActionResult> UpdatePriceListDetail(int priceListId, [FromBody] PriceListDetailUpdateVM model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            try
+            {
+                // Validate nếu bảng giá tồn tại
+                var existingPriceList = await _priceListService.GetByPriceListId(priceListId);
+                if (existingPriceList == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy bảng giá.", 404));
+                }
+
+                // Update chi tiết bảng giá - Xóa, Cập nhật, Thêm mới
                 if (model.PriceListDetails != null && model.PriceListDetails.Any())
                 {
-                    // Get existing details from database
+                    // Lấy details hiện tại từ database
                     var existingDetails = await _priceListDetailService.GetById(priceListId);
                     var existingDetailsList = existingDetails?.ToList() ?? new List<PriceListDetailDto>();
 
-                    // Get list of ProductIds from the request
+                    // Lấy danh sách ProductId từ model gửi lên
                     var incomingProductIds = model.PriceListDetails.Select(d => d.ProductId).ToList();
 
-                    // 1. DELETE: Remove details that are not in the incoming list
+                    // Xóa các record không còn trong danh sách gửi lên
                     var detailsToDelete = existingDetailsList
                         .Where(ed => !incomingProductIds.Contains((int)ed.ProductId))
                         .ToList();
@@ -266,12 +283,12 @@ namespace NB.API.Controllers
                     }
                 }
 
-                return Ok(ApiResponse<object>.Ok("Cập nhật bảng giá thành công."));
+                return Ok(ApiResponse<object>.Ok("Cập nhật chi tiết bảng giá thành công."));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi cập nhật bảng giá");
-                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi cập nhật bảng giá.", 400));
+                _logger.LogError(ex, "Lỗi khi cập nhật chi tiết bảng giá");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi cập nhật chi tiết bảng giá.", 400));
             }
         }
 
