@@ -7,5 +7,10 @@ namespace NB.Service.RoleService
     public interface IRoleService : IService<Role>
     {
        Task<RoleDto?> GetByRoleName(string name);
+
+       /// <summary>
+       /// Lấy danh sách tất cả các roles
+       /// </summary>
+       Task<List<RoleDto>> GetAllRoles();
     }
 }

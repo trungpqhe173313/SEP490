@@ -25,5 +25,18 @@ namespace NB.Service.RoleService
                         };
             return await query.FirstOrDefaultAsync();
         }
+
+        public async Task<List<RoleDto>> GetAllRoles()
+        {
+            var query = from r in GetQueryable()
+                        select new RoleDto
+                        {
+                            RoleId = r.RoleId,
+                            RoleName = r.RoleName,
+                            Description = r.Description,
+                            CreatedAt = r.CreatedAt
+                        };
+            return await query.ToListAsync();
+        }
     }
 }
