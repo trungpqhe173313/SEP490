@@ -81,11 +81,79 @@ namespace NB.Service.AdminService
             return await PagedList<AccountDto>.CreateAsync(query, search);
         }
 
-        //public async Task<User?> GetByUserId(int id)
-        //{
-        //    return await GetQueryable()
-        //        .Where(u => u.UserId == id)
-        //        .FirstOrDefaultAsync();
-        //}
+        public async Task<ApiResponse<bool>> UpdateAccountAsync(int id, UpdateAccountDto dto)
+        {
+            if (dto == null)
+                return ApiResponse<bool>.Fail("Dữ liệu không hợp lệ", 400);
+
+            // Lấy user
+            var user = await GetQueryable().FirstOrDefaultAsync(u => u.UserId == id);
+            if (user == null)
+                return ApiResponse<bool>.Fail("Không tìm thấy tài khoản", 404);
+
+            // Validate phone trùng
+            if (!string.IsNullOrWhiteSpace(dto.Phone))
+            {
+                var phoneExists = await GetQueryable()
+                    .AnyAsync(u => u.Phone == dto.Phone && u.UserId != id);
+
+                if (phoneExists)
+                    return ApiResponse<bool>.Fail("Số điện thoại đã tồn tại", 409);
+            }
+
+            // Validate email trùng
+            if (!string.IsNullOrWhiteSpace(dto.Email))
+            {
+                var emailExists = await GetQueryable()
+                    .AnyAsync(u => u.Email == dto.Email && u.UserId != id);
+
+                if (emailExists)
+                    return ApiResponse<bool>.Fail("Email đã tồn tại", 409);
+            }
+
+            // Cập nhật dữ liệu cơ bản
+            user.Username = dto.UserName ?? user.Username;
+            user.Email = dto.Email ?? user.Email;
+            user.FullName = dto.FullName ?? user.FullName;
+            user.Phone = dto.Phone ?? user.Phone;
+            if (dto.IsActive.HasValue)
+                user.IsActive = dto.IsActive.Value;
+
+            // Cập nhật roles
+            if (dto.Roles != null && dto.Roles.Count > 0)
+            {
+                // Xóa role cũ
+                var oldRoles = _userRoleRepository
+                    .GetQueryable()
+                    .Where(ur => ur.UserId == id)
+                    .ToList();
+
+                foreach (var ur in oldRoles)
+                    _userRoleRepository.Delete(ur);
+
+                // Thêm role mới
+                foreach (var roleName in dto.Roles)
+                {
+                    var role = _roleRepository
+                        .GetQueryable()
+                        .FirstOrDefault(r => r.RoleName == roleName);
+
+                    if (role != null)
+                    {
+                        _userRoleRepository.Add(new UserRole
+                        {
+                            UserId = id,
+                            RoleId = role.RoleId
+                        });
+                    }
+                }
+            }
+
+            // Lưu thay đổi
+            await _userRoleRepository.SaveAsync();
+            await UpdateAsync(user);
+
+            return ApiResponse<bool>.Ok(true);
+        }
     }
 }

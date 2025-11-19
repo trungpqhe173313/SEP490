@@ -15,5 +15,6 @@ namespace NB.Service.AdminService
     public interface IAdminService: IService<User>
     {
         Task<PagedList<AccountDto>> GetData(AccountSearch search);
+        Task<ApiResponse<bool>> UpdateAccountAsync(int id, UpdateAccountDto dto);
     }
 }
