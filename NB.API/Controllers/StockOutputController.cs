@@ -78,7 +78,7 @@ namespace NB.API.Controllers
                 var result = await _transactionService.GetDataForExport(search);
                 if (result.Items == null || !result.Items.Any())
                 {
-                    return NotFound(ApiResponse<PagedList<TransactionDto>>.Fail("Không tìm đơn hàng"));
+                    return Ok(ApiResponse<PagedList<TransactionDto>>.Ok(result));
                 }
                 var listWarehouseId = result.Items.Select(t => t.WarehouseId).ToList();
                 var listWareHouse = await _warehouseService.GetByListWarehouseId(listWarehouseId);
