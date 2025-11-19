@@ -63,6 +63,10 @@ public partial class NutriBarn2025Context : DbContext
 
     public virtual DbSet<Worklog> Worklogs { get; set; }
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server=tcp:sep2025.database.windows.net,1433;Initial Catalog=NutriBarn2025;Persist Security Info=False;User ID=serveradmin;Password=Sep12345!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Category>(entity =>
@@ -558,19 +562,19 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasIndex(e => e.CustomerId, "IX_Transaction_UserID");
 
             entity.Property(e => e.TransactionId).HasColumnName("TransactionID");
-            entity.Property(e => e.Code).HasMaxLength(100);
             entity.Property(e => e.ConversionRate).HasColumnType("decimal(10, 3)");
             entity.Property(e => e.CustomerId).HasColumnName("CustomerID");
             entity.Property(e => e.Note).HasMaxLength(500);
-            entity.Property(e => e.Qr)
-                .HasMaxLength(500)
-                .HasColumnName("QR");
             entity.Property(e => e.Status).HasDefaultValue(1);
             entity.Property(e => e.SupplierId).HasColumnName("SupplierID");
             entity.Property(e => e.TotalCost).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TransactionCode).HasMaxLength(100);
             entity.Property(e => e.TransactionDate)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
+            entity.Property(e => e.TransactionQr)
+                .HasMaxLength(500)
+                .HasColumnName("TransactionQR");
             entity.Property(e => e.Type).HasMaxLength(50);
             entity.Property(e => e.WarehouseId).HasColumnName("WarehouseID");
             entity.Property(e => e.WarehouseInId).HasColumnName("WarehouseInID");

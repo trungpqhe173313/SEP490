@@ -27,9 +27,9 @@ public partial class Transaction
 
     public decimal? TotalCost { get; set; }
 
-    public string? Qr { get; set; }
+    public string? TransactionQr { get; set; }
 
-    public string? Code { get; set; }
+    public string? TransactionCode { get; set; }
 
     public virtual ICollection<FinancialTransaction> FinancialTransactions { get; set; } = new List<FinancialTransaction>();
 
