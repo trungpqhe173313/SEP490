@@ -12,8 +12,6 @@ namespace NB.Service.TransactionService.ViewModels
         public List<ProductOrder> ListProductOrder { get; set; } = new();
         public string? Note { get; set; }
 
-        public int? Status { get; set; }
-
         public decimal? TotalCost { get; set; }
     }
 }

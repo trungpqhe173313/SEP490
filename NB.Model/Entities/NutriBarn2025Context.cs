@@ -39,6 +39,10 @@ public partial class NutriBarn2025Context : DbContext
 
     public virtual DbSet<ProductionOrder> ProductionOrders { get; set; }
 
+    public virtual DbSet<ReturnTransaction> ReturnTransactions { get; set; }
+
+    public virtual DbSet<ReturnTransactionDetail> ReturnTransactionDetails { get; set; }
+
     public virtual DbSet<Role> Roles { get; set; }
 
     public virtual DbSet<StockAdjustment> StockAdjustments { get; set; }
@@ -59,9 +63,6 @@ public partial class NutriBarn2025Context : DbContext
 
     public virtual DbSet<Worklog> Worklogs { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    { 
-    }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Category>(entity =>
@@ -389,6 +390,44 @@ public partial class NutriBarn2025Context : DbContext
             entity.Property(e => e.Status).HasDefaultValue(2);
         });
 
+        modelBuilder.Entity<ReturnTransaction>(entity =>
+        {
+            entity.HasKey(e => e.ReturnTransactionId).HasName("PK__ReturnTr__4E8C11A6C3DD5F1B");
+
+            entity.ToTable("ReturnTransaction");
+
+            entity.Property(e => e.ReturnTransactionId).HasColumnName("ReturnTransactionID");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysdatetime())");
+            entity.Property(e => e.Reason).HasMaxLength(255);
+            entity.Property(e => e.TransactionId).HasColumnName("TransactionID");
+
+            entity.HasOne(d => d.Transaction).WithMany(p => p.ReturnTransactions)
+                .HasForeignKey(d => d.TransactionId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__ReturnTra__Trans__09746778");
+        });
+
+        modelBuilder.Entity<ReturnTransactionDetail>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__ReturnTr__3214EC2729F1A7D7");
+
+            entity.ToTable("ReturnTransactionDetail");
+
+            entity.Property(e => e.Id).HasColumnName("ID");
+            entity.Property(e => e.ProductId).HasColumnName("ProductID");
+            entity.Property(e => e.ReturnTransactionId).HasColumnName("ReturnTransactionID");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.ReturnTransactionDetails)
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__ReturnTra__Produ__0D44F85C");
+
+            entity.HasOne(d => d.ReturnTransaction).WithMany(p => p.ReturnTransactionDetails)
+                .HasForeignKey(d => d.ReturnTransactionId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__ReturnTra__Retur__0C50D423");
+        });
+
         modelBuilder.Entity<Role>(entity =>
         {
             entity.HasKey(e => e.RoleId).HasName("PK__Role__8AFACE3AACE974F4");
@@ -519,9 +558,13 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasIndex(e => e.CustomerId, "IX_Transaction_UserID");
 
             entity.Property(e => e.TransactionId).HasColumnName("TransactionID");
+            entity.Property(e => e.Code).HasMaxLength(100);
             entity.Property(e => e.ConversionRate).HasColumnType("decimal(10, 3)");
             entity.Property(e => e.CustomerId).HasColumnName("CustomerID");
             entity.Property(e => e.Note).HasMaxLength(500);
+            entity.Property(e => e.Qr)
+                .HasMaxLength(500)
+                .HasColumnName("QR");
             entity.Property(e => e.Status).HasDefaultValue(1);
             entity.Property(e => e.SupplierId).HasColumnName("SupplierID");
             entity.Property(e => e.TotalCost).HasColumnType("decimal(18, 2)");

@@ -27,7 +27,13 @@ public partial class Transaction
 
     public decimal? TotalCost { get; set; }
 
+    public string? Qr { get; set; }
+
+    public string? Code { get; set; }
+
     public virtual ICollection<FinancialTransaction> FinancialTransactions { get; set; } = new List<FinancialTransaction>();
+
+    public virtual ICollection<ReturnTransaction> ReturnTransactions { get; set; } = new List<ReturnTransaction>();
 
     public virtual ICollection<StockBatch> StockBatches { get; set; } = new List<StockBatch>();
 
