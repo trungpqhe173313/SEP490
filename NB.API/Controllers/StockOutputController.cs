@@ -10,6 +10,10 @@ using NB.Service.InventoryService;
 using NB.Service.InventoryService.Dto;
 using NB.Service.ProductService;
 using NB.Service.ProductService.Dto;
+using NB.Service.ReturnTransactionDetailService;
+using NB.Service.ReturnTransactionDetailService.ViewModels;
+using NB.Service.ReturnTransactionService;
+using NB.Service.ReturnTransactionService.ViewModels;
 using NB.Service.StockBatchService;
 using NB.Service.StockBatchService.Dto;
 using NB.Service.SupplierService.Dto;
@@ -38,6 +42,8 @@ namespace NB.API.Controllers
         private readonly IStockBatchService _stockBatchService;
         private readonly IWarehouseService _warehouseService;
         private readonly IInventoryService _inventoryService;
+        private readonly IReturnTransactionService _returnTransactionService;
+        private readonly IReturnTransactionDetailService _returnTransactionDetailService;
         private readonly ILogger<EmployeeController> _logger;
         private readonly IMapper _mapper;
         private readonly string transactionType = "Export";
@@ -49,6 +55,8 @@ namespace NB.API.Controllers
             IUserService userService,
             IWarehouseService warehouseService,
             IInventoryService inventoryService,
+            IReturnTransactionService returnTransactionService,
+            IReturnTransactionDetailService returnTransactionDetailService,
             IMapper mapper,
             ILogger<EmployeeController> logger)
         {
@@ -59,6 +67,8 @@ namespace NB.API.Controllers
             _stockBatchService = stockBatchService;
             _warehouseService = warehouseService;
             _inventoryService = inventoryService;
+            _returnTransactionService = returnTransactionService;
+            _returnTransactionDetailService = returnTransactionDetailService;
             _mapper = mapper;
             _logger = logger;
         }
@@ -345,7 +355,8 @@ namespace NB.API.Controllers
                     CustomerId = userId,
                     WarehouseId = listStockBatch.First().WarehouseId, // hoặc lấy theo input từ FE
                     Note = or.Note,
-                    TotalCost = or.TotalCost
+                    TotalCost = or.TotalCost,
+                    PriceListId = or.PriceListId
                 };
                 var transactionEntity = _mapper.Map<TransactionCreateVM, Transaction>(tranCreate);
 
@@ -455,6 +466,11 @@ namespace NB.API.Controllers
                 if (or.TotalCost.HasValue)
                 {
                     transaction.TotalCost = or.TotalCost;
+                }
+                // Cập nhật bảng giá sử dụng
+                if (or.PriceListId.HasValue)
+                {
+                    transaction.PriceListId = or.PriceListId;
                 }
                 transaction.Status = (int)TransactionStatus.draft;
                 await _transactionService.UpdateAsync(transaction);
@@ -943,6 +959,10 @@ namespace NB.API.Controllers
                 {
                     transaction.TotalCost = or.TotalCost;
                 }
+                if (or.PriceListId.HasValue)
+                {
+                    transaction.PriceListId = or.PriceListId;
+                }
                 await _transactionService.UpdateAsync(transaction);
 
                 return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công"));
@@ -1168,6 +1188,15 @@ namespace NB.API.Controllers
                 {
                     await _stockBatchService.UpdateNoTracking(stockBatch);
                 }
+                // Tạo đơn trả
+                var returnTran = new ReturnTransactionCreateVM
+                {
+                    TransactionId = transaction.TransactionId,
+                    Reason = or.Reason
+                };
+                var returnTranEntity = _mapper.Map<ReturnTransactionCreateVM, ReturnTransaction>(returnTran);
+                returnTranEntity.CreatedAt = DateTime.Now;
+                await _returnTransactionService.CreateAsync(returnTranEntity);
 
                 // Cập nhật TransactionDetail - Trừ số lượng hoặc xóa nếu trả hết
                 var updatedDetails = new List<TransactionDetail>();
@@ -1179,6 +1208,16 @@ namespace NB.API.Controllers
                     {
                         var returnQuantity = returnProductDict[detail.ProductId];
                         var newQuantity = detail.Quantity - returnQuantity;
+
+                        //Tạo chi tiết đơn trả
+                        var returnTranDetail = new ReturnTransactionDetailCreateVM
+                        {
+                            ProductId = detail.ProductId,
+                            ReturnTransactionId = returnTranEntity.ReturnTransactionId,
+                            Quantity = (int)returnQuantity
+                        };
+                        var returnTranDetailEntity = _mapper.Map<ReturnTransactionDetailCreateVM, ReturnTransactionDetail>(returnTranDetail);
+                        await _returnTransactionDetailService.CreateAsync(returnTranDetailEntity);
 
                         if (newQuantity > 0)
                         {
@@ -1204,6 +1243,7 @@ namespace NB.API.Controllers
                         //totalCostReduction += returnQuantity * detail.UnitPrice;
                     }
                 }
+                
 
                 // Cập nhật tổng tiền đơn hàng
                 if (transaction.TotalCost.HasValue)

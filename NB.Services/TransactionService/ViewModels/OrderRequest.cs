@@ -13,6 +13,8 @@ namespace NB.Service.TransactionService.ViewModels
         public int? Status { get; set; }
         public decimal? TotalCost { get; set; }
         public string? Note { get; set; }
-
+        public int? PriceListId { get; set; }
+        // Dung cho returnTransaction
+        public string? Reason { get; set; }
     }
 }
