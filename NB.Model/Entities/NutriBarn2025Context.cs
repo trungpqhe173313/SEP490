@@ -561,6 +561,7 @@ public partial class NutriBarn2025Context : DbContext
             entity.Property(e => e.ConversionRate).HasColumnType("decimal(10, 3)");
             entity.Property(e => e.CustomerId).HasColumnName("CustomerID");
             entity.Property(e => e.Note).HasMaxLength(500);
+            entity.Property(e => e.PriceListId).HasColumnName("PriceListID");
             entity.Property(e => e.Status).HasDefaultValue(1);
             entity.Property(e => e.SupplierId).HasColumnName("SupplierID");
             entity.Property(e => e.TotalCost).HasColumnType("decimal(18, 2)");
