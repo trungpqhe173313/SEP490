@@ -1025,16 +1025,16 @@ namespace NB.API.Controllers
 
 
         [HttpGet("GetTransactionStatus")]
-        public async Task<IActionResult> GetTransactionStatus()
+        public IActionResult GetTransactionStatus()
         {
             try
             {
                 var listStatus = new List<TransactionStatus>
-        {
-            TransactionStatus.draft,
-            TransactionStatus.order,
-            TransactionStatus.delivering
-        };
+                {
+                    TransactionStatus.draft,
+                    TransactionStatus.order,
+                    TransactionStatus.delivering
+                };
 
                 // Tạo danh sách trả về gồm int + string
                 var result = listStatus
