@@ -107,7 +107,8 @@ namespace NB.Service.TransactionService
                             Status = t.Status,
                             TransactionDate = t.TransactionDate,
                             Note = t.Note,
-                            TotalCost = t.TotalCost
+                            TotalCost = t.TotalCost,
+                            PriceListId = t.PriceListId
                         };
 
             return await query.FirstOrDefaultAsync();
