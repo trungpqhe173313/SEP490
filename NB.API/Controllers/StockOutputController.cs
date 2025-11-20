@@ -156,6 +156,7 @@ namespace NB.API.Controllers
                         transaction.TransactionDate = detail.TransactionDate ?? DateTime.MinValue;
                         transaction.WarehouseName = (await _warehouseService.GetById(detail.WarehouseId))?.WarehouseName ?? "N/A";
                         transaction.TotalCost = detail.TotalCost ?? 0;
+                        transaction.PriceListId = detail.PriceListId;
                         int id = detail.SupplierId ?? 0;
                         var customer = await _userService.GetByIdAsync(detail.CustomerId);
                         if (customer != null)
