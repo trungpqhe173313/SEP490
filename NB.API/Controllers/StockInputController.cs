@@ -25,6 +25,10 @@ using NB.Service.TransactionService.ViewModels;
 using NB.Service.UserService.Dto;
 using NB.Service.WarehouseService;
 using NB.Services.StockBatchService.ViewModels;
+using NB.Service.ReturnTransactionService;
+using NB.Service.ReturnTransactionService.ViewModels;
+using NB.Service.ReturnTransactionDetailService;
+using NB.Service.ReturnTransactionDetailService.ViewModels;
 using OfficeOpenXml;
 using System.Globalization;
 using System.Security.Permissions;
@@ -42,6 +46,8 @@ namespace NB.API.Controllers
         private readonly IProductService _productService;
         private readonly IStockBatchService _stockBatchService;
         private readonly ISupplierService _supplierService;
+        private readonly IReturnTransactionService _returnTransactionService;
+        private readonly IReturnTransactionDetailService _returnTransactionDetailService;
         private readonly ILogger<StockInputController> _logger;
         private readonly IMapper _mapper;
 
@@ -53,6 +59,8 @@ namespace NB.API.Controllers
                                     IProductService productService,
                                     IStockBatchService stockBatchService,
                                     ISupplierService supplierService,
+                                    IReturnTransactionService returnTransactionService,
+                                    IReturnTransactionDetailService returnTransactionDetailService,
                                     ILogger<StockInputController> logger,
                                     IMapper mapper)
         {
@@ -63,6 +71,8 @@ namespace NB.API.Controllers
             _productService = productService;
             _stockBatchService = stockBatchService;
             _supplierService = supplierService;
+            _returnTransactionService = returnTransactionService;
+            _returnTransactionDetailService = returnTransactionDetailService;
             _logger = logger;
             _mapper = mapper;
         }
@@ -1102,6 +1112,260 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi cập nhật trạng thái Trả hàng");
                 return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi cập nhật trạng thái", 400));
+            }
+        }
+
+        /// <summary>
+        /// API để trả hàng nhập - Trả lại một số sản phẩm từ đơn nhập hàng
+        /// </summary>
+        /// <param name="transactionId">ID của đơn nhập hàng cần trả hàng</param>
+        /// <param name="or">Danh sách sản phẩm và số lượng cần trả</param>
+        /// <returns>Kết quả trả hàng</returns>
+        [HttpPost("ReturnOrder/{transactionId}")]
+        public async Task<IActionResult> ReturnOrder(int transactionId, [FromBody] OrderRequest or)
+        {
+            var returnRequest = or.ListProductOrder;
+            if (returnRequest == null || !returnRequest.Any())
+            {
+                return BadRequest(ApiResponse<string>.Fail("Danh sách sản phẩm trả hàng không được rỗng.", 400));
+            }
+
+            try
+            {
+                // Lấy thông tin đơn nhập hàng
+                var transaction = await _transactionService.GetByIdAsync(transactionId);
+                if (transaction == null)
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn nhập hàng", 404));
+
+                // Kiểm tra đơn nhập hàng phải là loại Import
+                if (string.IsNullOrEmpty(transaction.Type) || !transaction.Type.Equals("Import", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Đơn hàng không phải là loại nhập hàng", 400));
+                }
+
+                // Lấy chi tiết đơn nhập hàng hiện tại
+                var currentDetails = await _transactionDetailService.GetByTransactionId(transactionId);
+                if (currentDetails == null || !currentDetails.Any())
+                {
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy chi tiết đơn nhập hàng", 404));
+                }
+
+                // Gom nhóm sản phẩm trả hàng theo ProductId
+                var returnProductDict = returnRequest
+                    .GroupBy(p => p.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity ?? 0));
+
+                // Kiểm tra tính hợp lệ của yêu cầu trả hàng
+                var currentProductDict = currentDetails
+                    .GroupBy(d => d.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Sum(d => d.Quantity));
+
+                foreach (var returnItem in returnProductDict)
+                {
+                    var productId = returnItem.Key;
+                    var returnQuantity = returnItem.Value;
+
+                    // Kiểm tra sản phẩm có trong đơn nhập hàng không
+                    if (!currentProductDict.ContainsKey(productId))
+                    {
+                        var product = await _productService.GetByIdAsync(productId);
+                        return BadRequest(ApiResponse<string>.Fail(
+                            $"Sản phẩm '{product?.ProductName ?? productId.ToString()}' không có trong đơn nhập hàng này.", 400));
+                    }
+
+                    // Kiểm tra số lượng trả có hợp lệ không
+                    var currentQuantity = currentProductDict[productId];
+                    if (returnQuantity > currentQuantity)
+                    {
+                        var product = await _productService.GetByIdAsync(productId);
+                        return BadRequest(ApiResponse<string>.Fail(
+                            $"Số lượng trả của sản phẩm '{product?.ProductName ?? productId.ToString()}' ({returnQuantity}) vượt quá số lượng trong đơn ({currentQuantity}).", 400));
+                    }
+
+                    if (returnQuantity <= 0)
+                    {
+                        var product = await _productService.GetByIdAsync(productId);
+                        return BadRequest(ApiResponse<string>.Fail(
+                            $"Số lượng trả của sản phẩm '{product?.ProductName ?? productId.ToString()}' phải lớn hơn 0.", 400));
+                    }
+                }
+
+                // Dictionary để track các update (tránh update trùng lặp)
+                var inventoryUpdates = new Dictionary<int, Inventory>();
+                var stockBatchUpdates = new Dictionary<int, StockBatch>();
+
+                // Lấy tất cả StockBatch theo transactionId của đơn nhập hàng
+                var allStockBatches = await _stockBatchService.GetByTransactionId(transactionId);
+                if (allStockBatches == null || !allStockBatches.Any())
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Không tìm thấy lô hàng cho đơn nhập hàng này.", 404));
+                }
+
+                // Xử lý từng sản phẩm trả hàng
+                foreach (var returnItem in returnProductDict)
+                {
+                    var productId = returnItem.Key;
+                    var returnQuantity = returnItem.Value;
+
+                    // Lấy các StockBatch của sản phẩm này trong đơn nhập hàng
+                    var productBatches = allStockBatches
+                        .Where(b => b.ProductId == productId && (b.QuantityIn ?? 0) > 0)
+                        .OrderByDescending(b => b.ImportDate) // LIFO - Last In First Out
+                        .ToList();
+
+                    if (!productBatches.Any())
+                    {
+                        var product = await _productService.GetByIdAsync(productId);
+                        return BadRequest(ApiResponse<string>.Fail(
+                            $"Không tìm thấy lô hàng cho sản phẩm '{product?.ProductName ?? productId.ToString()}' trong đơn nhập hàng này.", 404));
+                    }
+
+                    // Trả lại hàng theo LIFO
+                    decimal remaining = returnQuantity;
+                    foreach (var batchDto in productBatches)
+                    {
+                        if (remaining <= 0) break;
+
+                        var availableIn = batchDto.QuantityIn ?? 0;
+                        if (availableIn <= 0) continue;
+
+                        var takeBack = Math.Min(availableIn, remaining);
+
+                        // Lấy entity để update
+                        if (stockBatchUpdates.ContainsKey(batchDto.BatchId))
+                        {
+                            stockBatchUpdates[batchDto.BatchId].QuantityIn -= takeBack;
+                            if (stockBatchUpdates[batchDto.BatchId].QuantityIn < 0)
+                                stockBatchUpdates[batchDto.BatchId].QuantityIn = 0;
+                        }
+                        else
+                        {
+                            var batchEntity = await _stockBatchService.GetByIdAsync(batchDto.BatchId);
+                            if (batchEntity != null)
+                            {
+                                batchEntity.QuantityIn -= takeBack;
+                                if (batchEntity.QuantityIn < 0) batchEntity.QuantityIn = 0;
+                                batchEntity.LastUpdated = DateTime.Now;
+                                stockBatchUpdates[batchDto.BatchId] = batchEntity;
+                            }
+                        }
+
+                        remaining -= takeBack;
+                    }
+
+                    if (remaining > 0)
+                    {
+                        var product = await _productService.GetByIdAsync(productId);
+                        return BadRequest(ApiResponse<string>.Fail(
+                            $"Không đủ hàng trong các lô để trả cho sản phẩm '{product?.ProductName ?? productId.ToString()}'.", 400));
+                    }
+
+                    // Giảm Inventory
+                    var inventoryEntity = await _inventoryService.GetEntityByProductIdAsync(productId);
+                    if (inventoryEntity != null)
+                    {
+                        if (inventoryUpdates.ContainsKey(productId))
+                        {
+                            inventoryUpdates[productId].Quantity -= returnQuantity;
+                        }
+                        else
+                        {
+                            inventoryEntity.Quantity -= returnQuantity;
+                            inventoryEntity.LastUpdated = DateTime.Now;
+                            inventoryUpdates[productId] = inventoryEntity;
+                        }
+                    }
+                }
+
+                // Cập nhật tất cả Inventory
+                foreach (var inventory in inventoryUpdates.Values)
+                {
+                    await _inventoryService.UpdateNoTracking(inventory);
+                }
+
+                // Cập nhật tất cả StockBatch
+                foreach (var stockBatch in stockBatchUpdates.Values)
+                {
+                    await _stockBatchService.UpdateNoTracking(stockBatch);
+                }
+
+                // Tạo đơn trả
+                var returnTran = new ReturnTransactionCreateVM
+                {
+                    TransactionId = transaction.TransactionId,
+                    Reason = or.Reason
+                };
+                var returnTranEntity = _mapper.Map<ReturnTransactionCreateVM, ReturnTransaction>(returnTran);
+                returnTranEntity.CreatedAt = DateTime.Now;
+                await _returnTransactionService.CreateAsync(returnTranEntity);
+
+                // Cập nhật TransactionDetail - Trừ số lượng hoặc xóa nếu trả hết
+                foreach (var detail in currentDetails)
+                {
+                    if (returnProductDict.ContainsKey(detail.ProductId))
+                    {
+                        var returnQuantity = returnProductDict[detail.ProductId];
+                        var newQuantity = detail.Quantity - returnQuantity;
+
+                        //Tạo chi tiết đơn trả
+                        var returnTranDetail = new ReturnTransactionDetailCreateVM
+                        {
+                            ProductId = detail.ProductId,
+                            ReturnTransactionId = returnTranEntity.ReturnTransactionId,
+                            Quantity = (int)returnQuantity
+                        };
+                        var returnTranDetailEntity = _mapper.Map<ReturnTransactionDetailCreateVM, ReturnTransactionDetail>(returnTranDetail);
+                        await _returnTransactionDetailService.CreateAsync(returnTranDetailEntity);
+
+                        if (newQuantity > 0)
+                        {
+                            // Còn sản phẩm - Cập nhật số lượng
+                            var detailEntity = await _transactionDetailService.GetByIdAsync(detail.Id);
+                            if (detailEntity != null)
+                            {
+                                detailEntity.Quantity = (int)newQuantity;
+                                await _transactionDetailService.UpdateAsync(detailEntity);
+                            }
+                        }
+                        else
+                        {
+                            // Trả hết - Xóa detail
+                            var detailEntity = await _transactionDetailService.GetByIdAsync(detail.Id);
+                            if (detailEntity != null)
+                            {
+                                await _transactionDetailService.DeleteAsync(detailEntity);
+                            }
+                        }
+                    }
+                }
+
+                // Cập nhật tổng tiền đơn hàng
+                if (or.TotalCost.HasValue)
+                {
+                    transaction.TotalCost = or.TotalCost;
+                    if (transaction.TotalCost < 0) transaction.TotalCost = 0;
+                }
+                // Cập nhật note
+                if (!string.IsNullOrEmpty(or.Note))
+                {
+                    transaction.Note = or.Note;
+                }
+
+                // Kiểm tra nếu trả hết tất cả sản phẩm thì chuyển trạng thái về draft hoặc cancelled
+                var remainingDetails = await _transactionDetailService.GetByTransactionId(transactionId);
+                if (remainingDetails == null || !remainingDetails.Any())
+                {
+                    transaction.Status = (int?)TransactionStatus.draft;
+                }
+
+                await _transactionService.UpdateAsync(transaction);
+
+                return Ok(ApiResponse<string>.Ok($"Trả hàng nhập thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xử lý trả hàng nhập");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi xử lý trả hàng nhập"));
             }
         }
     }
