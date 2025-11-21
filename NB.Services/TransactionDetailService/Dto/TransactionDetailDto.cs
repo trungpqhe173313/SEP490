@@ -13,5 +13,6 @@ namespace NB.Service.TransactionDetailService.Dto
 
         public decimal? WeightPerUnit { get; set; }
         public string? ImageUrl { get; set; }
+        public string? Code { get; set; }
     }
 }

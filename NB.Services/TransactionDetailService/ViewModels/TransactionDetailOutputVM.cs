@@ -10,6 +10,7 @@ namespace NB.Service.TransactionDetailService.ViewModels
     {
         public int TransactionDetailId { get; set; }
         public int ProductId { get; set; }
+        public string? Code { get; set; }
         public string ProductName { get; set; } = null!;
 
         public decimal UnitPrice { get; set; }
