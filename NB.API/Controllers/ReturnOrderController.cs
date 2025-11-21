@@ -21,6 +21,7 @@ using NB.Service.WarehouseService;
 using NB.Service.WarehouseService.Dto;
 using NB.Service.SupplierService;
 using NB.Service.SupplierService.ViewModels;
+using NB.Service.TransactionDetailService;
 
 namespace NB.API.Controllers
 {
@@ -30,6 +31,7 @@ namespace NB.API.Controllers
         private readonly IReturnTransactionService _returnTransactionService;
         private readonly IReturnTransactionDetailService _returnTransactionDetailService;
         private readonly ITransactionService _transactionService;
+        private readonly ITransactionDetailService _transactionDetailService;
         private readonly IProductService _productService;
         private readonly IUserService _userService;
         private readonly IWarehouseService _warehouseService;
@@ -40,6 +42,7 @@ namespace NB.API.Controllers
             IReturnTransactionService returnTransactionService,
             IReturnTransactionDetailService returnTransactionDetailService,
             ITransactionService transactionService,
+            ITransactionDetailService transactionDetailService,
             IProductService productService,
             IUserService userService,
             IWarehouseService warehouseService,
@@ -49,6 +52,7 @@ namespace NB.API.Controllers
             _returnTransactionService = returnTransactionService;
             _returnTransactionDetailService = returnTransactionDetailService;
             _transactionService = transactionService;
+            _transactionDetailService = transactionDetailService;
             _productService = productService;
             _userService = userService;
             _warehouseService = warehouseService;
@@ -173,6 +177,13 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<object>.Fail("Không tìm thấy đơn hàng gốc", 404));
                 }
 
+                // Lấy chi tiết transaction gốc
+                var transactionDetails = await _transactionDetailService.GetByTransactionId(transaction.TransactionId);
+                if (transactionDetails == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy chi tiết đơn hàng gốc", 404));
+                }
+
                 // Lấy chi tiết đơn trả hàng
                 var returnDetails = await _returnTransactionDetailService.GetByReturnTransactionId(returnTransactionId);
 
@@ -265,13 +276,16 @@ namespace NB.API.Controllers
                 var detailList = new List<ReturnOrderDetailItemDto>();
                 foreach (var detail in returnDetails)
                 {
+                    // Lấy ra transactionDetail gốc để lấy giá của sản phẩm trong đơn hàng
+                    var tranDetail = transactionDetails.FirstOrDefault(td => td.ProductId == detail.ProductId);
                     var product = await _productService.GetById(detail.ProductId);
                     detailList.Add(new ReturnOrderDetailItemDto
                     {
                         ReturnTransactionDetailId = detail.Id,
                         ProductId = detail.ProductId,
                         ProductName = product?.ProductName ?? "N/A",
-                        Quantity = detail.Quantity
+                        Quantity = detail.Quantity,
+                        UnitPrice = tranDetail?.UnitPrice ?? 0
                     });
                 }
 
