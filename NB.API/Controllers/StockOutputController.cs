@@ -204,6 +204,7 @@ namespace NB.API.Controllers
                 {
                     var product = await _productService.GetById(item.ProductId);
                     item.ProductName = product != null ? product.ProductName : "N/A";
+                    item.Code = product != null ? product.Code : "N/A";
 
                 }
                 //var batches = await _stockBatchService.GetByTransactionId(Id);
@@ -213,6 +214,7 @@ namespace NB.API.Controllers
                 {
                     TransactionDetailId = item.Id,
                     ProductId = item.ProductId,
+                    Code = item.Code ?? "N/A",
                     ProductName = item.ProductName ?? "N/A",
                     UnitPrice = item.UnitPrice,
                     WeightPerUnit = item.WeightPerUnit,
