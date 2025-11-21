@@ -174,61 +174,15 @@ namespace NB.Service.Core.Forms
 
             using (var package = new ExcelPackage(stream))
             {
-                // SHEET 1: THÔNG TIN CHUNG 
-                var infoSheet = package.Workbook.Worksheets.Add("Thông tin chung");
+                // SHEET CHÍNH: Nhập kho (Gộp thông tin chung và danh sách sản phẩm)
+                var mainSheet = package.Workbook.Worksheets.Add("Nhập kho");
 
-                // Headers cho Sheet 1
-                var infoHeaders = new[] { "WarehouseName", "SupplierName", "ExpireDate" };
-                var infoDescriptions = new[]
-                {
-                    "Tên kho nhập (Bắt buộc)",
-                    "Tên nhà cung cấp (Bắt buộc)",
-                    "Ngày hết hạn chung (Bắt buộc, MM/DD/YYYY)"
-                };
-
-                // Tạo headers (Row 1)
-                for (int i = 0; i < infoHeaders.Length; i++)
-                {
-                    var cell = infoSheet.Cells[1, i + 1];
-                    cell.Value = infoHeaders[i];
-                    cell.Style.Font.Bold = true;
-                    cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
-                    cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(79, 129, 189));
-                    cell.Style.Font.Color.SetColor(Color.White);
-                    cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
-                }
-
-                // Tạo descriptions (Row 2)
-                for (int i = 0; i < infoDescriptions.Length; i++)
-                {
-                    var cell = infoSheet.Cells[2, i + 1];
-                    cell.Value = infoDescriptions[i];
-                    cell.Style.Font.Italic = true;
-                    cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
-                    cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(220, 230, 241));
-                    cell.Style.WrapText = true;
-                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
-                }
-
-                // Sample data (Row 3)
-                infoSheet.Cells[3, 1].Value = "Kho Hà Nội";
-                infoSheet.Cells[3, 2].Value = "Nhà cung cấp ABC";
-                infoSheet.Cells[3, 3].Value = "12-31-2025";
-                for (int i = 1; i <= 3; i++)
-                {
-                    infoSheet.Cells[3, i].Style.Fill.PatternType = ExcelFillStyle.Solid;
-                    infoSheet.Cells[3, i].Style.Fill.BackgroundColor.SetColor(Color.FromArgb(255, 255, 204));
-                    infoSheet.Cells[3, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
-                }
-                infoSheet.Cells[1, 1, 3, 3].AutoFitColumns();
-
-                // SHEET 2: DANH SÁCH SẢN PHẨM 
-                var productSheet = package.Workbook.Worksheets.Add("Danh sách sản phẩm");
-
-                // Define headers (chỉ còn Product info, không có Warehouse/Supplier)
+                // Define headers (Thông tin chung + Thông tin sản phẩm)
                 var headers = new[]
                 {
+                    "WarehouseName",
+                    "SupplierName",
+                    "ExpireDate",
                     "ProductName",
                     "Quantity",
                     "UnitPrice",
@@ -238,6 +192,9 @@ namespace NB.Service.Core.Forms
                 // Define header descriptions
                 var descriptions = new[]
                 {
+                    "Tên kho nhập (Chỉ điền ở dòng đầu)",
+                    "Tên nhà cung cấp (Chỉ điền ở dòng đầu)",
+                    "Ngày hết hạn chung (Chỉ điền ở dòng đầu)",
                     "Tên sản phẩm (Bắt buộc)",
                     "Số lượng (Bắt buộc, số nguyên > 0)",
                     "Giá nhập (Bắt buộc, số thực > 0)",
@@ -247,11 +204,21 @@ namespace NB.Service.Core.Forms
                 // Tạo headers (Row 1)
                 for (int i = 0; i < headers.Length; i++)
                 {
-                    var cell = productSheet.Cells[1, i + 1];
+                    var cell = mainSheet.Cells[1, i + 1];
                     cell.Value = headers[i];
                     cell.Style.Font.Bold = true;
                     cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
-                    cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(79, 129, 189));
+
+                    //Cột thông tin chung (A, B, C)
+                    if (i < 3)
+                    {
+                        cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(0, 112, 192));
+                    }
+                    else //Cột sản phẩm (D, E, F, G)
+                    {
+                        cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(79, 129, 189));
+                    }
+
                     cell.Style.Font.Color.SetColor(Color.White);
                     cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                     cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
@@ -261,7 +228,7 @@ namespace NB.Service.Core.Forms
                 // Tạo descriptions (Row 2)
                 for (int i = 0; i < descriptions.Length; i++)
                 {
-                    var cell = productSheet.Cells[2, i + 1];
+                    var cell = mainSheet.Cells[2, i + 1];
                     cell.Value = descriptions[i];
                     cell.Style.Font.Italic = true;
                     cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
@@ -270,85 +237,124 @@ namespace NB.Service.Core.Forms
                     cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
                 }
 
-                // Tạo sample data (Row 3)
-                var sampleData = new object[]
+                // Tạo sample data (Row 3) - Dòng đầu tiên có đầy đủ thông tin
+                var sampleData1 = new object[]
                 {
-                    "Sản phẩm A",
-                    1000,
-                    50000.50,
-                    "Lô hàng đầu tiên"
+                    "Kho Hà Nội",           // WarehouseName
+                    "Nhà cung cấp ABC",     // SupplierName
+                    "12-31-2025",           // ExpireDate
+                    "Sản phẩm A",           // ProductName
+                    1000,                   // Quantity
+                    50000.50,               // UnitPrice
+                    "Lô hàng đầu tiên"      // Note
                 };
 
-                for (int i = 0; i < sampleData.Length; i++)
+                for (int i = 0; i < sampleData1.Length; i++)
                 {
-                    var cell = productSheet.Cells[3, i + 1];
-                    cell.Value = sampleData[i];
+                    var cell = mainSheet.Cells[3, i + 1];
+                    cell.Value = sampleData1[i];
                     cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
                     cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(255, 255, 204));
                     cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
                 }
 
-                // Tạo sample data (Row 4)
+                // Tạo sample data (Row 4) - Dòng thứ 2 chỉ có thông tin sản phẩm
                 var sampleData2 = new object[]
                 {
-                    "Sản phẩm B",
-                    500,
-                    75000.00,
-                    "Lô hàng thứ hai"
+                    "",                     // WarehouseName (để trống, lấy từ dòng 3)
+                    "",                     // SupplierName (để trống, lấy từ dòng 3)
+                    "",                     // ExpireDate (để trống, lấy từ dòng 3)
+                    "Sản phẩm B",           // ProductName
+                    500,                    // Quantity
+                    75000.00,               // UnitPrice
+                    "Lô hàng thứ hai"       // Note
                 };
 
                 for (int i = 0; i < sampleData2.Length; i++)
                 {
-                    var cell = productSheet.Cells[4, i + 1];
+                    var cell = mainSheet.Cells[4, i + 1];
                     cell.Value = sampleData2[i];
                     cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
                     cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(255, 255, 204));
                     cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
                 }
 
+                // Tạo sample data (Row 5) - Dòng thứ 3 chỉ có thông tin sản phẩm
+                var sampleData3 = new object[]
+                {
+                    "",                     // WarehouseName (để trống)
+                    "",                     // SupplierName (để trống)
+                    "",                     // ExpireDate (để trống)
+                    "Sản phẩm C",           // ProductName
+                    750,                    // Quantity
+                    60000.00,               // UnitPrice
+                    ""                      // Note (để trống)
+                };
+
+                for (int i = 0; i < sampleData3.Length; i++)
+                {
+                    var cell = mainSheet.Cells[5, i + 1];
+                    cell.Value = sampleData3[i];
+                    cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(255, 255, 204));
+                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                }
+
                 // Auto-fit columns
-                productSheet.Cells[1, 1, 4, headers.Length].AutoFitColumns();
+                mainSheet.Cells[1, 1, 5, headers.Length].AutoFitColumns();
 
                 // Set độ rộng tối thiểu cho các cột
                 for (int i = 1; i <= headers.Length; i++)
                 {
-                    if (productSheet.Column(i).Width < 15)
-                        productSheet.Column(i).Width = 15;
+                    if (mainSheet.Column(i).Width < 15)
+                        mainSheet.Column(i).Width = 15;
                 }
 
                 // Tạo sheet hướng dẫn
                 var instructionSheet = package.Workbook.Worksheets.Add("Hướng Dẫn");
-                instructionSheet.Cells["A1"].Value = "HƯỚNG DẪN IMPORT STOCK INPUT";
+                instructionSheet.Cells["A1"].Value = "HƯỚNG DẪN IMPORT NHẬP KHO";
                 instructionSheet.Cells["A1"].Style.Font.Bold = true;
                 instructionSheet.Cells["A1"].Style.Font.Size = 16;
+
                 instructionSheet.Cells["A3"].Value = "1. Cấu trúc file:";
                 instructionSheet.Cells["A3"].Style.Font.Bold = true;
                 instructionSheet.Cells["A4"].Value = "   - Dòng 1: Header (tên các cột)";
-                instructionSheet.Cells["A5"].Value = "   - Dòng 2: Mô tả chi tiết (có thể xóa trước khi import)";
-                instructionSheet.Cells["A6"].Value = "   - Từ dòng 3 trở đi: Dữ liệu thực tế (mỗi dòng là 1 sản phẩm)";
-                instructionSheet.Cells["A8"].Value = "2. SHEET 1 - Thông tin chung (CHỈ 1 DÒNG):";
+                instructionSheet.Cells["A5"].Value = "   - Dòng 2: Mô tả chi tiết";
+                instructionSheet.Cells["A6"].Value = "   - Từ dòng 3 trở đi: Dữ liệu nhập kho (mỗi dòng là 1 sản phẩm)";
+
+                instructionSheet.Cells["A8"].Value = "2. Thông tin chung (Cột A, B, C) - Chỉ điền ở dòng đầu tiên:";
                 instructionSheet.Cells["A8"].Style.Font.Bold = true;
-                instructionSheet.Cells["A9"].Value = "   - WarehouseName: Tên kho nhập (phải tồn tại trong hệ thống)";
-                instructionSheet.Cells["A10"].Value = "   - SupplierName: Tên nhà cung cấp (phải tồn tại trong hệ thống)";
-                instructionSheet.Cells["A11"].Value = "   - ExpireDate: Ngày hết hạn CHUNG cho toàn bộ đơn (MM/DD/YYYY)";
-                instructionSheet.Cells["A13"].Value = "3. SHEET 2 - Danh sách sản phẩm (NHIỀU DÒNG):";
-                instructionSheet.Cells["A13"].Style.Font.Bold = true;
-                instructionSheet.Cells["A14"].Value = "   - ProductName: Tên sản phẩm (phải tồn tại trong hệ thống)";
-                instructionSheet.Cells["A15"].Value = "   - Quantity: Số lượng nhập (số nguyên > 0)";
-                instructionSheet.Cells["A16"].Value = "   - UnitPrice: Giá nhập (số thực > 0, VD: 50000.50)";
-                instructionSheet.Cells["A17"].Value = "   - Note: Ghi chú cho sản phẩm (tùy chọn)";
-                instructionSheet.Cells["A19"].Value = "4. Lưu ý quan trọng:";
-                instructionSheet.Cells["A19"].Style.Font.Bold = true;
-                instructionSheet.Cells["A20"].Value = "   - PHẢI có đủ 2 sheets: 'Thông tin chung' và 'Danh sách sản phẩm'";
-                instructionSheet.Cells["A21"].Value = "   - Sheet 'Thông tin chung' CHỈ CÓ 1 DÒNG DUY NHẤT (dòng 3)";
-                instructionSheet.Cells["A22"].Value = "   - Sheet 'Danh sách sản phẩm' có thể có NHIỀU DÒNG (từ dòng 3 trở đi)";
-                instructionSheet.Cells["A23"].Value = "   - Các dòng màu vàng là dữ liệu mẫu, có thể xóa và thay bằng dữ liệu thực";
-                instructionSheet.Cells["A24"].Value = "   - File chỉ chấp nhận định dạng .xlsx hoặc .xls";
-                instructionSheet.Cells["A25"].Value = "   - Kích thước file tối đa: 10MB";
-                instructionSheet.Cells["A26"].Value = "   - Tên phải chính xác (WarehouseName, SupplierName, ProductName)";
-                instructionSheet.Cells["A27"].Value = "   - Nếu xảy ra lỗi sẽ trả về file được nhập vào, các ô dữ liệu không hợp lệ sẽ bị bôi đỏ(Đang phát triển)";
+                instructionSheet.Cells["A9"].Value = "   - WarehouseName (Cột A): Tên kho nhập (phải tồn tại trong hệ thống)";
+                instructionSheet.Cells["A10"].Value = "   - SupplierName (Cột B): Tên nhà cung cấp (phải tồn tại trong hệ thống)";
+                instructionSheet.Cells["A11"].Value = "   - ExpireDate (Cột C): Ngày hết hạn: chung cho toàn bộ đơn ";
+                instructionSheet.Cells["A12"].Value = "   → Chỉ cần điền ở dòng 3, các dòng tiếp theo để trống (hệ thống tự lấy từ dòng đầu)";
+
+                instructionSheet.Cells["A14"].Value = "3. Thông tin sản phẩm (Cột D, E, F, G) - ĐIỀN Ở MỖI DÒNG:";
+                instructionSheet.Cells["A14"].Style.Font.Bold = true;
+                instructionSheet.Cells["A15"].Value = "   - ProductName (Cột D): Tên sản phẩm (bắt buộc, phải tồn tại trong hệ thống)";
+                instructionSheet.Cells["A16"].Value = "   - Quantity (Cột E): Số lượng nhập (bắt buộc, số nguyên > 0)";
+                instructionSheet.Cells["A17"].Value = "   - UnitPrice (Cột F): Giá nhập (bắt buộc, số thực > 0, VD: 50000.50)";
+                instructionSheet.Cells["A18"].Value = "   - Note (Cột G): Ghi chú cho sản phẩm (tùy chọn)";
+
+                instructionSheet.Cells["A20"].Value = "4. Ví dụ cách điền:";
+                instructionSheet.Cells["A20"].Style.Font.Bold = true;
+                instructionSheet.Cells["A21"].Value = "   Dòng 3: Kho Hà Nội | Nhà cung cấp ABC | 12-31-2025 | Sản phẩm A | 1000 | 50000.50 | Ghi chú 1";
+                instructionSheet.Cells["A22"].Value = "   Dòng 4: [Để trống] | [Để trống] | [Để trống] | Sản phẩm B | 500 | 75000 | Ghi chú 2";
+                instructionSheet.Cells["A23"].Value = "   Dòng 5: [Để trống] | [Để trống] | [Để trống] | Sản phẩm C | 750 | 60000 | Ghi chú 3";
+
+                instructionSheet.Cells["A25"].Value = "5. Lưu ý quan trọng:";
+                instructionSheet.Cells["A25"].Style.Font.Bold = true;
+                instructionSheet.Cells["A26"].Value = "   - Chỉ cần 1 sheet duy nhất: 'Nhập kho'";
+                instructionSheet.Cells["A27"].Value = "   - Thông tin chung (tên kho, tên nhà cung cấp, ngày hết hạn) chỉ cần điền 1 lần (dòng 3)";
+                instructionSheet.Cells["A28"].Value = "   - Các dòng tiếp theo chỉ cần điền thông tin sản phẩm (Cột D, E, F, G)";
+                instructionSheet.Cells["A29"].Value = "   - Các dòng màu vàng là dữ liệu mẫu, có thể xóa và thay bằng dữ liệu thực";
+                instructionSheet.Cells["A30"].Value = "   - File chỉ chấp nhận định dạng .xlsx hoặc .xls";
+                instructionSheet.Cells["A31"].Value = "   - Kích thước file tối đa: 10MB";
+                instructionSheet.Cells["A32"].Value = "   - Tên phải chính xác (tên kho, tên nhà cung cấp, ngày hết hạn)";
+                instructionSheet.Cells["A33"].Value = "   - ExpireDate sẽ áp dụng cho toàn bộ sản phẩm trong đơn nhập";
+
                 instructionSheet.Column(1).Width = 90;
-                instructionSheet.Cells["A1:A26"].Style.WrapText = true;
+                instructionSheet.Cells["A1:A33"].Style.WrapText = true;
 
                 package.Save();
             }
