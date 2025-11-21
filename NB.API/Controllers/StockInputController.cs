@@ -575,29 +575,39 @@ namespace NB.API.Controllers
 
                         using (var package = new ExcelPackage(stream))
                         {
-                            // Đọc Sheet "Thông tin chung"
-                            var infoSheet = package.Workbook.Worksheets.FirstOrDefault(s => s.Name == "Thông tin chung");
-                            if (infoSheet == null)
+                            // Đọc Sheet "Nhập kho" (gộp thông tin chung và danh sách sản phẩm)
+                            var mainSheet = package.Workbook.Worksheets.FirstOrDefault(s => s.Name == "Nhập kho");
+                            if (mainSheet == null)
                             {
-                                return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("Không tìm thấy sheet 'Thông tin chung'", 400));
+                                return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("Không tìm thấy sheet 'Nhập kho'", 400));
                             }
 
-                            // Đọc dòng 3 (dữ liệu)
-                            string warehouseName = infoSheet.Cells[3, 1].Value?.ToString()?.Trim();
-                            string supplierName = infoSheet.Cells[3, 2].Value?.ToString()?.Trim();
-                            var expireDateCell = infoSheet.Cells[3, 3];
+                            // Kiểm tra có dữ liệu không
+                            var rowCount = mainSheet.Dimension?.Rows ?? 0;
+                            if (rowCount < 3)
+                            {
+                                return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("Sheet 'Nhập kho' không có dữ liệu", 400));
+                            }
+
+                            // Đọc thông tin chung từ dòng 3, cột A, B, C
+                            string warehouseName = mainSheet.Cells[3, 1].Value?.ToString()?.Trim();
+                            string supplierName = mainSheet.Cells[3, 2].Value?.ToString()?.Trim();
+                            var expireDateCell = mainSheet.Cells[3, 3];
 
                             // Validate thông tin chung
                             if (string.IsNullOrWhiteSpace(warehouseName))
-                                validationErrors.Add("Sheet 'Thông tin chung': WarehouseName không được để trống");
+                                validationErrors.Add("Dòng 3: WarehouseName không được để trống");
 
                             if (string.IsNullOrWhiteSpace(supplierName))
-                                validationErrors.Add("Sheet 'Thông tin chung': SupplierName không được để trống");
+                                validationErrors.Add("Dòng 3: SupplierName không được để trống");
 
                             DateTime expireDate = DateTime.MinValue;
                             bool isValidDate = false;
+
+                            // Thử parse từ nhiều định dạng khác nhau
                             if (expireDateCell.Value is double doubleValue)
                             {
+                                // Trường hợp 1: Excel lưu dưới dạng số (OADate)
                                 try
                                 {
                                     expireDate = DateTime.FromOADate(doubleValue);
@@ -605,11 +615,46 @@ namespace NB.API.Controllers
                                 }
                                 catch { isValidDate = false; }
                             }
+                            else if (expireDateCell.Value is string stringValue && !string.IsNullOrWhiteSpace(stringValue))
+                            {
+                                // Trường hợp 2: Người dùng nhập text (hỗ trợ nhiều format)
+                                var formats = new[]
+                                {
+                                    "MM/dd/yyyy",   // 12/31/2025
+                                    "MM-dd-yyyy",   // 12-31-2025
+                                    "dd/MM/yyyy",   // 31/12/2025
+                                    "dd-MM-yyyy",   // 31-12-2025
+                                    "yyyy-MM-dd",   // 2025-12-31
+                                    "yyyy/MM/dd",   // 2025/12/31
+                                    "M/d/yyyy",     // 12/31/2025 (không có số 0 đầu)
+                                    "d/M/yyyy"      // 31/12/2025 (không có số 0 đầu)
+                                };
+
+                                isValidDate = DateTime.TryParseExact(
+                                    stringValue.Trim(),
+                                    formats,
+                                    CultureInfo.InvariantCulture,
+                                    DateTimeStyles.None,
+                                    out expireDate
+                                );
+
+                                // Nếu TryParseExact không thành công, thử parse tự động
+                                if (!isValidDate)
+                                {
+                                    isValidDate = DateTime.TryParse(stringValue.Trim(), out expireDate);
+                                }
+                            }
+                            else if (expireDateCell.Value is DateTime dateTimeValue)
+                            {
+                                // Trường hợp 3: Đã là DateTime
+                                expireDate = dateTimeValue;
+                                isValidDate = true;
+                            }
 
                             if (!isValidDate)
-                                validationErrors.Add($"Sheet 'Thông tin chung': ExpireDate không hợp lệ. Giá trị: '{expireDateCell.Value}'");
+                                validationErrors.Add($"Dòng 3: ExpireDate không hợp lệ. Giá trị: '{expireDateCell.Value}'. Vui lòng nhập theo định dạng MM/DD/YYYY (ví dụ: 12/31/2025)");
                             else if (expireDate <= DateTime.UtcNow)
-                                validationErrors.Add("Sheet 'Thông tin chung': ExpireDate phải sau ngày hiện tại");
+                                validationErrors.Add("Dòng 3: ExpireDate phải sau ngày hiện tại");
 
                             // Lookup Warehouse và Supplier
                             var warehouse = !string.IsNullOrWhiteSpace(warehouseName)
@@ -630,19 +675,6 @@ namespace NB.API.Controllers
                                 return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail(validationErrors, 400));
                             }
 
-                            // Đọc Sheet "Danh sách sản phẩm"
-                            var productSheet = package.Workbook.Worksheets.FirstOrDefault(s => s.Name == "Danh sách sản phẩm");
-                            if (productSheet == null)
-                            {
-                                return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("Không tìm thấy sheet 'Danh sách sản phẩm'", 400));
-                            }
-
-                            var rowCount = productSheet.Dimension?.Rows ?? 0;
-                            if (rowCount < 3)
-                            {
-                                return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("Sheet 'Danh sách sản phẩm' không có dữ liệu", 400));
-                            }
-
                             result.TotalRows = rowCount - 2; // Trừ header và description
 
                             // Class để chứa dữ liệu sản phẩm đã validate
@@ -655,16 +687,16 @@ namespace NB.API.Controllers
                                 string productName
                             )>();
 
-                            // VALIDATE TẤT CẢ CÁC DÒNG SẢN PHẨM (Sheet 2)
+                            // VALIDATE TẤT CẢ CÁC DÒNG SẢN PHẨM (từ dòng 3, cột D, E, F, G)
                             for (int row = 3; row <= rowCount; row++)
                             {
                                 try
                                 {
-                                    // Đọc dữ liệu: ProductName, Quantity, UnitPrice, Note
-                                    var productName = productSheet.Cells[row, 1].Value?.ToString()?.Trim();
-                                    var quantityStr = productSheet.Cells[row, 2].Value?.ToString()?.Trim();
-                                    var unitPriceStr = productSheet.Cells[row, 3].Value?.ToString()?.Trim();
-                                    var note = productSheet.Cells[row, 4].Value?.ToString()?.Trim();
+                                    // Đọc dữ liệu sản phẩm từ cột D, E, F, G (4, 5, 6, 7)
+                                    var productName = mainSheet.Cells[row, 4].Value?.ToString()?.Trim();  // Cột D: ProductName
+                                    var quantityStr = mainSheet.Cells[row, 5].Value?.ToString()?.Trim();  // Cột E: Quantity
+                                    var unitPriceStr = mainSheet.Cells[row, 6].Value?.ToString()?.Trim(); // Cột F: UnitPrice
+                                    var note = mainSheet.Cells[row, 7].Value?.ToString()?.Trim();         // Cột G: Note
 
                                     var rowErrors = new List<string>();
 
