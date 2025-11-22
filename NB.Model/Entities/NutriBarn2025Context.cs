@@ -47,6 +47,8 @@ public partial class NutriBarn2025Context : DbContext
 
     public virtual DbSet<StockAdjustment> StockAdjustments { get; set; }
 
+    public virtual DbSet<StockAdjustmentDetail> StockAdjustmentDetails { get; set; }
+
     public virtual DbSet<StockBatch> StockBatches { get; set; }
 
     public virtual DbSet<Supplier> Suppliers { get; set; }
@@ -338,11 +340,10 @@ public partial class NutriBarn2025Context : DbContext
 
             entity.HasIndex(e => e.SupplierId, "IX_Product_SupplierID");
 
-            entity.HasIndex(e => e.Code, "UQ__Product__A25C5AA7FBE1AEE7").IsUnique();
+            entity.HasIndex(e => e.ProductCode, "UQ__Product__A25C5AA7FBE1AEE7").IsUnique();
 
             entity.Property(e => e.ProductId).HasColumnName("ProductID");
             entity.Property(e => e.CategoryId).HasColumnName("CategoryID");
-            entity.Property(e => e.Code).HasMaxLength(50);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -351,6 +352,7 @@ public partial class NutriBarn2025Context : DbContext
                 .HasMaxLength(200)
                 .HasColumnName("ImageURL");
             entity.Property(e => e.IsAvailable).HasDefaultValue(true);
+            entity.Property(e => e.ProductCode).HasMaxLength(50);
             entity.Property(e => e.ProductName).HasMaxLength(200);
             entity.Property(e => e.SellingPrice).HasColumnType("decimal(12, 2)");
             entity.Property(e => e.SupplierId).HasColumnName("SupplierID");
@@ -416,6 +418,7 @@ public partial class NutriBarn2025Context : DbContext
             entity.Property(e => e.Id).HasColumnName("ID");
             entity.Property(e => e.ProductId).HasColumnName("ProductID");
             entity.Property(e => e.ReturnTransactionId).HasColumnName("ReturnTransactionID");
+            entity.Property(e => e.UnitPrice).HasColumnType("decimal(12, 2)");
 
             entity.HasOne(d => d.Product).WithMany(p => p.ReturnTransactionDetails)
                 .HasForeignKey(d => d.ProductId)
@@ -446,35 +449,49 @@ public partial class NutriBarn2025Context : DbContext
 
         modelBuilder.Entity<StockAdjustment>(entity =>
         {
-            entity.HasKey(e => e.AdjustmentId).HasName("PK__StockAdj__E60DB8B31AA9F3E9");
+            entity.HasKey(e => e.AdjustmentId).HasName("PK__StockAdj__E60DB8B3D0933BE7");
 
             entity.ToTable("StockAdjustment");
 
             entity.Property(e => e.AdjustmentId).HasColumnName("AdjustmentID");
-            entity.Property(e => e.ActualQuantity).HasColumnType("decimal(12, 2)");
-            entity.Property(e => e.AdjustmentDate)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
-            entity.Property(e => e.ProductId).HasColumnName("ProductID");
-            entity.Property(e => e.Reason).HasMaxLength(50);
-            entity.Property(e => e.StockBatchId).HasColumnName("StockBatchID");
-            entity.Property(e => e.SystemQuantity).HasColumnType("decimal(12, 2)");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.ResolvedAt).HasColumnType("datetime");
             entity.Property(e => e.WarehouseId).HasColumnName("WarehouseID");
-
-            entity.HasOne(d => d.Product).WithMany(p => p.StockAdjustments)
-                .HasForeignKey(d => d.ProductId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__StockAdju__Produ__5224328E");
-
-            entity.HasOne(d => d.StockBatch).WithMany(p => p.StockAdjustments)
-                .HasForeignKey(d => d.StockBatchId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__StockAdju__Stock__51300E55");
 
             entity.HasOne(d => d.Warehouse).WithMany(p => p.StockAdjustments)
                 .HasForeignKey(d => d.WarehouseId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__StockAdju__Wareh__503BEA1C");
+                .HasConstraintName("FK_StockAdjustment_Warehouse");
+        });
+
+        modelBuilder.Entity<StockAdjustmentDetail>(entity =>
+        {
+            entity.HasKey(e => e.DetailId).HasName("PK__StockAdj__135C314D1C66B7A3");
+
+            entity.ToTable("StockAdjustmentDetail");
+
+            entity.Property(e => e.DetailId).HasColumnName("DetailID");
+            entity.Property(e => e.ActualQuantity).HasColumnType("decimal(12, 2)");
+            entity.Property(e => e.AdjustmentId).HasColumnName("AdjustmentID");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Note).HasMaxLength(255);
+            entity.Property(e => e.ProductId).HasColumnName("ProductID");
+            entity.Property(e => e.SystemQuantity).HasColumnType("decimal(12, 2)");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Adjustment).WithMany(p => p.StockAdjustmentDetails)
+                .HasForeignKey(d => d.AdjustmentId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_StockAdjustmentDetail_StockAdjustment");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.StockAdjustmentDetails)
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_StockAdjustmentDetail_Product");
         });
 
         modelBuilder.Entity<StockBatch>(entity =>

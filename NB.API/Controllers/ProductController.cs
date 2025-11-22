@@ -12,6 +12,8 @@ using NB.Service.SupplierService;
 using NB.Service.CategoryService;
 using NB.Service.UserService.Dto;
 using NB.Service.WarehouseService;
+using OfficeOpenXml;
+using NB.Service.Core.Forms;
 
 namespace NB.API.Controllers
 {
@@ -63,7 +65,7 @@ namespace NB.API.Controllers
                     {
                         ProductId = p.ProductId,
                         ProductName = p.ProductName,
-                        Code = p.Code,
+                        Code = p.ProductCode,
                         Description = p.Description,
                         SupplierId = p.SupplierId,
                         SupplierName = p.SupplierName,
@@ -113,7 +115,7 @@ namespace NB.API.Controllers
                 {
                     ProductId = p.ProductId,
                     ProductName = p.ProductName,
-                    Code = p.Code,
+                    Code = p.ProductCode,
                     Description = p.Description,
                     SupplierId = p.SupplierId,
                     SupplierName = p.SupplierName,
@@ -158,7 +160,7 @@ namespace NB.API.Controllers
                     {
                         ProductId = p.ProductId,
                         ProductName = p.ProductName,
-                        Code = p.Code,
+                        Code = p.ProductCode,
                         Description = p.Description,
                         SupplierId = p.SupplierId,
                         SupplierName = p.SupplierName,
@@ -275,17 +277,6 @@ namespace NB.API.Controllers
                 }
             }
 
-            // Validate WarehouseId
-            if (model.warehouseId <= 0)
-            {
-                return BadRequest(ApiResponse<object>.Fail($"Warehouse ID {model.warehouseId} không hợp lệ.", 400));
-            }
-
-            var warehouseInventory = await _inventoryService.GetByWarehouseId(model.warehouseId);
-            if (warehouseInventory == null)
-            {
-                return NotFound(ApiResponse<object>.Fail($"Không tồn tại Warehouse {model.warehouseId}.", 404));
-            }
             // Validate Supplier
             var supplier = await _supplierService.GetBySupplierId(model.supplierId);
             if (model.supplierId <= 0 || supplier  == null)
@@ -346,7 +337,7 @@ namespace NB.API.Controllers
                 {
                     SupplierId = supplier.SupplierId,
                     CategoryId = category.CategoryId,
-                    Code = code,
+                    ProductCode = code,
                     ImageUrl = imageUrl ?? string.Empty,
                     ProductName = productName,
                     Description = model.description?.Trim(),
@@ -357,20 +348,11 @@ namespace NB.API.Controllers
                 };
                 await _productService.CreateAsync(newProductEntity);
 
-                var newInventoryEntity = new InventoryDto
-                {
-                    WarehouseId = model.warehouseId,
-                    ProductId = newProductEntity.ProductId,
-                    Quantity = 0,
-                    LastUpdated = DateTime.UtcNow
-                };
-                await _inventoryService.CreateAsync(newInventoryEntity);
-
                 var productOutputDto = new ProductOutputVM
                 {
                     ProductId = newProductEntity.ProductId,
                     ProductName = newProductEntity.ProductName,
-                    Code = newProductEntity.Code,
+                    Code = newProductEntity.ProductCode,
                     Description = newProductEntity.Description,
                     SupplierId = supplier.SupplierId,
                     SupplierName = supplier.SupplierName,
@@ -478,9 +460,9 @@ namespace NB.API.Controllers
                 string? oldImageUrl = productEntity.ImageUrl;
 
                 // Check và update từng field của Product
-                if (productEntity.Code != newCode)
+                if (productEntity.ProductCode != newCode)
                 {
-                    productEntity.Code = newCode;
+                    productEntity.ProductCode = newCode;
                     isProductChanged = true;
                 }
 
@@ -553,7 +535,7 @@ namespace NB.API.Controllers
                 {
                     ProductId = productEntity.ProductId,
                     ProductName = productEntity.ProductName,
-                    Code = productEntity.Code,
+                    Code = productEntity.ProductCode,
                     Description = productEntity.Description,
                     SupplierId = productEntity.SupplierId,
                     SupplierName = newSupplier.SupplierName,
@@ -603,6 +585,281 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi xóa sản phẩm với Id: {Id}", Id);
                 return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi xóa sản phẩm", 400));
+            }
+        }
+
+        [HttpPost("ImportFromExcel")]
+        public async Task<IActionResult> ImportProductsFromExcel(IFormFile file)
+        {
+            try
+            {
+                // Validate file
+                if (file == null || file.Length == 0)
+                {
+                    return BadRequest(ApiResponse<ProductImportResultVM>.Fail("File không được để trống", 400));
+                }
+
+                // Validate file extension
+                var allowedExtensions = new[] { ".xlsx", ".xls" };
+                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(fileExtension))
+                {
+                    return BadRequest(ApiResponse<ProductImportResultVM>.Fail("Chỉ chấp nhận file Excel (.xlsx, .xls)", 400));
+                }
+
+                // Validate file size (max 10MB)
+                if (file.Length > 10 * 1024 * 1024)
+                {
+                    return BadRequest(ApiResponse<ProductImportResultVM>.Fail("Kích thước file không được vượt quá 10MB", 400));
+                }
+
+                var result = new ProductImportResultVM();
+                var validationErrors = new List<string>();
+
+                using (var stream = new MemoryStream())
+                {
+                    await file.CopyToAsync(stream);
+                    stream.Position = 0;
+
+                    using (var package = new ExcelPackage(stream))
+                    {
+                        // Đọc Sheet "Nhập sản phẩm"
+                        var mainSheet = package.Workbook.Worksheets.FirstOrDefault(s => s.Name == "Nhập sản phẩm");
+                        if (mainSheet == null)
+                        {
+                            return BadRequest(ApiResponse<ProductImportResultVM>.Fail("Không tìm thấy sheet 'Nhập sản phẩm'", 400));
+                        }
+
+                        // Kiểm tra có dữ liệu không
+                        var rowCount = mainSheet.Dimension?.Rows ?? 0;
+                        if (rowCount < 3)
+                        {
+                            return BadRequest(ApiResponse<ProductImportResultVM>.Fail("Sheet 'Nhập sản phẩm' không có dữ liệu", 400));
+                        }
+
+                        result.TotalRows = rowCount - 2; // Trừ header và description
+
+                        // Class để chứa dữ liệu sản phẩm đã validate
+                        var validatedProducts = new List<(
+                            int rowNumber,
+                            string supplierName,
+                            int supplierId,
+                            string categoryName,
+                            int categoryId,
+                            string productCode,
+                            string productName,
+                            decimal weightPerUnit,
+                            decimal sellingPrice,
+                            string? description
+                        )>();
+
+                        //Vallidate sản phẩm (từ dòng 3)
+                        for (int row = 3; row <= rowCount; row++)
+                        {
+                            try
+                            {
+                                //Đọc dữ liệu từ Excel
+                                var supplierName = mainSheet.Cells[row, 1].Value?.ToString()?.Trim();      // Cột A: SupplierName
+                                var categoryName = mainSheet.Cells[row, 2].Value?.ToString()?.Trim();      // Cột B: CategoryName
+                                var productCode = mainSheet.Cells[row, 3].Value?.ToString()?.Trim();       // Cột C: ProductCode
+                                var productName = mainSheet.Cells[row, 4].Value?.ToString()?.Trim();       // Cột D: ProductName
+                                var weightPerUnitStr = mainSheet.Cells[row, 5].Value?.ToString()?.Trim(); // Cột E: WeightPerUnit
+                                var sellingPriceStr = mainSheet.Cells[row, 6].Value?.ToString()?.Trim();  // Cột F: SellingPrice
+                                var description = mainSheet.Cells[row, 7].Value?.ToString()?.Trim();       // Cột G: Description
+
+                                var rowErrors = new List<string>();
+
+                                //Validate SupplierName
+                                if (string.IsNullOrWhiteSpace(supplierName))
+                                {
+                                    rowErrors.Add($"Dòng {row}: Tên nhà cung cấp không được để trống");
+                                }
+
+                                //Validate CategoryName
+                                if (string.IsNullOrWhiteSpace(categoryName))
+                                {
+                                    rowErrors.Add($"Dòng {row}: Tên danh mục không được để trống");
+                                }
+
+                                //Validate ProductCode
+                                if (string.IsNullOrWhiteSpace(productCode))
+                                {
+                                    rowErrors.Add($"Dòng {row}: Mã sản phẩm không được để trống");
+                                }
+                                else
+                                {
+                                    //Chuẩn hóa ProductCode
+                                    productCode = productCode.Replace(" ", "");
+
+                                    //Kiểm tra trùng trong DB
+                                    var existingProduct = await _productService.GetByCode(productCode);
+                                    if (existingProduct != null)
+                                    {
+                                        rowErrors.Add($"Dòng {row}: Mã sản phẩm '{productCode}' đã tồn tại trong hệ thống");
+                                    }
+                                }
+
+                                //Validate ProductName
+                                if (string.IsNullOrWhiteSpace(productName))
+                                {
+                                    rowErrors.Add($"Dòng {row}: Tên sản phẩm không được để trống");
+                                }
+                                else
+                                {
+                                    // Kiểm tra trùng trong DB
+                                    var existingProduct = await _productService.GetByProductName(productName);
+                                    if (existingProduct != null)
+                                    {
+                                        rowErrors.Add($"Dòng {row}: Tên sản phẩm '{productName}' đã tồn tại trong hệ thống");
+                                    }
+                                }
+
+                                //Validate WeightPerUnit
+                                decimal weightPerUnit = 0;
+                                bool weightPerUnitValid = !string.IsNullOrWhiteSpace(weightPerUnitStr) &&
+                                                         decimal.TryParse(weightPerUnitStr, out weightPerUnit) &&
+                                                         weightPerUnit >= 0;
+                                if (!weightPerUnitValid)
+                                {
+                                    rowErrors.Add($"Dòng {row}: Trọng lượng trên đơn vị phải là số >= 0");
+                                }
+
+                                //Validate SellingPrice
+                                decimal sellingPrice = 0;
+                                bool sellingPriceValid = !string.IsNullOrWhiteSpace(sellingPriceStr) &&
+                                                        decimal.TryParse(sellingPriceStr, out sellingPrice) &&
+                                                        sellingPrice >= 0;
+                                if (!sellingPriceValid)
+                                {
+                                    rowErrors.Add($"Dòng {row}: Giá bán phải là số >= 0");
+                                }
+
+                                //Vallidate Supplier
+                                var supplier = !string.IsNullOrWhiteSpace(supplierName)
+                                    ? await _supplierService.GetByName(supplierName)
+                                    : null;
+                                if (supplier == null && !string.IsNullOrWhiteSpace(supplierName))
+                                {
+                                    rowErrors.Add($"Dòng {row}: Không tìm thấy nhà cung cấp với tên: {supplierName}");
+                                }
+
+                                //Vallidate Category
+                                var category = !string.IsNullOrWhiteSpace(categoryName)
+                                    ? await _categoryService.GetByName(categoryName)
+                                    : null;
+                                if (category == null && !string.IsNullOrWhiteSpace(categoryName))
+                                {
+                                    rowErrors.Add($"Dòng {row}: Không tìm thấy danh mục với tên: {categoryName}");
+                                }
+
+                                // Nếu có lỗi, thêm vào list và skip
+                                if (rowErrors.Any())
+                                {
+                                    validationErrors.AddRange(rowErrors);
+                                    continue;
+                                }
+
+                                // Thêm vào list đã validate
+                                validatedProducts.Add((
+                                    row,
+                                    supplierName!,
+                                    supplier!.SupplierId,
+                                    categoryName!,
+                                    category!.CategoryId,
+                                    productCode!,
+                                    productName!,
+                                    weightPerUnit,
+                                    sellingPrice,
+                                    description
+                                ));
+                            }
+                            catch (Exception ex)
+                            {
+                                validationErrors.Add($"Dòng {row}: {ex.Message}");
+                            }
+                        }
+
+                        // Nếu có bất kỳ lỗi nào, return BadRequest, hủy toàn bộ quá trình import
+                        if (validationErrors.Any())
+                        {
+                            result.TotalRows = validatedProducts.Count;
+                            result.FailedCount = result.TotalRows;
+                            result.SuccessCount = 0;
+                            result.ErrorMessages = validationErrors;
+
+                            return BadRequest(ApiResponse<ProductImportResultVM>.Fail(
+                                validationErrors,
+                                400));
+                        }
+
+                        // Nếu tất cả hợp lệ, bắt đầu tạo sản phẩm
+                        foreach (var product in validatedProducts)
+                        {
+                            var newProduct = new ProductDto
+                            {
+                                SupplierId = product.supplierId,
+                                CategoryId = product.categoryId,
+                                ProductCode = product.productCode,
+                                ProductName = product.productName,
+                                WeightPerUnit = product.weightPerUnit,
+                                SellingPrice = product.sellingPrice,
+                                Description = product.description,
+                                ImageUrl = "ImagePath",
+                                IsAvailable = true,
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+
+                            await _productService.CreateAsync(newProduct);
+
+                            // Tạo kết quả trả về
+                            var resultItem = new ProductImportedItemVM
+                            {
+                                ProductId = newProduct.ProductId,
+                                ProductCode = newProduct.ProductCode,
+                                ProductName = newProduct.ProductName,
+                                SupplierName = product.supplierName,
+                                CategoryName = product.categoryName,
+                                WeightPerUnit = newProduct.WeightPerUnit,
+                                SellingPrice = newProduct.SellingPrice,
+                                Description = newProduct.Description
+                            };
+
+                            result.ImportedProducts.Add(resultItem);
+                            result.SuccessCount++;
+                        }
+                    }
+                }
+
+                // Hoàn tất import và trả về kết quả
+                result.ErrorMessages = new List<string>();
+                result.FailedCount = 0;
+                return Ok(ApiResponse<ProductImportResultVM>.Ok(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi import file Excel");
+                return BadRequest(ApiResponse<ProductImportResultVM>.Fail($"Có lỗi xảy ra: {ex.Message}", 400));
+            }
+        }
+
+        [HttpGet("DownloadProductTemplate")]
+        public IActionResult DownloadProductTemplate()
+        {
+            try
+            {
+                var stream = ExcelTemplateGenerator.GenerateProductImportTemplate();
+                var fileName = $"Product_Import_Template_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+
+                return File(
+                    stream,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi tạo template Excel");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi tạo template", 400));
             }
         }
     }

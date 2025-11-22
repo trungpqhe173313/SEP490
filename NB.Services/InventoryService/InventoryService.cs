@@ -144,7 +144,7 @@ namespace NB.Service.InventoryService
                             // Thông tin từ Product
                             ProductId = i.ProductId,
                             ProductName = i.Product.ProductName,
-                            Code = i.Product.Code,
+                            Code = i.Product.ProductCode,
                             WeightPerUnit = i.Product.WeightPerUnit,
                         };
             return Task.FromResult(query.ToList());

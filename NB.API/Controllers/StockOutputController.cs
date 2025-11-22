@@ -204,7 +204,7 @@ namespace NB.API.Controllers
                 {
                     var product = await _productService.GetById(item.ProductId);
                     item.ProductName = product != null ? product.ProductName : "N/A";
-                    item.Code = product != null ? product.Code : "N/A";
+                    item.Code = product != null ? product.ProductCode : "N/A";
 
                 }
                 //var batches = await _stockBatchService.GetByTransactionId(Id);
