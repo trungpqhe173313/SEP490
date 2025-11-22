@@ -18,4 +18,8 @@ public partial class StockAdjustmentDetail
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+    public virtual StockAdjustment Adjustment { get; set; } = null!;
+
+    public virtual Product Product { get; set; } = null!;
 }

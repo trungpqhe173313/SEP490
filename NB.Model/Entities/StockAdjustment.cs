@@ -15,5 +15,7 @@ public partial class StockAdjustment
 
     public DateTime? ResolvedAt { get; set; }
 
+    public virtual ICollection<StockAdjustmentDetail> StockAdjustmentDetails { get; set; } = new List<StockAdjustmentDetail>();
+
     public virtual Warehouse Warehouse { get; set; } = null!;
 }
