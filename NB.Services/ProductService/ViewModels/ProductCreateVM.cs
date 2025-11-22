@@ -6,9 +6,6 @@ namespace NB.Service.ProductService.ViewModels
 {
     public class ProductCreateVM
     {
-        [Required(ErrorMessage = "Mã nhà kho là bắt buộc")]
-        public int warehouseId { get; set; }
-
         [Required(ErrorMessage = "Mã sản phẩm không được trống")]
         public string code { get; set; }
 
