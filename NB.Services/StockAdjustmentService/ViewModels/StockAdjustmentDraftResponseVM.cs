@@ -17,6 +17,7 @@ namespace NB.Service.StockAdjustmentService.ViewModels
         public int ProductId { get; set; }
         public string ProductName { get; set; } = string.Empty;
         public decimal ActualQuantity { get; set; }
+        public decimal SystemQuantity { get; set; }
         public string? Note { get; set; }
         public DateTime? CreatedAt { get; set; }
     }

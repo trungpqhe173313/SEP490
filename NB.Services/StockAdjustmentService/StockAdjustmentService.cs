@@ -65,6 +65,7 @@ namespace NB.Service.StockAdjustmentService
                 AdjustmentId = stockAdjustment.AdjustmentId,
                 ProductId = d.ProductId,
                 ActualQuantity = d.ActualQuantity,
+                SystemQuantity = d.SystemQuantity,
                 Note = d.Note,
                 CreatedAt = DateTime.Now
             }).ToList();
@@ -90,6 +91,7 @@ namespace NB.Service.StockAdjustmentService
                     ProductId = d.ProductId,
                     ProductName = products.First(p => p.ProductId == d.ProductId).ProductName,
                     ActualQuantity = d.ActualQuantity,
+                    SystemQuantity = d.SystemQuantity,
                     Note = d.Note,
                     CreatedAt = d.CreatedAt
                 }).ToList()
