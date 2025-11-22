@@ -38,7 +38,7 @@ namespace NB.Service.ProductService
                         {
                             ProductId = p.ProductId,
                             ProductName = p.ProductName,
-                            Code = p.Code,
+                            ProductCode = p.ProductCode,
                             SupplierId = p.SupplierId,
                             SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
@@ -62,7 +62,7 @@ namespace NB.Service.ProductService
                         {
                             ProductId = p.ProductId,
                             ProductName = p.ProductName,
-                            Code = p.Code,
+                            ProductCode = p.ProductCode,
                             SupplierId = p.SupplierId,
                             SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
@@ -87,7 +87,7 @@ namespace NB.Service.ProductService
                         {
                             ProductId = p.ProductId,
                             ProductName = p.ProductName,
-                            Code = p.Code,
+                            ProductCode = p.ProductCode,
                             SupplierId = p.SupplierId,
                             SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
@@ -122,7 +122,7 @@ namespace NB.Service.ProductService
                         {
                             ProductId = p.ProductId,
                             ProductName = p.ProductName,
-                            Code = p.Code,
+                            ProductCode = p.ProductCode,
                             SupplierId = p.SupplierId,
                             SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
@@ -146,7 +146,7 @@ namespace NB.Service.ProductService
                         {
                             ProductId = p.ProductId,
                             ProductName = p.ProductName,
-                            Code = p.Code,
+                            ProductCode = p.ProductCode,
                             SupplierId = p.SupplierId,
                             SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
@@ -165,12 +165,12 @@ namespace NB.Service.ProductService
         public async Task<ProductDto?> GetByCode(string code)
         {
             var query = from p in GetQueryable()
-                        where p.Code == code.Trim().Replace(" ", "")
+                        where p.ProductCode == code.Trim().Replace(" ", "")
                         select new ProductDto
                         {
                             ProductId = p.ProductId,
                             ProductName = p.ProductName,
-                            Code = p.Code,
+                            ProductCode = p.ProductCode,
                             SupplierId = p.SupplierId,
                             SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
@@ -199,7 +199,7 @@ namespace NB.Service.ProductService
                             // Thông tin từ Product
                             ProductId = p.ProductId,
                             ProductName = p.ProductName,
-                            Code = p.Code,
+                            Code = p.ProductCode,
                             WeightPerUnit = p.WeightPerUnit,
                             Description = p.Description,
                             ImageUrl = p.ImageUrl,
@@ -221,7 +221,7 @@ namespace NB.Service.ProductService
                         {
                             ProductId = p.ProductId,
                             ProductName = p.ProductName,
-                            Code = p.Code,
+                            ProductCode = p.ProductCode,
                             SupplierId = p.SupplierId,
                             SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
@@ -256,7 +256,7 @@ namespace NB.Service.ProductService
                 if(!string.IsNullOrEmpty(search.Code))
                 {
                     var keyword = search.Code.Trim();
-                    baseQuery = baseQuery.Where(u => EF.Functions.Collate(u.Code, "SQL_Latin1_General_CP1_CI_AI")
+                    baseQuery = baseQuery.Where(u => EF.Functions.Collate(u.ProductCode, "SQL_Latin1_General_CP1_CI_AI")
                     .Contains(keyword));
                 }
                 if (search.IsAvailable.HasValue)
@@ -294,7 +294,7 @@ namespace NB.Service.ProductService
                         {
                             ProductId = p.ProductId,
                             ProductName = p.ProductName,
-                            Code = p.Code,
+                            ProductCode = p.ProductCode,
                             SupplierId = p.SupplierId,
                             SupplierName = p.Supplier != null ? p.Supplier.SupplierName : null,
                             CategoryId = p.CategoryId,
@@ -322,7 +322,7 @@ namespace NB.Service.ProductService
                 {
                     ProductId = p.ProductId,
                     ProductName = p.ProductName,
-                    Code = p.Code,
+                    ProductCode = p.ProductCode,
                     SupplierId = p.SupplierId,
                     SupplierName = p.Supplier.SupplierName,
                     CategoryId = p.CategoryId,
