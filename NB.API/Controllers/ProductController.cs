@@ -804,7 +804,7 @@ namespace NB.API.Controllers
                                 WeightPerUnit = product.weightPerUnit,
                                 SellingPrice = product.sellingPrice,
                                 Description = product.description,
-                                ImageUrl = null,
+                                ImageUrl = "ImagePath",
                                 IsAvailable = true,
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
