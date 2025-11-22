@@ -362,5 +362,171 @@ namespace NB.Service.Core.Forms
             stream.Position = 0;
             return stream;
         }
+
+
+        // Tạo template Excel cho Product Import
+        /// <returns>MemoryStream chứa file Excel template</returns>
+        public static MemoryStream GenerateProductImportTemplate()
+        {
+            var stream = new MemoryStream();
+
+            using (var package = new ExcelPackage(stream))
+            {
+                // SHEET CHÍNH: Nhập sản phẩm
+                var mainSheet = package.Workbook.Worksheets.Add("Nhập sản phẩm");
+
+                // Define headers
+                var headers = new[]
+                {
+                    "SupplierName",
+                    "CategoryName",
+                    "ProductCode",
+                    "ProductName",
+                    "WeightPerUnit",
+                    "SellingPrice",
+                    "Description"
+                };
+
+                // Define header descriptions
+                var descriptions = new[]
+                {
+                    "Tên nhà cung cấp (Bắt buộc)",
+                    "Tên danh mục (Bắt buộc)",
+                    "Mã sản phẩm (Bắt buộc, không trùng)",
+                    "Tên sản phẩm (Bắt buộc, không trùng)",
+                    "Trọng lượng/đơn vị (Bắt buộc, số >= 0)",
+                    "Giá bán (Bắt buộc, số >= 0)",
+                    "Mô tả (Tùy chọn)"
+                };
+
+                // Tạo headers (Row 1)
+                for (int i = 0; i < headers.Length; i++)
+                {
+                    var cell = mainSheet.Cells[1, i + 1];
+                    cell.Value = headers[i];
+                    cell.Style.Font.Bold = true;
+                    cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(79, 129, 189));
+                    cell.Style.Font.Color.SetColor(Color.White);
+                    cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                }
+
+                // Tạo descriptions (Row 2)
+                for (int i = 0; i < descriptions.Length; i++)
+                {
+                    var cell = mainSheet.Cells[2, i + 1];
+                    cell.Value = descriptions[i];
+                    cell.Style.Font.Italic = true;
+                    cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(220, 230, 241));
+                    cell.Style.WrapText = true;
+                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                }
+
+                // Tạo sample data (Row 3)
+                var sampleData1 = new object[]
+                {
+                    "Nhà cung cấp ABC",     // SupplierName
+                    "Danh mục Thực phẩm",   // CategoryName
+                    "SP001",                // ProductCode
+                    "Sản phẩm mẫu 1",       // ProductName
+                    1.5,                    // WeightPerUnit
+                    50000,                  // SellingPrice
+                    "Mô tả sản phẩm 1"      // Description
+                };
+
+                for (int i = 0; i < sampleData1.Length; i++)
+                {
+                    var cell = mainSheet.Cells[3, i + 1];
+                    cell.Value = sampleData1[i];
+                    cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(255, 255, 204));
+                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                }
+
+                // Tạo sample data (Row 4)
+                var sampleData2 = new object[]
+                {
+                    "Nhà cung cấp XYZ",     // SupplierName
+                    "Danh mục Đồ uống",     // CategoryName
+                    "SP002",                // ProductCode
+                    "Sản phẩm mẫu 2",       // ProductName
+                    2.0,                    // WeightPerUnit
+                    75000,                  // SellingPrice
+                    "Mô tả sản phẩm 2"      // Description
+                };
+
+                for (int i = 0; i < sampleData2.Length; i++)
+                {
+                    var cell = mainSheet.Cells[4, i + 1];
+                    cell.Value = sampleData2[i];
+                    cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(255, 255, 204));
+                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                }
+
+                // Auto-fit columns
+                mainSheet.Cells[1, 1, 4, headers.Length].AutoFitColumns();
+
+                // Set độ rộng tối thiểu cho các cột
+                for (int i = 1; i <= headers.Length; i++)
+                {
+                    if (mainSheet.Column(i).Width < 15)
+                        mainSheet.Column(i).Width = 15;
+                }
+
+                // Tạo sheet hướng dẫn
+                var instructionSheet = package.Workbook.Worksheets.Add("Hướng Dẫn");
+                instructionSheet.Cells["A1"].Value = "HƯỚNG DẪN IMPORT SẢN PHẨM";
+                instructionSheet.Cells["A1"].Style.Font.Bold = true;
+                instructionSheet.Cells["A1"].Style.Font.Size = 16;
+
+                instructionSheet.Cells["A3"].Value = "1. Cấu trúc file:";
+                instructionSheet.Cells["A3"].Style.Font.Bold = true;
+                instructionSheet.Cells["A4"].Value = "   - Dòng 1: Header (tên các cột)";
+                instructionSheet.Cells["A5"].Value = "   - Dòng 2: Mô tả chi tiết (Không được xóa)";
+                instructionSheet.Cells["A6"].Value = "   - Từ dòng 3 trở đi: Dữ liệu sản phẩm (mỗi dòng là 1 sản phẩm)";
+
+                instructionSheet.Cells["A8"].Value = "2. Các trường bắt buộc:";
+                instructionSheet.Cells["A8"].Style.Font.Bold = true;
+                instructionSheet.Cells["A9"].Value = "   - SupplierName: Tên nhà cung cấp (phải tồn tại trong hệ thống)";
+                instructionSheet.Cells["A10"].Value = "   - CategoryName: Tên danh mục (phải tồn tại trong hệ thống)";
+                instructionSheet.Cells["A11"].Value = "   - ProductCode: Mã sản phẩm (không được trùng với sản phẩm đã có)";
+                instructionSheet.Cells["A12"].Value = "   - ProductName: Tên sản phẩm (không được trùng với sản phẩm đã có)";
+                instructionSheet.Cells["A13"].Value = "   - WeightPerUnit: Trọng lượng trên đơn vị (số >= 0, VD: 1.5, 2.0)";
+                instructionSheet.Cells["A14"].Value = "   - SellingPrice: Giá bán (số >= 0, VD: 50000, 75000)";
+
+                instructionSheet.Cells["A16"].Value = "3. Các trường tùy chọn:";
+                instructionSheet.Cells["A16"].Style.Font.Bold = true;
+                instructionSheet.Cells["A17"].Value = "   - Description: Mô tả sản phẩm (có thể để trống)";
+
+                instructionSheet.Cells["A19"].Value = "4. Các trường tự động:";
+                instructionSheet.Cells["A19"].Style.Font.Bold = true;
+                instructionSheet.Cells["A20"].Value = "   - ProductId: Tự động tạo bởi hệ thống";
+                instructionSheet.Cells["A21"].Value = "   - ImageUrl: Mặc định null, có thể cập nhật sau";
+                instructionSheet.Cells["A22"].Value = "   - IsAvailable: Mặc định true (sản phẩm khả dụng)";
+                instructionSheet.Cells["A23"].Value = "   - CreatedAt, UpdatedAt: Tự động ghi nhận thời gian tạo/cập nhật";
+
+                instructionSheet.Cells["A25"].Value = "5. Lưu ý quan trọng:";
+                instructionSheet.Cells["A25"].Style.Font.Bold = true;
+                instructionSheet.Cells["A26"].Value = "   - Tất cả sản phẩm phải hợp lệ mới được import";
+                instructionSheet.Cells["A27"].Value = "   - Nếu có 1 sản phẩm lỗi, toàn bộ file sẽ bị hủy (rollback)";
+                instructionSheet.Cells["A28"].Value = "   - Tên nhà cung cấp và danh mục phải chính xác (có phân biệt hoa thường)";
+                instructionSheet.Cells["A29"].Value = "   - ProductCode và ProductName không được trùng với sản phẩm đã có";
+                instructionSheet.Cells["A30"].Value = "   - Các dòng màu vàng là dữ liệu mẫu, có thể xóa và thay bằng dữ liệu thực";
+                instructionSheet.Cells["A31"].Value = "   - File chỉ chấp nhận định dạng .xlsx hoặc .xls";
+                instructionSheet.Cells["A32"].Value = "   - Kích thước file tối đa: 10MB";
+
+                instructionSheet.Column(1).Width = 90;
+                instructionSheet.Cells["A1:A32"].Style.WrapText = true;
+
+                package.Save();
+            }
+
+            stream.Position = 0;
+            return stream;
+        }
     }
 }
