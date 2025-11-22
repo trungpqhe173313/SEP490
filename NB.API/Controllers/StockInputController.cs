@@ -237,8 +237,6 @@ namespace NB.API.Controllers
 
                 try
                 {
-
-
                     var pagedResult = await _stockBatchService.GetData(search);
 
                     if (pagedResult == null || pagedResult.Items.Count == 0)
@@ -1343,7 +1341,7 @@ namespace NB.API.Controllers
                 // Cập nhật tổng tiền đơn hàng
                 if (or.TotalCost.HasValue)
                 {
-                    transaction.TotalCost = or.TotalCost;
+                    transaction.TotalCost -= or.TotalCost;
                     if (transaction.TotalCost < 0) transaction.TotalCost = 0;
                 }
                 // Cập nhật note

@@ -317,17 +317,40 @@ namespace NB.API.Controllers
             if (!listProduct.Any())
                 return BadRequest(ApiResponse<ProductDto>.Fail("Không tìm thấy sản phẩm nào", 404));
 
-            // Lấy tất cả inventory theo danh sách sản phẩm để kiểm tra xem lượng hàng hóa trong kho còn đủ không
-            var listInventory = await _inventoryService.GetByProductIds(listProductOrder.Select(po => po.ProductId).ToList());
+            // Xác định WarehouseId (ưu tiên từ request, nếu không có thì lấy từ stockBatch)
+            int? warehouseId = or.WarehouseId;
+            if (!warehouseId.HasValue)
+            {
+                // Lấy tất cả các lô hàng còn hàng và còn hạn để xác định kho
+                var listStockBatch = await _stockBatchService.GetByProductIdForOrder(listProductId);
+                if (listStockBatch == null || !listStockBatch.Any())
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Không tìm thấy lô hàng khả dụng cho các sản phẩm này", 404));
+                }
+                warehouseId = listStockBatch.First().WarehouseId;
+            }
+
+            // Kiểm tra kho có tồn tại không
+            var warehouse = await _warehouseService.GetByIdAsync(warehouseId.Value);
+            if (warehouse == null)
+            {
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy kho", 404));
+            }
+
+            // Lấy tất cả inventory theo danh sách sản phẩm và kho để kiểm tra xem lượng hàng hóa trong kho còn đủ không
+            var listInventory = await _inventoryService.GetByWarehouseAndProductIds(warehouseId.Value, listProductOrder.Select(po => po.ProductId).ToList());
 
             foreach (var po in listProductOrder)
             {
                 var orderQty = po.Quantity ?? 0;
-                var inven = listInventory.FirstOrDefault(p => p.ProductId == po.ProductId);
+                var inven = listInventory.FirstOrDefault(p => p.ProductId == po.ProductId && p.WarehouseId == warehouseId.Value);
 
                 if (inven == null)
                 {
-                    return BadRequest(ApiResponse<InventoryDto>.Fail($"Không tìm thấy tồn kho cho sản phẩm {po.ProductId}", 404));
+                    var productCheck = await _productService.GetByIdAsync(po.ProductId);
+                    var productName = productCheck?.ProductName ?? $"Sản phẩm {po.ProductId}";
+                    return BadRequest(ApiResponse<InventoryDto>.Fail(
+                        $"Không tìm thấy sản phẩm '{productName}' trong kho '{warehouse.WarehouseName}'", 404));
                 }
 
                 var invenQty = inven.Quantity ?? 0;
@@ -337,26 +360,31 @@ namespace NB.API.Controllers
                     var productCheck = await _productService.GetByIdAsync(po.ProductId);
                     var productName = productCheck?.ProductName ?? $"Sản phẩm {po.ProductId}";
                     return BadRequest(ApiResponse<InventoryDto>.Fail(
-                        $"Sản phẩm '{productName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu.",
+                        $"Sản phẩm '{productName}' trong kho '{warehouse.WarehouseName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu.",
                         400));
                 }
             }
 
             try
             {
-                // 1️ Lấy tất cả các lô hàng còn hàng và còn hạn
+                // 1️ Lấy tất cả các lô hàng còn hàng và còn hạn từ kho đã xác định
                 var listStockBatch = await _stockBatchService.GetByProductIdForOrder(listProductId);
+                var listStockBatchInWarehouse = listStockBatch
+                    .Where(sb => sb.WarehouseId == warehouseId.Value
+                        && (sb.QuantityIn ?? 0) > (sb.QuantityOut ?? 0)
+                        && (sb.ExpireDate == null || sb.ExpireDate > DateTime.Today))
+                    .ToList();
                 
-                if (listStockBatch == null || !listStockBatch.Any())
+                if (listStockBatchInWarehouse == null || !listStockBatchInWarehouse.Any())
                 {
-                    return BadRequest(ApiResponse<string>.Fail("Không tìm thấy lô hàng khả dụng cho các sản phẩm này", 404));
+                    return BadRequest(ApiResponse<string>.Fail($"Không tìm thấy lô hàng khả dụng cho các sản phẩm này trong kho '{warehouse.WarehouseName}'", 404));
                 }
 
                 // 2️ Tạo transaction (đơn hàng)
                 var tranCreate = new TransactionCreateVM
                 {
                     CustomerId = userId,
-                    WarehouseId = listStockBatch.First().WarehouseId, // hoặc lấy theo input từ FE
+                    WarehouseId = warehouseId.Value, // Lưu kho xuất hàng
                     Note = or.Note,
                     TotalCost = or.TotalCost,
                     PriceListId = or.PriceListId
@@ -414,17 +442,28 @@ namespace NB.API.Controllers
             var listProduct = await _productService.GetByIds(listProductId);
             if (!listProduct.Any())
                 return BadRequest(ApiResponse<ProductDto>.Fail("Không tìm thấy sản phẩm nào", 404));
-            // Lấy tất cả inventory theo danh sách sản phẩm để kiểm tra xem lượng hàng hóa trong kho còn đủ không
-            var listInventory = await _inventoryService.GetByProductIds(listProductOrder.Select(po => po.ProductId).ToList());
+            // Lấy WarehouseId từ transaction
+            var transactionWarehouseId = transaction.WarehouseId;
+            var transactionWarehouse = await _warehouseService.GetByIdAsync(transactionWarehouseId);
+            if (transactionWarehouse == null)
+            {
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy kho của đơn hàng", 404));
+            }
+
+            // Lấy tất cả inventory theo danh sách sản phẩm và kho để kiểm tra xem lượng hàng hóa trong kho còn đủ không
+            var listInventory = await _inventoryService.GetByWarehouseAndProductIds(transactionWarehouseId, listProductOrder.Select(po => po.ProductId).ToList());
 
             foreach (var po in listProductOrder)
             {
                 var orderQty = po.Quantity ?? 0;
-                var inven = listInventory.FirstOrDefault(p => p.ProductId == po.ProductId);
+                var inven = listInventory.FirstOrDefault(p => p.ProductId == po.ProductId && p.WarehouseId == transactionWarehouseId);
 
                 if (inven == null)
                 {
-                    return BadRequest(ApiResponse<InventoryDto>.Fail($"Không tìm thấy tồn kho cho sản phẩm {po.ProductId}", 404));
+                    var productCheck = await _productService.GetByIdAsync(po.ProductId);
+                    var productName = productCheck?.ProductName ?? $"Sản phẩm {po.ProductId}";
+                    return BadRequest(ApiResponse<InventoryDto>.Fail(
+                        $"Không tìm thấy sản phẩm '{productName}' trong kho '{transactionWarehouse.WarehouseName}'", 404));
                 }
 
                 var invenQty = inven.Quantity ?? 0;
@@ -434,7 +473,7 @@ namespace NB.API.Controllers
                     var productCheck = await _productService.GetByIdAsync(po.ProductId);
                     var productName = productCheck?.ProductName ?? $"Sản phẩm {po.ProductId}";
                     return BadRequest(ApiResponse<InventoryDto>.Fail(
-                        $"Sản phẩm '{productName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu.",
+                        $"Sản phẩm '{productName}' trong kho '{transactionWarehouse.WarehouseName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu.",
                         400));
                 }
             }
@@ -510,17 +549,28 @@ namespace NB.API.Controllers
             if (!listProduct.Any())
                 return BadRequest(ApiResponse<ProductDto>.Fail("Không tìm thấy sản phẩm nào", 404));
 
-            // Lấy tất cả inventory theo danh sách sản phẩm để kiểm tra xem lượng hàng hóa trong kho còn đủ không
-            var listInventory = await _inventoryService.GetByProductIds(listProductOrder.Select(po => po.ProductId).ToList());
+            // Lấy WarehouseId từ transaction
+            var transactionWarehouseId = transaction.WarehouseId;
+            var transactionWarehouse = await _warehouseService.GetByIdAsync(transactionWarehouseId);
+            if (transactionWarehouse == null)
+            {
+                return NotFound(ApiResponse<string>.Fail("Không tìm thấy kho của đơn hàng", 404));
+            }
+
+            // Lấy tất cả inventory theo danh sách sản phẩm và kho để kiểm tra xem lượng hàng hóa trong kho còn đủ không
+            var listInventory = await _inventoryService.GetByWarehouseAndProductIds(transactionWarehouseId, listProductOrder.Select(po => po.ProductId).ToList());
 
             foreach (var po in listProductOrder)
             {
                 var orderQty = po.Quantity;
-                var inven = listInventory.FirstOrDefault(p => p.ProductId == po.ProductId);
+                var inven = listInventory.FirstOrDefault(p => p.ProductId == po.ProductId && p.WarehouseId == transactionWarehouseId);
 
                 if (inven == null)
                 {
-                    return BadRequest(ApiResponse<InventoryDto>.Fail($"Không tìm thấy tồn kho cho sản phẩm {po.ProductId}", 404));
+                    var productCheck = await _productService.GetByIdAsync(po.ProductId);
+                    var productName = productCheck?.ProductName ?? $"Sản phẩm {po.ProductId}";
+                    return BadRequest(ApiResponse<InventoryDto>.Fail(
+                        $"Không tìm thấy sản phẩm '{productName}' trong kho '{transactionWarehouse.WarehouseName}'", 404));
                 }
 
                 var invenQty = inven.Quantity ?? 0;
@@ -530,24 +580,27 @@ namespace NB.API.Controllers
                     var productCheck = await _productService.GetByIdAsync(po.ProductId);
                     var productName = productCheck?.ProductName ?? $"Sản phẩm {po.ProductId}";
                     return BadRequest(ApiResponse<InventoryDto>.Fail(
-                        $"Sản phẩm '{productName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu.",
+                        $"Sản phẩm '{productName}' trong kho '{transactionWarehouse.WarehouseName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu.",
                         400));
                 }
             }
 
             try
             {
-                // 1️ Lấy tất cả các lô hàng còn hàng và còn hạn
+                // 1️ Lấy tất cả các lô hàng còn hàng và còn hạn từ kho của transaction
                 var listStockBatch = await _stockBatchService.GetByProductIdForOrder(listProductId);
+                var listStockBatchInWarehouse = listStockBatch
+                    .Where(sb => sb.WarehouseId == transactionWarehouseId
+                        && (sb.QuantityIn ?? 0) > (sb.QuantityOut ?? 0)
+                        && (sb.ExpireDate == null || sb.ExpireDate > DateTime.Today))
+                    .ToList();
 
                 // 3️ Duyệt từng sản phẩm để lấy lô & cập nhật tồn
                 foreach (var po in listProductOrder)
                 {
-                    var batches = listStockBatch
-                        .Where(sb => sb.ProductId == po.ProductId
-                                     && sb.QuantityIn > sb.QuantityOut
-                                     && sb.ExpireDate > DateTime.Today)
-                        .OrderBy(sb => sb.ImportDate)
+                    var batches = listStockBatchInWarehouse
+                        .Where(sb => sb.ProductId == po.ProductId)
+                        .OrderBy(sb => sb.ImportDate) // FIFO - hàng cũ nhất trước
                         .ToList();
 
                     //lay ra so luong can lay
@@ -575,8 +628,8 @@ namespace NB.API.Controllers
                         if (remaining <= 0) break;
                     }
 
-                    // 4️ Cập nhật inventory (tồn kho)
-                    var inventoryEntity = await _inventoryService.GetEntityByProductIdAsync(po.ProductId);
+                    // 4️ Cập nhật inventory (tồn kho) ở kho của transaction
+                    var inventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transactionWarehouseId, po.ProductId);
                     if (inventoryEntity != null)
                     {
                         inventoryEntity.Quantity -= po.Quantity;
@@ -631,6 +684,14 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<string>.Fail("Đơn hàng không trong trạng thái lên đơn", 400));
                 }
 
+                // Lấy WarehouseId từ transaction
+                var transactionWarehouseId = transaction.WarehouseId;
+                var transactionWarehouse = await _warehouseService.GetByIdAsync(transactionWarehouseId);
+                if (transactionWarehouse == null)
+                {
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy kho của đơn hàng", 404));
+                }
+
                 // --- 1️⃣ Lấy danh sách chi tiết cũ ---
                 var oldDetails = (await _transactionDetailService.GetByTransactionId(transactionId))
                     ?? new List<TransactionDetailDto>();
@@ -659,8 +720,8 @@ namespace NB.API.Controllers
                 {
                     var oldQuantity = oldProductDict[productId];
 
-                    // Trả lại Inventory
-                    var inventoryEntity = await _inventoryService.GetEntityByProductIdAsync(productId);
+                    // Trả lại Inventory ở kho của transaction
+                    var inventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transactionWarehouseId, productId);
                     if (inventoryEntity != null)
                     {
                         inventoryEntity.Quantity += oldQuantity;
@@ -668,12 +729,13 @@ namespace NB.API.Controllers
                         inventoryUpdates[productId] = inventoryEntity;
                     }
 
-                    // Trả lại StockBatch theo LIFO
+                    // Trả lại StockBatch theo LIFO từ kho của transaction
                     var batchesToRevert = await _stockBatchService.GetByProductIdForOrder(new List<int> { productId });
                     if (batchesToRevert != null && batchesToRevert.Any())
                     {
                         var revertList = batchesToRevert
-                            .Where(b => (b.QuantityOut ?? 0) > 0)
+                            .Where(b => b.WarehouseId == transactionWarehouseId
+                                && (b.QuantityOut ?? 0) > 0)
                             .OrderByDescending(b => b.ImportDate)
                             .ToList();
 
@@ -713,24 +775,24 @@ namespace NB.API.Controllers
                     else if (diff > 0)
                     {
                         // Đơn mới nhiều hơn - Cần thêm hàng
-                        // Kiểm tra đủ hàng không
-                        var inventoryDto = await _inventoryService.GetByProductIdRetriveOneObject(productId);
+                        // Kiểm tra đủ hàng không ở kho của transaction
+                        var inventoryDto = await _inventoryService.GetByWarehouseAndProductId(transactionWarehouseId, productId);
                         if (inventoryDto == null)
                         {
                             var product = await _productService.GetByIdAsync(productId);
                             return BadRequest(ApiResponse<string>.Fail(
-                                $"Không tìm thấy tồn kho cho sản phẩm '{product?.ProductName ?? productId.ToString()}'.", 404));
+                                $"Không tìm thấy sản phẩm '{product?.ProductName ?? productId.ToString()}' trong kho '{transactionWarehouse.WarehouseName}'.", 404));
                         }
 
                         if ((inventoryDto.Quantity ?? 0) < diff)
                         {
                             var product = await _productService.GetByIdAsync(productId);
                             return BadRequest(ApiResponse<string>.Fail(
-                                $"Sản phẩm '{product?.ProductName ?? productId.ToString()}' chỉ còn {inventoryDto.Quantity}, không đủ {diff} để tăng.", 400));
+                                $"Sản phẩm '{product?.ProductName ?? productId.ToString()}' trong kho '{transactionWarehouse.WarehouseName}' chỉ còn {inventoryDto.Quantity}, không đủ {diff} để tăng.", 400));
                         }
 
-                        // Lấy Inventory entity để update
-                        var inventoryEntity = await _inventoryService.GetEntityByProductIdAsync(productId);
+                        // Lấy Inventory entity để update ở kho của transaction
+                        var inventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transactionWarehouseId, productId);
                         if (inventoryEntity != null)
                         {
                             inventoryEntity.Quantity -= diff;
@@ -738,17 +800,18 @@ namespace NB.API.Controllers
                             inventoryUpdates[productId] = inventoryEntity;
                         }
 
-                        // Lấy thêm StockBatch
+                        // Lấy thêm StockBatch từ kho của transaction
                         var listStockBatch = await _stockBatchService.GetByProductIdForOrder(new List<int> { productId });
                         if (listStockBatch == null || !listStockBatch.Any())
                         {
-                            return BadRequest(ApiResponse<string>.Fail($"Không tìm thấy lô hàng khả dụng cho sản phẩm {productId}.", 404));
+                            return BadRequest(ApiResponse<string>.Fail($"Không tìm thấy lô hàng khả dụng cho sản phẩm {productId} trong kho '{transactionWarehouse.WarehouseName}'.", 404));
                         }
                         var batches = listStockBatch
                             .Where(sb => sb.ProductId == productId
+                                && sb.WarehouseId == transactionWarehouseId
                                 && ((sb.QuantityIn ?? 0) > (sb.QuantityOut ?? 0))
-                                && sb.ExpireDate > DateTime.Today)
-                            .OrderBy(sb => sb.ImportDate)
+                                && (sb.ExpireDate == null || sb.ExpireDate > DateTime.Today))
+                            .OrderBy(sb => sb.ImportDate) // FIFO
                             .ToList();
 
                         decimal remaining = diff;
@@ -788,8 +851,8 @@ namespace NB.API.Controllers
                         // Đơn mới ít hơn - Trả lại hàng (diff < 0 nên cần trả lại |diff|)
                         var returnQuantity = Math.Abs(diff);
 
-                        // Trả lại Inventory
-                        var inventoryEntity = await _inventoryService.GetEntityByProductIdAsync(productId);
+                        // Trả lại Inventory ở kho của transaction
+                        var inventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transactionWarehouseId, productId);
                         if (inventoryEntity != null)
                         {
                             inventoryEntity.Quantity += returnQuantity;
@@ -797,12 +860,13 @@ namespace NB.API.Controllers
                             inventoryUpdates[productId] = inventoryEntity;
                         }
 
-                        // Trả lại StockBatch theo LIFO
+                        // Trả lại StockBatch theo LIFO từ kho của transaction
                         var batchesToRevert = await _stockBatchService.GetByProductIdForOrder(new List<int> { productId });
                         if (batchesToRevert != null && batchesToRevert.Any())
                         {
                             var revertList = batchesToRevert
-                                .Where(b => (b.QuantityOut ?? 0) > 0)
+                                .Where(b => b.WarehouseId == transactionWarehouseId
+                                    && (b.QuantityOut ?? 0) > 0)
                                 .OrderByDescending(b => b.ImportDate)
                                 .ToList();
 
@@ -842,33 +906,36 @@ namespace NB.API.Controllers
                 // --- 5️⃣ Xử lý sản phẩm mới (chỉ có trong đơn mới) - Thêm mới như bình thường ---
                 if (newProducts.Any())
                 {
-                    // Kiểm tra đủ hàng cho tất cả sản phẩm mới trước khi trừ tồn
-                    var listInventory = await _inventoryService.GetByProductIds(newProducts) ?? new List<InventoryDto>();
+                    // Kiểm tra đủ hàng cho tất cả sản phẩm mới trước khi trừ tồn ở kho của transaction
+                    var listInventory = await _inventoryService.GetByWarehouseAndProductIds(transactionWarehouseId, newProducts) ?? new List<InventoryDto>();
                     foreach (var productId in newProducts)
                     {
                         var newQuantity = newProductDict[productId];
-                        var inven = listInventory.FirstOrDefault(p => p.ProductId == productId);
+                        var inven = listInventory.FirstOrDefault(p => p.ProductId == productId && p.WarehouseId == transactionWarehouseId);
                         if (inven == null)
                         {
-                            return BadRequest(ApiResponse<string>.Fail($"Không tìm thấy tồn kho cho sản phẩm {productId}", 404));
+                            var product = await _productService.GetByIdAsync(productId);
+                            return BadRequest(ApiResponse<string>.Fail(
+                                $"Không tìm thấy sản phẩm '{product?.ProductName ?? productId.ToString()}' trong kho '{transactionWarehouse.WarehouseName}'", 404));
                         }
                         if (inven.Quantity < newQuantity)
                         {
                             var product = await _productService.GetByIdAsync(productId);
                             return BadRequest(ApiResponse<string>.Fail(
-                                $"Sản phẩm '{product?.ProductName}' chỉ còn {inven.Quantity}, không đủ {newQuantity} yêu cầu.", 400));
+                                $"Sản phẩm '{product?.ProductName}' trong kho '{transactionWarehouse.WarehouseName}' chỉ còn {inven.Quantity}, không đủ {newQuantity} yêu cầu.", 400));
                         }
                     }
 
-                    // Lấy StockBatch cho các sản phẩm mới
+                    // Lấy StockBatch cho các sản phẩm mới từ kho của transaction
                     var listStockBatch = await _stockBatchService.GetByProductIdForOrder(newProducts) ?? new List<StockBatchDto>();
                     foreach (var po in listProductOrder.Where(p => newProducts.Contains(p.ProductId)))
                     {
                         var batches = listStockBatch
                             .Where(sb => sb.ProductId == po.ProductId
+                                && sb.WarehouseId == transactionWarehouseId
                                 && ((sb.QuantityIn ?? 0) > (sb.QuantityOut ?? 0))
-                                && sb.ExpireDate > DateTime.Today)
-                            .OrderBy(sb => sb.ImportDate)
+                                && (sb.ExpireDate == null || sb.ExpireDate > DateTime.Today))
+                            .OrderBy(sb => sb.ImportDate) // FIFO
                             .ToList();
 
                         decimal remaining = po.Quantity ?? 0;
@@ -894,8 +961,8 @@ namespace NB.API.Controllers
                             return BadRequest(ApiResponse<string>.Fail($"Không đủ hàng trong các lô cho sản phẩm {po.ProductId}", 400));
                         }
 
-                        // Cập nhật Inventory
-                        var inventoryEntity = await _inventoryService.GetEntityByProductIdAsync(po.ProductId);
+                        // Cập nhật Inventory ở kho của transaction
+                        var inventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transactionWarehouseId, po.ProductId);
                         if (inventoryEntity != null)
                         {
                             inventoryEntity.Quantity -= po.Quantity ?? 0;
@@ -1131,8 +1198,8 @@ namespace NB.API.Controllers
                     var productId = returnItem.Key;
                     var returnQuantity = returnItem.Value;
 
-                    // Trả lại Inventory
-                    var inventoryEntity = await _inventoryService.GetEntityByProductIdAsync(productId);
+                    // Trả lại Inventory ở kho của transaction
+                    var inventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transaction.WarehouseId, productId);
                     if (inventoryEntity != null)
                     {
                         inventoryEntity.Quantity += returnQuantity;
@@ -1140,12 +1207,13 @@ namespace NB.API.Controllers
                         inventoryUpdates[productId] = inventoryEntity;
                     }
 
-                    // Trả lại StockBatch theo LIFO (Last In First Out)
+                    // Trả lại StockBatch theo LIFO (Last In First Out) từ kho của transaction
                     var batchesToRevert = await _stockBatchService.GetByProductIdForOrder(new List<int> { productId });
                     if (batchesToRevert != null && batchesToRevert.Any())
                     {
                         var revertList = batchesToRevert
-                            .Where(b => (b.QuantityOut ?? 0) > 0)
+                            .Where(b => b.WarehouseId == transaction.WarehouseId
+                                && (b.QuantityOut ?? 0) > 0)
                             .OrderByDescending(b => b.ImportDate)
                             .ToList();
 
@@ -1251,7 +1319,8 @@ namespace NB.API.Controllers
                 // Cập nhật tổng tiền đơn hàng
                 if (transaction.TotalCost.HasValue)
                 {
-                    transaction.TotalCost = or.TotalCost;
+                    //gia goc tru di gia tong so hang bi tra
+                    transaction.TotalCost -= or.TotalCost;
                     if (transaction.TotalCost < 0) transaction.TotalCost = 0;
                 }
                 // Cập nhật note
