@@ -478,6 +478,7 @@ public partial class NutriBarn2025Context : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.Note).HasMaxLength(255);
             entity.Property(e => e.ProductId).HasColumnName("ProductID");
+            entity.Property(e => e.SystemQuantity).HasColumnType("decimal(12, 2)");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
