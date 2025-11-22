@@ -19,6 +19,8 @@ public partial class StockAdjustmentDetail
 
     public DateTime? UpdatedAt { get; set; }
 
+    public decimal SystemQuantity { get; set; }
+
     public virtual StockAdjustment Adjustment { get; set; } = null!;
 
     public virtual Product Product { get; set; } = null!;
