@@ -41,6 +41,8 @@ public partial class Product
 
     public virtual ICollection<ReturnTransactionDetail> ReturnTransactionDetails { get; set; } = new List<ReturnTransactionDetail>();
 
+    public virtual ICollection<StockAdjustmentDetail> StockAdjustmentDetails { get; set; } = new List<StockAdjustmentDetail>();
+
     public virtual ICollection<StockBatch> StockBatches { get; set; } = new List<StockBatch>();
 
     public virtual Supplier Supplier { get; set; } = null!;

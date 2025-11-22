@@ -65,7 +65,6 @@ public partial class NutriBarn2025Context : DbContext
 
     public virtual DbSet<Worklog> Worklogs { get; set; }
 
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Category>(entity =>
@@ -482,6 +481,16 @@ public partial class NutriBarn2025Context : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Adjustment).WithMany(p => p.StockAdjustmentDetails)
+                .HasForeignKey(d => d.AdjustmentId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_StockAdjustmentDetail_StockAdjustment");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.StockAdjustmentDetails)
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_StockAdjustmentDetail_Product");
         });
 
         modelBuilder.Entity<StockBatch>(entity =>
