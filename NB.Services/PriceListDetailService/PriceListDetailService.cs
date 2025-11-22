@@ -32,7 +32,7 @@ namespace NB.Service.PriceListDetailService
                             PriceListDetailId = pld.PriceListDetailId,
                             ProductId = pld.ProductId,
                             ProductName = pld.Product.ProductName,
-                            ProductCode = pld.Product.Code,
+                            ProductCode = pld.Product.ProductCode,
                             Price = pld.Price,
                             Note = pld.Note
                         };
@@ -50,7 +50,7 @@ namespace NB.Service.PriceListDetailService
                             PriceListDetailId = pld.PriceListDetailId,
                             ProductId = pld.ProductId,
                             ProductName = pld.Product.ProductName,
-                            ProductCode = pld.Product.Code,
+                            ProductCode = pld.Product.ProductCode,
                             Price = pld.Price,
                             Note = pld.Note
                         };

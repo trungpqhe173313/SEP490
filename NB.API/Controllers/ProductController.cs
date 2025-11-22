@@ -63,7 +63,7 @@ namespace NB.API.Controllers
                     {
                         ProductId = p.ProductId,
                         ProductName = p.ProductName,
-                        Code = p.Code,
+                        Code = p.ProductCode,
                         Description = p.Description,
                         SupplierId = p.SupplierId,
                         SupplierName = p.SupplierName,
@@ -113,7 +113,7 @@ namespace NB.API.Controllers
                 {
                     ProductId = p.ProductId,
                     ProductName = p.ProductName,
-                    Code = p.Code,
+                    Code = p.ProductCode,
                     Description = p.Description,
                     SupplierId = p.SupplierId,
                     SupplierName = p.SupplierName,
@@ -158,7 +158,7 @@ namespace NB.API.Controllers
                     {
                         ProductId = p.ProductId,
                         ProductName = p.ProductName,
-                        Code = p.Code,
+                        Code = p.ProductCode,
                         Description = p.Description,
                         SupplierId = p.SupplierId,
                         SupplierName = p.SupplierName,
@@ -346,7 +346,7 @@ namespace NB.API.Controllers
                 {
                     SupplierId = supplier.SupplierId,
                     CategoryId = category.CategoryId,
-                    Code = code,
+                    ProductCode = code,
                     ImageUrl = imageUrl ?? string.Empty,
                     ProductName = productName,
                     Description = model.description?.Trim(),
@@ -370,7 +370,7 @@ namespace NB.API.Controllers
                 {
                     ProductId = newProductEntity.ProductId,
                     ProductName = newProductEntity.ProductName,
-                    Code = newProductEntity.Code,
+                    Code = newProductEntity.ProductCode,
                     Description = newProductEntity.Description,
                     SupplierId = supplier.SupplierId,
                     SupplierName = supplier.SupplierName,
@@ -478,9 +478,9 @@ namespace NB.API.Controllers
                 string? oldImageUrl = productEntity.ImageUrl;
 
                 // Check và update từng field của Product
-                if (productEntity.Code != newCode)
+                if (productEntity.ProductCode != newCode)
                 {
-                    productEntity.Code = newCode;
+                    productEntity.ProductCode = newCode;
                     isProductChanged = true;
                 }
 
@@ -553,7 +553,7 @@ namespace NB.API.Controllers
                 {
                     ProductId = productEntity.ProductId,
                     ProductName = productEntity.ProductName,
-                    Code = productEntity.Code,
+                    Code = productEntity.ProductCode,
                     Description = productEntity.Description,
                     SupplierId = productEntity.SupplierId,
                     SupplierName = newSupplier.SupplierName,
