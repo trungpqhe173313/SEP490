@@ -11,7 +11,7 @@ public partial class Product
 
     public int CategoryId { get; set; }
 
-    public string Code { get; set; } = null!;
+    public string ProductCode { get; set; } = null!;
 
     public string ProductName { get; set; } = null!;
 
@@ -40,8 +40,6 @@ public partial class Product
     public virtual ICollection<PriceListDetail> PriceListDetails { get; set; } = new List<PriceListDetail>();
 
     public virtual ICollection<ReturnTransactionDetail> ReturnTransactionDetails { get; set; } = new List<ReturnTransactionDetail>();
-
-    public virtual ICollection<StockAdjustment> StockAdjustments { get; set; } = new List<StockAdjustment>();
 
     public virtual ICollection<StockBatch> StockBatches { get; set; } = new List<StockBatch>();
 
