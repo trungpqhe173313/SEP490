@@ -47,6 +47,8 @@ public partial class NutriBarn2025Context : DbContext
 
     public virtual DbSet<StockAdjustment> StockAdjustments { get; set; }
 
+    public virtual DbSet<StockAdjustmentDetail> StockAdjustmentDetails { get; set; }
+
     public virtual DbSet<StockBatch> StockBatches { get; set; }
 
     public virtual DbSet<Supplier> Suppliers { get; set; }
@@ -62,6 +64,7 @@ public partial class NutriBarn2025Context : DbContext
     public virtual DbSet<Warehouse> Warehouses { get; set; }
 
     public virtual DbSet<Worklog> Worklogs { get; set; }
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -460,6 +463,25 @@ public partial class NutriBarn2025Context : DbContext
                 .HasForeignKey(d => d.WarehouseId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_StockAdjustment_Warehouse");
+        });
+
+        modelBuilder.Entity<StockAdjustmentDetail>(entity =>
+        {
+            entity.HasKey(e => e.DetailId).HasName("PK__StockAdj__135C314D1C66B7A3");
+
+            entity.ToTable("StockAdjustmentDetail");
+
+            entity.Property(e => e.DetailId).HasColumnName("DetailID");
+            entity.Property(e => e.ActualQuantity).HasColumnType("decimal(12, 2)");
+            entity.Property(e => e.AdjustmentId).HasColumnName("AdjustmentID");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Note).HasMaxLength(255);
+            entity.Property(e => e.ProductId).HasColumnName("ProductID");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
         });
 
         modelBuilder.Entity<StockBatch>(entity =>
