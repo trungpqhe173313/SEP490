@@ -39,8 +39,6 @@ public partial class StockBatch
 
     public virtual Finishproduct? ProductionFinish { get; set; }
 
-    public virtual ICollection<StockAdjustment> StockAdjustments { get; set; } = new List<StockAdjustment>();
-
     public virtual Transaction? Transaction { get; set; }
 
     public virtual Warehouse Warehouse { get; set; } = null!;
