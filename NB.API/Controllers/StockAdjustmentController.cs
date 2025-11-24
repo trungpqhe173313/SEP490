@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NB.Service.Common;
 using NB.Service.Dto;
@@ -8,6 +9,7 @@ using NB.Service.StockAdjustmentService.ViewModels;
 namespace NB.API.Controllers
 {
     [Route("api/stock-adjustment")]
+    [Authorize]
     public class StockAdjustmentController : Controller
     {
         private readonly IStockAdjustmentService _stockAdjustmentService;
@@ -152,6 +154,30 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi xác nhận kiểm kho với Id: {Id}", id);
                 return BadRequest(ApiResponse<StockAdjustmentDraftResponseVM>.Fail(ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// HỦY PHIẾU KIỂM KHO NHÁP (OPTION A - An toàn)
+        /// 
+        /// QUY TẮC:
+        ///   - CHỈ cho phép hủy khi Status = Draft (1)
+        ///   - KHÔNG cho phép hủy khi Status = Resolved (2)
+        ///   - Draft → Cancelled: OK ✅
+        ///   - Resolved → Cancelled: FORBIDDEN ❌
+        /// </summary>
+        [HttpDelete("draft/{id}")]
+        public async Task<IActionResult> DeleteDraft(int id)
+        {
+            try
+            {
+                var result = await _stockAdjustmentService.DeleteDraftAsync(id);
+                return Ok(ApiResponse<bool>.Ok(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi hủy phiếu kiểm kho với Id: {Id}", id);
+                return BadRequest(ApiResponse<bool>.Fail(ex.Message));
             }
         }
     }

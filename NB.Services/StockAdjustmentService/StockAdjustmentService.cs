@@ -236,6 +236,7 @@ namespace NB.Service.StockAdjustmentService
                     {
                         DetailId = d.DetailId,
                         ProductId = d.ProductId,
+                        ProductCode = d.Product.ProductCode,
                         ProductName = d.Product.ProductName,
                         ActualQuantity = d.ActualQuantity,
                         SystemQuantity = systemQty, // REALTIME nếu Draft, từ DB nếu Resolved
@@ -508,6 +509,51 @@ namespace NB.Service.StockAdjustmentService
             };
 
             return response;
+        }
+
+        /// <summary>
+        /// Hủy/Xóa phiếu kiểm kho nháp
+        /// CHỈ cho phép khi Status = Draft (1)
+        /// KHÔNG cho phép khi Status = Resolved (2)
+        /// KHÔNG tác động đến Inventory hoặc StockBatch
+        /// </summary>
+        public async Task<bool> DeleteDraftAsync(int id)
+        {
+            // Step 1: Lấy phiếu kiểm kho
+            var stockAdjustment = await _stockAdjustmentRepository.GetQueryable()
+                .Include(sa => sa.StockAdjustmentDetails)
+                .FirstOrDefaultAsync(sa => sa.AdjustmentId == id);
+
+            if (stockAdjustment == null)
+            {
+                throw new Exception($"Không tìm thấy phiếu kiểm kho với Id {id}");
+            }
+
+            // Step 2: VALIDATION - CHỈ cho phép xóa Draft
+            if (stockAdjustment.Status == (int)StockAdjustmentStatus.Resolved)
+            {
+                throw new Exception("Không thể hủy phiếu kiểm kho đã được xác nhận (Resolved). Phiếu đã Resolved là READ-ONLY và không thể xóa hoặc chỉnh sửa.");
+            }
+
+            if (stockAdjustment.Status == (int)StockAdjustmentStatus.Cancelled)
+            {
+                throw new Exception("Phiếu kiểm kho này đã bị hủy trước đó.");
+            }
+
+            if (stockAdjustment.Status != (int)StockAdjustmentStatus.Draft)
+            {
+                throw new Exception($"Chỉ có thể hủy phiếu kiểm kho ở trạng thái Nháp. Trạng thái hiện tại: {((StockAdjustmentStatus)stockAdjustment.Status).GetDescription()}");
+            }
+
+            // Step 3: OPTION A - Đánh dấu Cancelled (khuyến nghị cho audit trail)
+            
+            // CÁCH 1: Đánh dấu Cancelled (giữ lại để audit)
+            stockAdjustment.Status = (int)StockAdjustmentStatus.Cancelled;
+            stockAdjustment.ResolvedAt = DateTime.Now; // Dùng ResolvedAt để lưu thời gian hủy
+            _stockAdjustmentRepository.Update(stockAdjustment);
+
+            await _stockAdjustmentRepository.SaveAsync();
+            return true;
         }
     }
 }

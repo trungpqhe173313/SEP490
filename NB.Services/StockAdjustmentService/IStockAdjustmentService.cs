@@ -12,6 +12,7 @@ namespace NB.Service.StockAdjustmentService
         Task<StockAdjustmentDraftResponseVM> GetDraftByIdAsync(int id);
         Task<StockAdjustmentDraftResponseVM> UpdateDraftAsync(int id, StockAdjustmentDraftUpdateVM model);
         Task<StockAdjustmentDraftResponseVM> ResolveAsync(int id);
+        Task<bool> DeleteDraftAsync(int id);
     }
 }
 
