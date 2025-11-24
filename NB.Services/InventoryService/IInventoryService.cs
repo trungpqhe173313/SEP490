@@ -12,6 +12,8 @@ namespace NB.Service.InventoryService
 {
     public interface IInventoryService : IService<Inventory>
     {
+        Task<PagedList<ProductInventoryDto>> GetProductInventoryListAsync(InventorySearch search);
+        
         Task<int> GetInventoryQuantity(int warehouseId, int productId);
 
         Task<InventoryDto?> GetByWarehouseIdAndInventoryId(int warehouseId, int inventoryId);
