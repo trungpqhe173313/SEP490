@@ -12,6 +12,7 @@ using NB.Service.ReturnTransactionService;
 using NB.Service.StockBatchService;
 using NB.Service.StockBatchService.Dto;
 using NB.Service.TransactionDetailService;
+using NB.Service.TransactionDetailService.Dto;
 using NB.Service.TransactionDetailService.ViewModels;
 using NB.Service.TransactionService;
 using NB.Service.TransactionService.ViewModels;
@@ -21,6 +22,7 @@ using NB.Service.WarehouseService;
 
 namespace NB.API.Controllers
 {
+    [Route("api/stocktransfer")]
     public class StockTransferController : Controller
     {
         private readonly IInventoryService _inventoryService;
@@ -202,7 +204,7 @@ namespace NB.API.Controllers
                     {
                         WarehouseId = or.WarehouseInId, // Kho đích
                         ProductId = productId,
-                        TransactionId = transactionEntity.TransactionId,
+                        TransactionId = transactionEntity.TransactionId, // TransactionId của đơn chuyển kho
                         BatchCode = uniqueBatchCode,
                         ImportDate = DateTime.Now, // Ngày chuyển kho
                         ExpireDate = oldestBatch.ExpireDate, // Giữ nguyên hạn sử dụng
@@ -264,6 +266,724 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi chuyển kho");
                 return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi chuyển kho"));
+            }
+        }
+
+        /// <summary>
+        /// Cập nhật đơn chuyển kho
+        /// </summary>
+        /// <param name="transactionId">ID của đơn chuyển kho cần cập nhật</param>
+        /// <param name="or">Thông tin cập nhật đơn chuyển kho</param>
+        /// <returns>Kết quả cập nhật</returns>
+        [HttpPut("UpdateTransferOrder/{transactionId}")]
+        public async Task<IActionResult> UpdateTransferOrder(int transactionId, [FromBody] TransferRequest or)
+        {
+            // Bảo vệ trường hợp request không có sản phẩm
+            if (or?.ListProductOrder == null || !or.ListProductOrder.Any())
+            {
+                return BadRequest(ApiResponse<string>.Fail("Đơn chuyển kho mới không có sản phẩm nào để cập nhật.", 400));
+            }
+
+            // Kiểm tra kho nguồn và kho đích
+            if (or.WarehouseId == or.WarehouseInId)
+                return BadRequest(ApiResponse<string>.Fail("Kho nguồn và kho đích không thể giống nhau", 400));
+
+            // Gom các sản phẩm có cùng ProductId về một dòng, cộng dồn số lượng để tránh lỗi ToDictionary
+            var listProductOrder = or.ListProductOrder
+                .GroupBy(p => p.ProductId)
+                .Select(g => new ProductOrder
+                {
+                    ProductId = g.Key,
+                    Quantity = g.Sum(x => x.Quantity ?? 0),
+                    UnitPrice = g.First().UnitPrice
+                })
+                .ToList();
+
+            try
+            {
+                // Lấy entity transaction hiện tại
+                var transaction = await _transactionService.GetByIdAsync(transactionId);
+                if (transaction == null)
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn chuyển kho", 404));
+
+                // Kiểm tra loại transaction phải là Transfer
+                if (transaction.Type != transactionType)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Đơn này không phải là đơn chuyển kho", 400));
+                }
+
+                // Kiểm tra trạng thái - chỉ cho phép cập nhật nếu chưa hoàn thành hoặc hủy
+                // if (transaction.Status == (int)TransactionStatus.done || transaction.Status == (int)TransactionStatus.cancel)
+                // {
+                //     return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn chuyển kho đã hoàn thành hoặc đã hủy", 400));
+                // }
+
+                // Lấy thông tin kho
+                var sourceWarehouse = await _warehouseService.GetByIdAsync(or.WarehouseId);
+                var destWarehouse = await _warehouseService.GetByIdAsync(or.WarehouseInId);
+                if (sourceWarehouse == null)
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy kho nguồn", 404));
+                if (destWarehouse == null)
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy kho đích", 404));
+
+                // --- 1️⃣ Lấy danh sách chi tiết cũ ---
+                var oldDetails = await _transactionDetailService.GetByTransactionId(transactionId);
+                if (oldDetails == null || !oldDetails.Any())
+                {
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy chi tiết đơn chuyển kho", 404));
+                }
+
+                // Lấy tất cả StockBatch được tạo từ transaction này (ở kho đích)
+                var destStockBatches = await _stockBatchService.GetByTransactionId(transactionId);
+                var destStockBatchByProduct = destStockBatches
+                    .Where(sb => sb.WarehouseId == transaction.WarehouseInId)
+                    .GroupBy(sb => sb.ProductId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
+                // Tạo dictionary để track các Inventory và StockBatch đã được update (tránh update lặp)
+                var sourceInventoryUpdates = new Dictionary<int, Inventory>(); // Key: ProductId
+                var destInventoryUpdates = new Dictionary<int, Inventory>(); // Key: ProductId
+                var sourceStockBatchUpdates = new Dictionary<int, StockBatch>(); // Key: BatchId
+                var destStockBatchToDelete = new List<int>(); // BatchId cần xóa
+
+                // --- 2️⃣ Phân loại sản phẩm: giống nhau, mới, cũ ---
+                var oldProductDict = oldDetails
+                    .GroupBy(d => d.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Sum(d => d.Quantity));
+                var newProductDict = listProductOrder
+                    .ToDictionary(p => p.ProductId, p => p.Quantity ?? 0);
+
+                var commonProducts = oldProductDict.Keys.Intersect(newProductDict.Keys).ToList();
+                var newProducts = newProductDict.Keys.Except(oldProductDict.Keys).ToList();
+                var removedProducts = oldProductDict.Keys.Except(newProductDict.Keys).ToList();
+
+                // --- 3️⃣ Xử lý sản phẩm bị xóa (chỉ có trong đơn cũ) - Trả lại hàng về kho nguồn, xóa ở kho đích ---
+                foreach (var productId in removedProducts)
+                {
+                    var oldQuantity = oldProductDict[productId];
+
+                    // Trả lại Inventory ở kho nguồn
+                    var sourceInventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transaction.WarehouseId, productId);
+                    if (sourceInventoryEntity != null)
+                    {
+                        sourceInventoryEntity.Quantity += oldQuantity;
+                        sourceInventoryEntity.LastUpdated = DateTime.Now;
+                        sourceInventoryUpdates[productId] = sourceInventoryEntity;
+                    }
+
+                    // Trả lại StockBatch ở kho nguồn theo LIFO
+                    var batchesToRevert = await _stockBatchService.GetByProductIdForOrder(new List<int> { productId });
+                    if (batchesToRevert != null && batchesToRevert.Any())
+                    {
+                        var revertList = batchesToRevert
+                            .Where(b => b.WarehouseId == transaction.WarehouseId
+                                && (b.QuantityOut ?? 0) > 0)
+                            .OrderByDescending(b => b.ImportDate)
+                            .ToList();
+
+                        decimal toRevert = oldQuantity;
+                        foreach (var b in revertList)
+                        {
+                            if (toRevert <= 0) break;
+                            var availableOut = b.QuantityOut ?? 0;
+                            if (availableOut <= 0) continue;
+
+                            var takeBack = Math.Min(availableOut, toRevert);
+                            var batchEntity = await _stockBatchService.GetByIdAsync(b.BatchId);
+                            if (batchEntity != null)
+                            {
+                                batchEntity.QuantityOut -= takeBack;
+                                if (batchEntity.QuantityOut < 0) batchEntity.QuantityOut = 0;
+                                batchEntity.LastUpdated = DateTime.Now;
+                                sourceStockBatchUpdates[b.BatchId] = batchEntity;
+                            }
+                            toRevert -= takeBack;
+                        }
+                    }
+
+                    // Xóa StockBatch ở kho đích
+                    if (destStockBatchByProduct.ContainsKey(productId))
+                    {
+                        foreach (var batch in destStockBatchByProduct[productId])
+                        {
+                            destStockBatchToDelete.Add(batch.BatchId);
+                        }
+                    }
+
+                    // Trừ Inventory ở kho đích
+                    var destInventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transaction.WarehouseInId ?? 0, productId);
+                    if (destInventoryEntity != null)
+                    {
+                        destInventoryEntity.Quantity -= oldQuantity;
+                        if (destInventoryEntity.Quantity < 0) destInventoryEntity.Quantity = 0;
+                        destInventoryEntity.LastUpdated = DateTime.Now;
+                        destInventoryUpdates[productId] = destInventoryEntity;
+                    }
+                }
+
+                // --- 4️⃣ Xử lý sản phẩm giống nhau (có trong cả 2 đơn) - Chỉ update chênh lệch ---
+                foreach (var productId in commonProducts)
+                {
+                    var oldQuantity = oldProductDict[productId];
+                    var newQuantity = newProductDict[productId];
+                    var diff = newQuantity - oldQuantity;
+
+                    if (diff == 0)
+                    {
+                        // Không thay đổi số lượng, không cần update gì
+                        continue;
+                    }
+                    else if (diff > 0)
+                    {
+                        // Đơn mới nhiều hơn - Cần thêm hàng
+                        // Kiểm tra đủ hàng không ở kho nguồn
+                        var sourceInventoryDto = await _inventoryService.GetByWarehouseAndProductId(transaction.WarehouseId, productId);
+                        if (sourceInventoryDto == null)
+                        {
+                            var product = await _productService.GetByIdAsync(productId);
+                            return BadRequest(ApiResponse<string>.Fail(
+                                $"Không tìm thấy sản phẩm '{product?.ProductName ?? productId.ToString()}' trong kho nguồn '{sourceWarehouse.WarehouseName}'.", 404));
+                        }
+
+                        if ((sourceInventoryDto.Quantity ?? 0) < diff)
+                        {
+                            var product = await _productService.GetByIdAsync(productId);
+                            return BadRequest(ApiResponse<string>.Fail(
+                                $"Sản phẩm '{product?.ProductName ?? productId.ToString()}' trong kho nguồn '{sourceWarehouse.WarehouseName}' chỉ còn {sourceInventoryDto.Quantity}, không đủ {diff} để tăng.", 400));
+                        }
+
+                        // Trừ Inventory ở kho nguồn
+                        var sourceInventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transaction.WarehouseId, productId);
+                        if (sourceInventoryEntity != null)
+                        {
+                            sourceInventoryEntity.Quantity -= diff;
+                            sourceInventoryEntity.LastUpdated = DateTime.Now;
+                            sourceInventoryUpdates[productId] = sourceInventoryEntity;
+                        }
+
+                        // Lấy thêm StockBatch từ kho nguồn
+                        var listStockBatch = await _stockBatchService.GetByProductIdForOrder(new List<int> { productId });
+                        if (listStockBatch == null || !listStockBatch.Any())
+                        {
+                            return BadRequest(ApiResponse<string>.Fail($"Không tìm thấy lô hàng khả dụng cho sản phẩm {productId} trong kho nguồn '{sourceWarehouse.WarehouseName}'.", 404));
+                        }
+                        var batches = listStockBatch
+                            .Where(sb => sb.ProductId == productId
+                                && sb.WarehouseId == transaction.WarehouseId
+                                && ((sb.QuantityIn ?? 0) > (sb.QuantityOut ?? 0))
+                                && (sb.ExpireDate == null || sb.ExpireDate > DateTime.Today))
+                            .OrderBy(sb => sb.ImportDate) // FIFO
+                            .ToList();
+
+                        decimal remaining = diff;
+                        foreach (var batch in batches)
+                        {
+                            if (remaining <= 0) break;
+                            decimal available = ((batch.QuantityIn ?? 0) - (batch.QuantityOut ?? 0));
+                            if (available <= 0) continue;
+
+                            decimal take = Math.Min(available, remaining);
+
+                            if (sourceStockBatchUpdates.ContainsKey(batch.BatchId))
+                            {
+                                sourceStockBatchUpdates[batch.BatchId].QuantityOut += take;
+                            }
+                            else
+                            {
+                                var batchEntity = await _stockBatchService.GetByIdAsync(batch.BatchId);
+                                if (batchEntity != null)
+                                {
+                                    batchEntity.QuantityOut += take;
+                                    batchEntity.LastUpdated = DateTime.Now;
+                                    sourceStockBatchUpdates[batch.BatchId] = batchEntity;
+                                }
+                            }
+                            remaining -= take;
+                        }
+
+                        if (remaining > 0)
+                        {
+                            return BadRequest(ApiResponse<string>.Fail($"Không đủ hàng trong các lô cho sản phẩm {productId}", 400));
+                        }
+
+                        // Cộng Inventory ở kho đích
+                        var destInventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transaction.WarehouseInId ?? 0, productId);
+                        if (destInventoryEntity != null)
+                        {
+                            destInventoryEntity.Quantity += diff;
+                            destInventoryEntity.LastUpdated = DateTime.Now;
+                            destInventoryUpdates[productId] = destInventoryEntity;
+                        }
+                        else
+                        {
+                            // Tạo mới Inventory ở kho đích
+                            var newInventory = new InventoryDto
+                            {
+                                WarehouseId = transaction.WarehouseInId ?? 0,
+                                ProductId = productId,
+                                Quantity = diff,
+                                LastUpdated = DateTime.Now
+                            };
+                            await _inventoryService.CreateAsync(newInventory);
+                        }
+
+                        // Tạo StockBatch mới ở kho đích cho phần tăng thêm
+                        string batchCodePrefix = "BATCH-NUMBER";
+                        int batchCounter = 1;
+                        string uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
+                        while (await _stockBatchService.GetByName(uniqueBatchCode) != null)
+                        {
+                            batchCounter++;
+                            uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
+                        }
+
+                        var oldestBatch = batches.First();
+                        var newStockBatch = new StockBatchDto
+                        {
+                            WarehouseId = transaction.WarehouseInId ?? 0,
+                            ProductId = productId,
+                            TransactionId = transactionId,
+                            BatchCode = uniqueBatchCode,
+                            ImportDate = DateTime.Now,
+                            ExpireDate = oldestBatch.ExpireDate,
+                            QuantityIn = diff,
+                            QuantityOut = 0,
+                            Status = 1,
+                            IsActive = true,
+                            LastUpdated = DateTime.Now,
+                            Note = $"Chuyển từ kho {sourceWarehouse.WarehouseName}"
+                        };
+                        await _stockBatchService.CreateAsync(newStockBatch);
+                    }
+                    else
+                    {
+                        // Đơn mới ít hơn - Trả lại hàng về kho nguồn, trừ ở kho đích (diff < 0 nên cần trả lại |diff|)
+                        var returnQuantity = Math.Abs(diff);
+
+                        // Trả lại Inventory ở kho nguồn
+                        var sourceInventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transaction.WarehouseId, productId);
+                        if (sourceInventoryEntity != null)
+                        {
+                            sourceInventoryEntity.Quantity += returnQuantity;
+                            sourceInventoryEntity.LastUpdated = DateTime.Now;
+                            sourceInventoryUpdates[productId] = sourceInventoryEntity;
+                        }
+
+                        // Trả lại StockBatch ở kho nguồn theo LIFO
+                        var batchesToRevert = await _stockBatchService.GetByProductIdForOrder(new List<int> { productId });
+                        if (batchesToRevert != null && batchesToRevert.Any())
+                        {
+                            var revertList = batchesToRevert
+                                .Where(b => b.WarehouseId == transaction.WarehouseId
+                                    && (b.QuantityOut ?? 0) > 0)
+                                .OrderByDescending(b => b.ImportDate)
+                                .ToList();
+
+                            decimal toRevert = returnQuantity;
+                            foreach (var b in revertList)
+                            {
+                                if (toRevert <= 0) break;
+                                var availableOut = b.QuantityOut ?? 0;
+                                if (availableOut <= 0) continue;
+
+                                var takeBack = Math.Min(availableOut, toRevert);
+
+                                if (sourceStockBatchUpdates.ContainsKey(b.BatchId))
+                                {
+                                    sourceStockBatchUpdates[b.BatchId].QuantityOut -= takeBack;
+                                    if (sourceStockBatchUpdates[b.BatchId].QuantityOut < 0)
+                                        sourceStockBatchUpdates[b.BatchId].QuantityOut = 0;
+                                }
+                                else
+                                {
+                                    var batchEntity = await _stockBatchService.GetByIdAsync(b.BatchId);
+                                    if (batchEntity != null)
+                                    {
+                                        batchEntity.QuantityOut -= takeBack;
+                                        if (batchEntity.QuantityOut < 0) batchEntity.QuantityOut = 0;
+                                        batchEntity.LastUpdated = DateTime.Now;
+                                        sourceStockBatchUpdates[b.BatchId] = batchEntity;
+                                    }
+                                }
+                                toRevert -= takeBack;
+                            }
+                        }
+
+                        // Trừ Inventory ở kho đích
+                        var destInventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transaction.WarehouseInId ?? 0, productId);
+                        if (destInventoryEntity != null)
+                        {
+                            destInventoryEntity.Quantity -= returnQuantity;
+                            if (destInventoryEntity.Quantity < 0) destInventoryEntity.Quantity = 0;
+                            destInventoryEntity.LastUpdated = DateTime.Now;
+                            destInventoryUpdates[productId] = destInventoryEntity;
+                        }
+
+                        // Xóa hoặc giảm StockBatch ở kho đích (LIFO - xóa lô mới nhất trước)
+                        if (destStockBatchByProduct.ContainsKey(productId))
+                        {
+                            var batchesToReduce = destStockBatchByProduct[productId]
+                                .OrderByDescending(b => b.ImportDate)
+                                .ToList();
+
+                            decimal toReduce = returnQuantity;
+                            foreach (var batch in batchesToReduce)
+                            {
+                                if (toReduce <= 0) break;
+                                if (batch.QuantityIn <= toReduce)
+                                {
+                                    // Xóa toàn bộ lô
+                                    destStockBatchToDelete.Add(batch.BatchId);
+                                    toReduce -= batch.QuantityIn ?? 0;
+                                }
+                                else
+                                {
+                                    // Giảm số lượng lô
+                                    var batchEntity = await _stockBatchService.GetByIdAsync(batch.BatchId);
+                                    if (batchEntity != null)
+                                    {
+                                        batchEntity.QuantityIn -= toReduce;
+                                        if (batchEntity.QuantityIn < 0) batchEntity.QuantityIn = 0;
+                                        batchEntity.LastUpdated = DateTime.Now;
+                                        await _stockBatchService.UpdateAsync(batchEntity);
+                                    }
+                                    toReduce = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // --- 5️⃣ Xử lý sản phẩm mới (chỉ có trong đơn mới) - Thêm mới như bình thường ---
+                if (newProducts.Any())
+                {
+                    // Kiểm tra đủ hàng cho tất cả sản phẩm mới trước khi trừ tồn ở kho nguồn
+                    var listInventory = await _inventoryService.GetByWarehouseAndProductIds(transaction.WarehouseId, newProducts) ?? new List<InventoryDto>();
+                    foreach (var productId in newProducts)
+                    {
+                        var newQuantity = newProductDict[productId];
+                        var inven = listInventory.FirstOrDefault(p => p.ProductId == productId && p.WarehouseId == transaction.WarehouseId);
+                        if (inven == null)
+                        {
+                            var product = await _productService.GetByIdAsync(productId);
+                            return BadRequest(ApiResponse<string>.Fail(
+                                $"Không tìm thấy sản phẩm '{product?.ProductName ?? productId.ToString()}' trong kho nguồn '{sourceWarehouse.WarehouseName}'", 404));
+                        }
+                        if (inven.Quantity < newQuantity)
+                        {
+                            var product = await _productService.GetByIdAsync(productId);
+                            return BadRequest(ApiResponse<string>.Fail(
+                                $"Sản phẩm '{product?.ProductName}' trong kho nguồn '{sourceWarehouse.WarehouseName}' chỉ còn {inven.Quantity}, không đủ {newQuantity} yêu cầu.", 400));
+                        }
+                    }
+
+                    // Lấy StockBatch cho các sản phẩm mới từ kho nguồn
+                    var listStockBatch = await _stockBatchService.GetByProductIdForOrder(newProducts) ?? new List<StockBatchDto>();
+                    string batchCodePrefix = "BATCH-NUMBER";
+                    int batchCounter = 1;
+
+                    foreach (var po in listProductOrder.Where(p => newProducts.Contains(p.ProductId)))
+                    {
+                        var batches = listStockBatch
+                            .Where(sb => sb.ProductId == po.ProductId
+                                && sb.WarehouseId == transaction.WarehouseId
+                                && ((sb.QuantityIn ?? 0) > (sb.QuantityOut ?? 0))
+                                && (sb.ExpireDate == null || sb.ExpireDate > DateTime.Today))
+                            .OrderBy(sb => sb.ImportDate) // FIFO
+                            .ToList();
+
+                        decimal remaining = po.Quantity ?? 0;
+                        foreach (var batch in batches)
+                        {
+                            if (remaining <= 0) break;
+                            decimal available = ((batch.QuantityIn ?? 0) - (batch.QuantityOut ?? 0));
+                            if (available <= 0) continue;
+
+                            decimal take = Math.Min(available, remaining);
+                            var batchEntity = await _stockBatchService.GetByIdAsync(batch.BatchId);
+                            if (batchEntity != null)
+                            {
+                                batchEntity.QuantityOut += take;
+                                batchEntity.LastUpdated = DateTime.Now;
+                                sourceStockBatchUpdates[batch.BatchId] = batchEntity;
+                            }
+                            remaining -= take;
+                        }
+
+                        if (remaining > 0)
+                        {
+                            return BadRequest(ApiResponse<string>.Fail($"Không đủ hàng trong các lô cho sản phẩm {po.ProductId}", 400));
+                        }
+
+                        // Trừ Inventory ở kho nguồn
+                        var sourceInventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transaction.WarehouseId, po.ProductId);
+                        if (sourceInventoryEntity != null)
+                        {
+                            sourceInventoryEntity.Quantity -= po.Quantity ?? 0;
+                            sourceInventoryEntity.LastUpdated = DateTime.Now;
+                            sourceInventoryUpdates[po.ProductId] = sourceInventoryEntity;
+                        }
+
+                        // Cộng Inventory ở kho đích
+                        var destInventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transaction.WarehouseInId ?? 0, po.ProductId);
+                        if (destInventoryEntity != null)
+                        {
+                            destInventoryEntity.Quantity += po.Quantity ?? 0;
+                            destInventoryEntity.LastUpdated = DateTime.Now;
+                            destInventoryUpdates[po.ProductId] = destInventoryEntity;
+                        }
+                        else
+                        {
+                            // Tạo mới Inventory ở kho đích
+                            var newInventory = new InventoryDto
+                            {
+                                WarehouseId = transaction.WarehouseInId ?? 0,
+                                ProductId = po.ProductId,
+                                Quantity = po.Quantity ?? 0,
+                                LastUpdated = DateTime.Now
+                            };
+                            await _inventoryService.CreateAsync(newInventory);
+                        }
+
+                        // Tạo StockBatch mới ở kho đích
+                        string uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
+                        while (await _stockBatchService.GetByName(uniqueBatchCode) != null)
+                        {
+                            batchCounter++;
+                            uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
+                        }
+                        batchCounter++;
+
+                        var oldestBatch = batches.First();
+                        var newStockBatch = new StockBatchDto
+                        {
+                            WarehouseId = transaction.WarehouseInId ?? 0,
+                            ProductId = po.ProductId,
+                            TransactionId = transactionId,
+                            BatchCode = uniqueBatchCode,
+                            ImportDate = DateTime.Now,
+                            ExpireDate = oldestBatch.ExpireDate,
+                            QuantityIn = po.Quantity ?? 0,
+                            QuantityOut = 0,
+                            Status = 1,
+                            IsActive = true,
+                            LastUpdated = DateTime.Now,
+                            Note = $"Chuyển từ kho {sourceWarehouse.WarehouseName}"
+                        };
+                        await _stockBatchService.CreateAsync(newStockBatch);
+                    }
+                }
+
+                // --- 6️⃣ Thực hiện update tất cả Inventory (mỗi cái chỉ 1 lần) ---
+                foreach (var inventory in sourceInventoryUpdates.Values)
+                {
+                    await _inventoryService.UpdateNoTracking(inventory);
+                }
+                foreach (var inventory in destInventoryUpdates.Values)
+                {
+                    await _inventoryService.UpdateNoTracking(inventory);
+                }
+
+                // --- 7️⃣ Thực hiện update tất cả StockBatch ở kho nguồn (mỗi cái chỉ 1 lần) ---
+                foreach (var stockBatch in sourceStockBatchUpdates.Values)
+                {
+                    await _stockBatchService.UpdateNoTracking(stockBatch);
+                }
+
+                // --- 8️⃣ Xóa StockBatch ở kho đích ---
+                foreach (var batchId in destStockBatchToDelete)
+                {
+                    var batchEntity = await _stockBatchService.GetByIdAsync(batchId);
+                    if (batchEntity != null)
+                    {
+                        await _stockBatchService.DeleteAsync(batchEntity);
+                    }
+                }
+
+                // --- 9️⃣ Xóa và tạo lại TransactionDetail ---
+                await _transactionDetailService.DeleteRange(oldDetails);
+
+                foreach (var po in listProductOrder)
+                {
+                    var tranDetail = new TransactionDetailCreateVM
+                    {
+                        ProductId = po.ProductId,
+                        TransactionId = transactionId,
+                        Quantity = (int)(po.Quantity ?? 0),
+                        UnitPrice = (decimal)(po.UnitPrice ?? 0),
+                    };
+                    var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
+                    await _transactionDetailService.CreateAsync(tranDetailEntity);
+                }
+
+                // --- 🔟 Cập nhật thông tin đơn chuyển kho ---
+                if (!string.IsNullOrEmpty(or.Note))
+                {
+                    transaction.Note = or.Note;
+                }
+                await _transactionService.UpdateAsync(transaction);
+
+                return Ok(ApiResponse<string>.Ok("Cập nhật đơn chuyển kho thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật đơn chuyển kho");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật đơn chuyển kho"));
+            }
+        }
+
+        /// <summary>
+        /// Hủy đơn chuyển kho - Trả lại hàng về kho nguồn, xóa hàng ở kho đích
+        /// </summary>
+        /// <param name="transactionId">ID của đơn chuyển kho cần hủy</param>
+        /// <returns>Kết quả hủy đơn</returns>
+        [HttpPut("CancelTransferOrder/{transactionId}")]
+        public async Task<IActionResult> CancelTransferOrder(int transactionId)
+        {
+            try
+            {
+                // Lấy thông tin đơn chuyển kho
+                var transaction = await _transactionService.GetByIdAsync(transactionId);
+                if (transaction == null)
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn chuyển kho", 404));
+
+                // Kiểm tra loại transaction phải là Transfer
+                if (transaction.Type != transactionType)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Đơn này không phải là đơn chuyển kho", 400));
+                }
+
+                // Kiểm tra trạng thái - không cho phép hủy nếu đã hủy hoặc đã hoàn thành
+                if (transaction.Status == (int)TransactionStatus.cancel)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Đơn chuyển kho đã được hủy trước đó", 400));
+                }
+
+                // Lấy chi tiết đơn chuyển kho
+                var transactionDetails = await _transactionDetailService.GetByTransactionId(transactionId);
+                if (transactionDetails == null || !transactionDetails.Any())
+                {
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy chi tiết đơn chuyển kho", 404));
+                }
+
+                // Lấy tất cả StockBatch được tạo từ transaction này (ở kho đích)
+                var destStockBatches = await _stockBatchService.GetByTransactionId(transactionId);
+                var destStockBatchByProduct = destStockBatches
+                    .Where(sb => sb.WarehouseId == transaction.WarehouseInId)
+                    .GroupBy(sb => sb.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Sum(sb => sb.QuantityIn ?? 0));
+
+                // Dictionary để track các update (tránh update trùng lặp)
+                var sourceInventoryUpdates = new Dictionary<int, Inventory>();
+                var destInventoryUpdates = new Dictionary<int, Inventory>();
+                var sourceStockBatchUpdates = new Dictionary<int, StockBatch>();
+
+                // Xử lý từng sản phẩm để trả lại hàng
+                foreach (var detail in transactionDetails)
+                {
+                    var productId = detail.ProductId;
+                    var quantity = detail.Quantity;
+
+                    // Trả lại Inventory ở kho nguồn
+                    var sourceInventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transaction.WarehouseId, productId);
+                    if (sourceInventoryEntity != null)
+                    {
+                        sourceInventoryEntity.Quantity += quantity;
+                        sourceInventoryEntity.LastUpdated = DateTime.Now;
+                        sourceInventoryUpdates[productId] = sourceInventoryEntity;
+                    }
+
+                    // Trả lại StockBatch ở kho nguồn theo LIFO (Last In First Out)
+                    var batchesToRevert = await _stockBatchService.GetByProductIdForOrder(new List<int> { productId });
+                    if (batchesToRevert != null && batchesToRevert.Any())
+                    {
+                        var revertList = batchesToRevert
+                            .Where(b => b.WarehouseId == transaction.WarehouseId
+                                && (b.QuantityOut ?? 0) > 0)
+                            .OrderByDescending(b => b.ImportDate)
+                            .ToList();
+
+                        decimal toRevert = quantity;
+                        foreach (var b in revertList)
+                        {
+                            if (toRevert <= 0) break;
+                            var availableOut = b.QuantityOut ?? 0;
+                            if (availableOut <= 0) continue;
+
+                            var takeBack = Math.Min(availableOut, toRevert);
+
+                            if (sourceStockBatchUpdates.ContainsKey(b.BatchId))
+                            {
+                                sourceStockBatchUpdates[b.BatchId].QuantityOut -= takeBack;
+                                if (sourceStockBatchUpdates[b.BatchId].QuantityOut < 0)
+                                    sourceStockBatchUpdates[b.BatchId].QuantityOut = 0;
+                            }
+                            else
+                            {
+                                var batchEntity = await _stockBatchService.GetByIdAsync(b.BatchId);
+                                if (batchEntity != null)
+                                {
+                                    batchEntity.QuantityOut -= takeBack;
+                                    if (batchEntity.QuantityOut < 0) batchEntity.QuantityOut = 0;
+                                    batchEntity.LastUpdated = DateTime.Now;
+                                    sourceStockBatchUpdates[b.BatchId] = batchEntity;
+                                }
+                            }
+                            toRevert -= takeBack;
+                        }
+                    }
+
+                    // Trừ Inventory ở kho đích
+                    if (destStockBatchByProduct.ContainsKey(productId))
+                    {
+                        var destInventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transaction.WarehouseInId ?? 0, productId);
+                        if (destInventoryEntity != null)
+                        {
+                            var quantityToRemove = destStockBatchByProduct[productId];
+                            destInventoryEntity.Quantity -= quantityToRemove;
+                            if (destInventoryEntity.Quantity < 0) destInventoryEntity.Quantity = 0;
+                            destInventoryEntity.LastUpdated = DateTime.Now;
+                            destInventoryUpdates[productId] = destInventoryEntity;
+                        }
+                    }
+                }
+
+                // Cập nhật tất cả Inventory
+                foreach (var inventory in sourceInventoryUpdates.Values)
+                {
+                    await _inventoryService.UpdateNoTracking(inventory);
+                }
+                foreach (var inventory in destInventoryUpdates.Values)
+                {
+                    await _inventoryService.UpdateNoTracking(inventory);
+                }
+
+                // Cập nhật tất cả StockBatch ở kho nguồn
+                foreach (var stockBatch in sourceStockBatchUpdates.Values)
+                {
+                    await _stockBatchService.UpdateNoTracking(stockBatch);
+                }
+
+                // Xóa tất cả StockBatch ở kho đích được tạo từ transaction này
+                foreach (var batch in destStockBatches.Where(sb => sb.WarehouseId == transaction.WarehouseInId))
+                {
+                    var batchEntity = await _stockBatchService.GetByIdAsync(batch.BatchId);
+                    if (batchEntity != null)
+                    {
+                        await _stockBatchService.DeleteAsync(batchEntity);
+                    }
+                }
+
+                // Cập nhật trạng thái đơn chuyển kho thành cancel
+                transaction.Status = (int)TransactionStatus.cancel;
+                await _transactionService.UpdateAsync(transaction);
+
+                return Ok(ApiResponse<string>.Ok("Hủy đơn chuyển kho thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi hủy đơn chuyển kho");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi hủy đơn chuyển kho"));
             }
         }
     }
