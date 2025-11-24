@@ -318,7 +318,7 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<ProductDto>.Fail("Không tìm thấy sản phẩm nào", 404));
 
             // Xác định WarehouseId (ưu tiên từ request, nếu không có thì lấy từ stockBatch)
-            int? warehouseId = or.WarehouseId;
+            int? warehouseId = or.WarehouseId ?? 1;
             if (!warehouseId.HasValue)
             {
                 // Lấy tất cả các lô hàng còn hàng và còn hạn để xác định kho
@@ -396,10 +396,10 @@ namespace NB.API.Controllers
                 transactionEntity.Type = "Export";
                 await _transactionService.CreateAsync(transactionEntity);
 
-                // 3️ Duyệt từng sản phẩm để lấy lô & cập nhật tồn
+                // 3️ Duyệt từng sản phẩm để tạo transaction detail
                 foreach (var po in listProductOrder)
                 {
-                    // 5️ Tạo transaction detail
+                    // 4 Tạo transaction detail
                     var tranDetail = new TransactionDetailCreateVM
                     {
                         ProductId = po.ProductId,
@@ -411,7 +411,7 @@ namespace NB.API.Controllers
                     await _transactionDetailService.CreateAsync(tranDetailEntity);
                 }
 
-                // 6️ Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
+                // 5 Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
                 return Ok(ApiResponse<string>.Ok("Tạo đơn hàng thành công"));
             }
             catch (Exception ex)
@@ -987,17 +987,6 @@ namespace NB.API.Controllers
                 // --- 8️⃣ Xóa và tạo lại TransactionDetail ---
                 await _transactionDetailService.DeleteRange(oldDetails); // Xóa dữ liệu cũ để tạo lại chính xác
 
-                // Lấy lại inventory sau khi update để tính lại subtotal chính xác
-                //var allInventoryDict = new Dictionary<int, Inventory>();
-                //foreach (var productId in listProductOrder.Select(p => p.ProductId).Distinct())
-                //{
-                //    var inv = await _inventoryService.GetEntityByProductIdAsync(productId);
-                //    if (inv != null)
-                //    {
-                //        allInventoryDict[productId] = inv;
-                //    }
-                //}
-
                 foreach (var po in listProductOrder)
                 {
                     // Ánh xạ lại transaction detail dựa trên số lượng mới
@@ -1102,7 +1091,9 @@ namespace NB.API.Controllers
                 {
                     TransactionStatus.draft,
                     TransactionStatus.order,
-                    TransactionStatus.delivering
+                    TransactionStatus.delivering,
+                    TransactionStatus.failure,
+                    TransactionStatus.cancel
                 };
 
                 // Tạo danh sách trả về gồm int + string
@@ -1160,6 +1151,7 @@ namespace NB.API.Controllers
 
                 foreach (var returnItem in returnProductDict)
                 {
+                    // Lấy ra mã sp và số lượng trả
                     var productId = returnItem.Key;
                     var returnQuantity = returnItem.Value;
 
@@ -1211,6 +1203,7 @@ namespace NB.API.Controllers
                     var batchesToRevert = await _stockBatchService.GetByProductIdForOrder(new List<int> { productId });
                     if (batchesToRevert != null && batchesToRevert.Any())
                     {
+                        // Lọc ra những lô nằm trong kho đã xuất
                         var revertList = batchesToRevert
                             .Where(b => b.WarehouseId == transaction.WarehouseId
                                 && (b.QuantityOut ?? 0) > 0)
@@ -1220,18 +1213,22 @@ namespace NB.API.Controllers
                         decimal toRevert = returnQuantity;
                         foreach (var b in revertList)
                         {
+                            // Nếu số lượng trả đã về 0 thì thoát vòng lặp
                             if (toRevert <= 0) break;
+                            // lấy số lượng đã xuất của lô
                             var availableOut = b.QuantityOut ?? 0;
+                            // Nếu lô chưa xuất bao nào thì sẽ chuyển sang lô tiếp theo
                             if (availableOut <= 0) continue;
 
                             var takeBack = Math.Min(availableOut, toRevert);
-
+                            // Trường hợp lô đấy đã trừ ở trước và đã được thêm vào Dictionary rồi
                             if (stockBatchUpdates.ContainsKey(b.BatchId))
                             {
                                 stockBatchUpdates[b.BatchId].QuantityOut -= takeBack;
                                 if (stockBatchUpdates[b.BatchId].QuantityOut < 0)
                                     stockBatchUpdates[b.BatchId].QuantityOut = 0;
                             }
+                            // Nếu lô lần đầu tiên được lấy ra để update lại số lượng 
                             else
                             {
                                 var batchEntity = await _stockBatchService.GetByIdAsync(b.BatchId);
@@ -1277,6 +1274,7 @@ namespace NB.API.Controllers
                 {
                     if (returnProductDict.ContainsKey(detail.ProductId))
                     {
+                        // Lấy ra số lượng phải trả của sản phẩm
                         var returnQuantity = returnProductDict[detail.ProductId];
                         var newQuantity = detail.Quantity - returnQuantity;
 
@@ -1285,7 +1283,8 @@ namespace NB.API.Controllers
                         {
                             ProductId = detail.ProductId,
                             ReturnTransactionId = returnTranEntity.ReturnTransactionId,
-                            Quantity = (int)returnQuantity
+                            Quantity = (int)returnQuantity,
+                            UnitPrice = detail.UnitPrice
                         };
                         var returnTranDetailEntity = _mapper.Map<ReturnTransactionDetailCreateVM, ReturnTransactionDetail>(returnTranDetail);
                         await _returnTransactionDetailService.CreateAsync(returnTranDetailEntity);
@@ -1309,9 +1308,6 @@ namespace NB.API.Controllers
                                 await _transactionDetailService.DeleteAsync(detailEntity);
                             }
                         }
-
-                        // Tính tổng tiền giảm
-                        //totalCostReduction += returnQuantity * detail.UnitPrice;
                     }
                 }
                 
@@ -1333,7 +1329,7 @@ namespace NB.API.Controllers
                 var remainingDetails = await _transactionDetailService.GetByTransactionId(transactionId);
                 if (remainingDetails == null || !remainingDetails.Any())
                 {
-                    transaction.Status = (int?)TransactionStatus.draft;
+                    transaction.Status = (int?)TransactionStatus.cancel;
                 }
 
                 await _transactionService.UpdateAsync(transaction);

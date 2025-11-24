@@ -40,8 +40,6 @@ namespace NB.Service.TransactionDetailService
 
         public async Task<List<TransactionDetailDto>> GetByTransactionId(int? Id)
         {
-
-
             var query = from td in GetQueryable()
                         where td.TransactionId == Id
                         select new TransactionDetailDto()

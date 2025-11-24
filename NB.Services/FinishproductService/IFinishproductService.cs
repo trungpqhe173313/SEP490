@@ -10,5 +10,6 @@ namespace NB.Service.FinishproductService
 {
     public interface IFinishproductService : IService<Finishproduct>
     {
+        
     }
 }
