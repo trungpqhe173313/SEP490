@@ -15,6 +15,7 @@ namespace NB.Service.StockAdjustmentService.ViewModels
     {
         public int DetailId { get; set; }
         public int ProductId { get; set; }
+        public string ProductCode { get; set; } = string.Empty;
         public string ProductName { get; set; } = string.Empty;
         public decimal ActualQuantity { get; set; }
         public decimal SystemQuantity { get; set; } // REALTIME từ Inventory
