@@ -21,6 +21,11 @@ namespace NB.Service.StockAdjustmentService.ViewModels
         [Range(0, double.MaxValue, ErrorMessage = "ActualQuantity phải >= 0")]
         public decimal ActualQuantity { get; set; }
 
+        // SystemQuantity: KHÔNG bắt buộc, chỉ để tham khảo khi chỉnh sửa
+        // Giá trị này KHÔNG được lưu vào DB
+        // Khi GET draft, sẽ lấy lại từ Inventory REALTIME
+        public decimal? SystemQuantity { get; set; }
+        
         public string? Note { get; set; }
     }
 }
