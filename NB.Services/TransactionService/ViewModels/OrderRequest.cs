@@ -16,5 +16,7 @@ namespace NB.Service.TransactionService.ViewModels
         public int? PriceListId { get; set; }
         // Dung cho returnTransaction
         public string? Reason { get; set; }
+        // Kho xuất hàng (nếu không có thì sẽ lấy từ stockBatch)
+        public int? WarehouseId { get; set; }
     }
 }

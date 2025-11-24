@@ -27,11 +27,12 @@ namespace NB.Service.InventoryService
         Task<List<InventoryDto>> GetByProductId(int productId);
         Task<InventoryDto?> GetByProductIdRetriveOneObject(int productId);
         Task<List<InventoryDto>> GetByProductIds(List<int> ids);
-
+        Task<List<InventoryDto>> GetByWarehouseAndProductIds(int warehouseId, List<int> ids);
         Task<List<InventoryDto>> GetByWarehouseId(int warehouseId);
 
         Task<List<ProductInWarehouseDto>> GetFromList(List<InventoryDto> list);
 
         Task<Inventory?> GetEntityByProductIdAsync(int productId);
+        Task<Inventory?> GetEntityByWarehouseAndProductIdAsync(int warehouseId, int productId);
     }
 }

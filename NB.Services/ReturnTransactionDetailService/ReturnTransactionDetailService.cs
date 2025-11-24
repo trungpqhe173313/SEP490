@@ -26,7 +26,8 @@ namespace NB.Service.ReturnTransactionDetailService
                            Id = rtd.Id,
                            ReturnTransactionId = rtd.ReturnTransactionId,
                            ProductId = rtd.ProductId,
-                           Quantity = rtd.Quantity
+                           Quantity = rtd.Quantity,
+                           UnitPrice = rtd.UnitPrice
                        };
 
             return await query.ToListAsync();
