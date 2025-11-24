@@ -9,11 +9,13 @@ namespace NB.Model.Enums
 {
     public enum ProductionOrderStatus
     {
-        [Description("Đàng chờ xử lý")]
+        [Description("Đang chờ xử lý")]
         Pending,
-        [Description("Đàng xử lý")]
+        [Description("Đang xử lý")]
         Processing,
         [Description("Hoàn thành")]
-        Finished
+        Finished,
+        [Description("Hủy")]
+        Cancel
     }
 }

@@ -1343,7 +1343,8 @@ namespace NB.API.Controllers
                         {
                             ProductId = detail.ProductId,
                             ReturnTransactionId = returnTranEntity.ReturnTransactionId,
-                            Quantity = (int)returnQuantity
+                            Quantity = (int)returnQuantity,
+                            UnitPrice = detail.UnitPrice
                         };
                         var returnTranDetailEntity = _mapper.Map<ReturnTransactionDetailCreateVM, ReturnTransactionDetail>(returnTranDetail);
                         await _returnTransactionDetailService.CreateAsync(returnTranDetailEntity);
