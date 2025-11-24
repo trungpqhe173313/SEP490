@@ -13,10 +13,13 @@ using NB.Service.MaterialService.ViewModels;
 using NB.Service.ProductionOrderService;
 using NB.Service.ProductionOrderService.Dto;
 using NB.Service.ProductionOrderService.ViewModels;
+using NB.Service.Core.Enum;
+using NB.Service.Common;
 using NB.Service.ProductService;
 using NB.Service.StockBatchService;
 using NB.Service.StockBatchService.Dto;
 using NB.Service.StockBatchService.ViewModels;
+using NB.Service.WarehouseService;
 
 namespace NB.API.Controllers
 {
@@ -32,6 +35,7 @@ namespace NB.API.Controllers
         private readonly IProductService _productService;
         private readonly IInventoryService _inventoryService;
         private readonly IStockBatchService _stockBatchService;
+        private readonly IWarehouseService _warehouseService;
 
         public ProductionController(
             IProductionOrderService productionOrderService,
@@ -40,6 +44,7 @@ namespace NB.API.Controllers
             IProductService productService,
             IInventoryService inventoryService,
             IStockBatchService stockBatchService,
+            IWarehouseService warehouseService,
             IMapper mapper,
             ILogger<ProductionController> logger,
             ICloudinaryService cloudinaryService)
@@ -50,6 +55,7 @@ namespace NB.API.Controllers
             _productService = productService;
             _inventoryService = inventoryService;
             _stockBatchService = stockBatchService;
+            _warehouseService = warehouseService;
             _mapper = mapper;
             _logger = logger;
             _cloudinaryService = cloudinaryService;
@@ -495,6 +501,164 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi hủy đơn sản xuất");
                 return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi hủy đơn sản xuất"));
+            }
+        }
+
+        /// <summary>
+        /// Lấy danh sách các đơn sản xuất với phân trang và tìm kiếm
+        /// </summary>
+        /// <param name="search">Điều kiện tìm kiếm và phân trang</param>
+        /// <returns>Danh sách đơn sản xuất thỏa mãn điều kiện</returns>
+        [HttpPost("GetData")]
+        public async Task<IActionResult> GetData([FromBody] ProductionOrderSearch search)
+        {
+            try
+            {
+                var result = await _productionOrderService.GetData(search);
+                if (result.Items == null || !result.Items.Any())
+                {
+                    return Ok(ApiResponse<PagedList<ProductionOrderDto>>.Ok(result));
+                }
+
+                // Enrich thông tin: thêm StatusName
+                foreach (var po in result.Items)
+                {
+                    if (po.Status.HasValue)
+                    {
+                        ProductionOrderStatus status = (ProductionOrderStatus)po.Status.Value;
+                        po.StatusName = status.GetDescription();
+                    }
+                }
+
+                return Ok(ApiResponse<PagedList<ProductionOrderDto>>.Ok(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách đơn sản xuất");
+                return BadRequest(ApiResponse<PagedList<ProductionOrderDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+            }
+        }
+
+        /// <summary>
+        /// Lấy chi tiết đơn sản xuất theo ID
+        /// </summary>
+        /// <param name="Id">ProductionOrderId</param>
+        /// <returns>Chi tiết đơn sản xuất bao gồm thành phẩm và nguyên liệu</returns>
+        [HttpGet("GetDetail/{Id}")]
+        public async Task<IActionResult> GetDetail(int Id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            try
+            {
+                var productionOrder = new FullProductionOrderVM();
+                if (Id > 0)
+                {
+                    var detail = await _productionOrderService.GetByIdAsync(Id);
+                    if (detail != null)
+                    {
+                        productionOrder.Id = detail.Id;
+                        productionOrder.StartDate = detail.StartDate;
+                        productionOrder.EndDate = detail.EndDate;
+                        productionOrder.Status = detail.Status;
+                        productionOrder.Note = detail.Note;
+                        productionOrder.CreatedAt = detail.CreatedAt;
+
+                        // Gắn StatusName
+                        if (detail.Status.HasValue)
+                        {
+                            ProductionOrderStatus status = (ProductionOrderStatus)detail.Status.Value;
+                            productionOrder.StatusName = status.GetDescription();
+                        }
+                    }
+                    else
+                    {
+                        return NotFound(ApiResponse<FullProductionOrderVM>.Fail("Không tìm thấy đơn sản xuất.", 404));
+                    }
+                }
+                else if (Id <= 0)
+                {
+                    return BadRequest(ApiResponse<FullProductionOrderVM>.Fail("Id không hợp lệ", 400));
+                }
+
+                // Lấy danh sách thành phẩm
+                var finishProducts = await _finishproductService.GetQueryable()
+                    .Where(f => f.ProductionId == Id)
+                    .ToListAsync();
+
+                // Lấy danh sách nguyên liệu
+                var materials = await _materialService.GetQueryable()
+                    .Where(m => m.ProductionId == Id)
+                    .ToListAsync();
+
+                // Lấy danh sách ProductId và WarehouseId để query một lần
+                var productIds = finishProducts.Select(f => f.ProductId)
+                    .Union(materials.Select(m => m.ProductId))
+                    .Distinct()
+                    .ToList();
+
+                var warehouseIds = finishProducts.Select(f => f.WarehouseId)
+                    .Union(materials.Select(m => m.WarehouseId))
+                    .Distinct()
+                    .ToList();
+
+                // Lấy thông tin sản phẩm
+                var products = await _productService.GetByIds(productIds);
+                var productsDict = products.Where(p => p != null).ToDictionary(p => p!.ProductId, p => p!);
+
+                // Lấy thông tin kho
+                var warehouses = await _warehouseService.GetByListWarehouseId(warehouseIds);
+                var warehousesDict = warehouses.Where(w => w != null).ToDictionary(w => w!.WarehouseId, w => w!);
+
+                // Map thành phẩm
+                var finishProductDetails = finishProducts.Select(fp =>
+                {
+                    var product = productsDict.ContainsKey(fp.ProductId) ? productsDict[fp.ProductId] : null;
+                    var warehouse = warehousesDict.ContainsKey(fp.WarehouseId) ? warehousesDict[fp.WarehouseId] : null;
+                    return new FinishProductDetailDto
+                    {
+                        Id = fp.Id,
+                        ProductId = fp.ProductId,
+                        ProductName = product?.ProductName ?? "N/A",
+                        ProductCode = product?.ProductCode ?? "N/A",
+                        WarehouseId = fp.WarehouseId,
+                        WarehouseName = warehouse?.WarehouseName ?? "N/A",
+                        Quantity = fp.Quantity,
+                        CreatedAt = fp.CreatedAt
+                    };
+                }).ToList();
+
+                // Map nguyên liệu
+                var materialDetails = materials.Select(m =>
+                {
+                    var product = productsDict.ContainsKey(m.ProductId) ? productsDict[m.ProductId] : null;
+                    var warehouse = warehousesDict.ContainsKey(m.WarehouseId) ? warehousesDict[m.WarehouseId] : null;
+                    return new MaterialDetailDto
+                    {
+                        Id = m.Id,
+                        ProductId = m.ProductId,
+                        ProductName = product?.ProductName ?? "N/A",
+                        ProductCode = product?.ProductCode ?? "N/A",
+                        WarehouseId = m.WarehouseId,
+                        WarehouseName = warehouse?.WarehouseName ?? "N/A",
+                        Quantity = m.Quantity,
+                        CreatedAt = m.CreatedAt,
+                        LastUpdated = m.LastUpdated
+                    };
+                }).ToList();
+
+                productionOrder.FinishProducts = finishProductDetails;
+                productionOrder.Materials = materialDetails;
+
+                return Ok(ApiResponse<FullProductionOrderVM>.Ok(productionOrder));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy dữ liệu đơn sản xuất");
+                return BadRequest(ApiResponse<FullProductionOrderVM>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
             }
         }
 
