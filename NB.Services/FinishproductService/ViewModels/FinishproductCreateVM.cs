@@ -4,15 +4,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Service.ReturnTransactionDetailService.ViewModels
+namespace NB.Service.FinishproductService.ViewModels
 {
-    public class ReturnTransactionDetailCreateVM
+    public class FinishproductCreateVM
     {
-        public int ReturnTransactionId { get; set; }
+        public int ProductionId { get; set; }
 
         public int ProductId { get; set; }
 
+        public int WarehouseId { get; set; }
+
         public int Quantity { get; set; }
-        public decimal? UnitPrice { get; set; }
     }
 }

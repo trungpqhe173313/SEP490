@@ -4,15 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NB.Service.ReturnTransactionDetailService.ViewModels
+namespace NB.Service.ProductService.Dto
 {
-    public class ReturnTransactionDetailCreateVM
+    public class ProductProductionDto
     {
-        public int ReturnTransactionId { get; set; }
-
         public int ProductId { get; set; }
-
         public int Quantity { get; set; }
-        public decimal? UnitPrice { get; set; }
     }
 }

@@ -276,8 +276,6 @@ namespace NB.API.Controllers
                 var detailList = new List<ReturnOrderDetailItemDto>();
                 foreach (var detail in returnDetails)
                 {
-                    // Lấy ra transactionDetail gốc để lấy giá của sản phẩm trong đơn hàng
-                    var tranDetail = transactionDetails.FirstOrDefault(td => td.ProductId == detail.ProductId);
                     var product = await _productService.GetById(detail.ProductId);
                     detailList.Add(new ReturnOrderDetailItemDto
                     {
@@ -285,7 +283,7 @@ namespace NB.API.Controllers
                         ProductId = detail.ProductId,
                         ProductName = product?.ProductName ?? "N/A",
                         Quantity = detail.Quantity,
-                        UnitPrice = tranDetail?.UnitPrice ?? 0
+                        UnitPrice = detail?.UnitPrice ?? 0
                     });
                 }
 

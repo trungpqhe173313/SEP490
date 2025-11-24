@@ -191,5 +191,32 @@ namespace NB.Service.InventoryService
                         select i;
             return await query.AsNoTracking().FirstOrDefaultAsync();
         }
+
+        public async Task<Inventory?> GetEntityByWarehouseAndProductIdAsync(int warehouseId, int productId)
+        {
+            // Lấy entity không tracking để tránh conflict khi update
+            var query = from i in GetQueryable()
+                        where i.WarehouseId == warehouseId
+                        && i.ProductId == productId
+                        select i;
+            return await query.AsNoTracking().FirstOrDefaultAsync();
+        }
+
+        public async Task<List<InventoryDto>> GetByWarehouseAndProductIds(int warehouseId, List<int> ids)
+        {
+            var query = from i in GetQueryable()
+                        where ids.Contains(i.ProductId)
+                        where i.WarehouseId == warehouseId
+                        select new InventoryDto
+                        {
+                            InventoryId = i.InventoryId,
+                            ProductId = i.ProductId,
+                            WarehouseId = i.WarehouseId,
+                            Quantity = i.Quantity,
+                            LastUpdated = i.LastUpdated
+                        };
+
+            return await query.ToListAsync();
+        }
     }
 }

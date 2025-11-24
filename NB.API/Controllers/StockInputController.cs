@@ -237,8 +237,6 @@ namespace NB.API.Controllers
 
                 try
                 {
-
-
                     var pagedResult = await _stockBatchService.GetData(search);
 
                     if (pagedResult == null || pagedResult.Items.Count == 0)
@@ -1345,7 +1343,8 @@ namespace NB.API.Controllers
                         {
                             ProductId = detail.ProductId,
                             ReturnTransactionId = returnTranEntity.ReturnTransactionId,
-                            Quantity = (int)returnQuantity
+                            Quantity = (int)returnQuantity,
+                            UnitPrice = detail.UnitPrice
                         };
                         var returnTranDetailEntity = _mapper.Map<ReturnTransactionDetailCreateVM, ReturnTransactionDetail>(returnTranDetail);
                         await _returnTransactionDetailService.CreateAsync(returnTranDetailEntity);
@@ -1375,7 +1374,7 @@ namespace NB.API.Controllers
                 // Cập nhật tổng tiền đơn hàng
                 if (or.TotalCost.HasValue)
                 {
-                    transaction.TotalCost = or.TotalCost;
+                    transaction.TotalCost -= or.TotalCost;
                     if (transaction.TotalCost < 0) transaction.TotalCost = 0;
                 }
                 // Cập nhật note
