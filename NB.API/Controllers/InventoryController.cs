@@ -28,29 +28,23 @@ namespace NB.API.Controllers
             _productService = productService;
         }
 
-        [HttpGet("GetInventoryData")]
-        public async Task<IActionResult> GetInventoryData([FromQuery] int? warehouseId)
+        /// <summary>
+        /// Lấy danh sách sản phẩm và số lượng tồn kho (có phân trang)
+        /// 
+        /// - Nếu có WarehouseId: Hiển thị số lượng trong kho đó
+        /// - Nếu không có WarehouseId: Hiển thị tổng số lượng tất cả kho (group by ProductId)
+        /// </summary>
+        [HttpPost("GetInventoryData")]
+        public async Task<IActionResult> GetInventoryData([FromBody] InventorySearch search)
         {
             try
             {
-                List<InventoryDto> result;
-
-                if (warehouseId.HasValue && warehouseId.Value > 0)
-                {
-                    // Lấy dữ liệu theo ID kho cụ thể
-                    result = await _inventoryService.GetByWarehouseId(warehouseId.Value);
-                }
-                else
-                {
-                    // Lấy tất cả dữ liệu inventory từ tất cả các kho
-                    result = await _inventoryService.GetData();
-                }
-
-                return Ok(ApiResponse<List<InventoryDto>>.Ok(result));
+                var result = await _inventoryService.GetProductInventoryListAsync(search);
+                return Ok(ApiResponse<PagedList<ProductInventoryDto>>.Ok(result));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<List<InventoryDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu kiểm kho: " + ex.Message));
+                return BadRequest(ApiResponse<PagedList<ProductInventoryDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu tồn kho: " + ex.Message));
             }
         }
 

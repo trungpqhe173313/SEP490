@@ -18,6 +18,83 @@ namespace NB.Service.InventoryService
         {
         }
 
+        public async Task<PagedList<ProductInventoryDto>> GetProductInventoryListAsync(InventorySearch search)
+        {
+            var query = GetQueryable()
+                .Include(i => i.Product)
+                    .ThenInclude(p => p.Category)
+                .Include(i => i.Product)
+                    .ThenInclude(p => p.Supplier)
+                .Include(i => i.Warehouse)
+                .AsQueryable();
+
+            // Filter theo WarehouseId (nếu có)
+            if (search?.WarehouseId.HasValue == true && search.WarehouseId.Value > 0)
+            {
+                query = query.Where(i => i.WarehouseId == search.WarehouseId.Value);
+            }
+
+            // Filter theo ProductId (nếu có)
+            if (search?.ProductId.HasValue == true)
+            {
+                query = query.Where(i => i.ProductId == search.ProductId.Value);
+            }
+
+            // Filter theo ProductName (nếu có)
+            if (!string.IsNullOrEmpty(search?.ProductName))
+            {
+                var keyword = search.ProductName.Trim().ToLower();
+                query = query.Where(i => i.Product.ProductName.ToLower().Contains(keyword));
+            }
+
+            // Nếu có WarehouseId: Lấy inventory theo kho
+            if (search?.WarehouseId.HasValue == true && search.WarehouseId.Value > 0)
+            {
+                var result = query.Select(i => new ProductInventoryDto
+                {
+                    ProductId = i.ProductId,
+                    ProductCode = i.Product.ProductCode,
+                    ProductName = i.Product.ProductName,
+                    CategoryName = i.Product.Category != null ? i.Product.Category.CategoryName : null,
+                    SupplierName = i.Product.Supplier != null ? i.Product.Supplier.SupplierName : null,
+                    TotalQuantity = i.Quantity ?? 0,
+                    WarehouseId = i.WarehouseId,
+                    WarehouseName = i.Warehouse.WarehouseName,
+                    LastUpdated = i.LastUpdated
+                }).OrderBy(p => p.ProductName);
+
+                return await PagedList<ProductInventoryDto>.CreateAsync(result, search);
+            }
+            else
+            {
+                // Không có WarehouseId: Tổng hợp tất cả kho
+                var grouped = query
+                    .GroupBy(i => new
+                    {
+                        i.ProductId,
+                        i.Product.ProductCode,
+                        i.Product.ProductName,
+                        CategoryName = i.Product.Category != null ? i.Product.Category.CategoryName : null,
+                        SupplierName = i.Product.Supplier != null ? i.Product.Supplier.SupplierName : null
+                    })
+                    .Select(g => new ProductInventoryDto
+                    {
+                        ProductId = g.Key.ProductId,
+                        ProductCode = g.Key.ProductCode,
+                        ProductName = g.Key.ProductName,
+                        CategoryName = g.Key.CategoryName,
+                        SupplierName = g.Key.SupplierName,
+                        TotalQuantity = g.Sum(i => i.Quantity ?? 0),
+                        WarehouseId = null,
+                        WarehouseName = "Tất cả kho",
+                        LastUpdated = g.Max(i => i.LastUpdated)
+                    })
+                    .OrderBy(p => p.ProductName);
+
+                return await PagedList<ProductInventoryDto>.CreateAsync(grouped, search);
+            }
+        }
+
         public async Task<int> GetInventoryQuantity(int warehouseId, int productId)
         {
             var query = from i in GetQueryable()
