@@ -15,5 +15,6 @@ namespace NB.Service.MaterialService.ViewModels
         public int WarehouseId { get; set; }
 
         public int Quantity { get; set; }
+        public decimal? TotalWeight { get; set; }
     }
 }

@@ -101,6 +101,7 @@ namespace NB.API.Controllers
 
             // Validation: Kiểm tra danh sách thành phẩm
             var listFinishProductId = po.ListFinishProduct.Select(fp => fp.ProductId).ToList();
+            var listFinishProduct = await _productService.GetByIds(listFinishProductId);
             foreach (var finishProduct in po.ListFinishProduct)
             {
                 if (finishProduct.ProductId <= 0)
@@ -112,7 +113,7 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<ProductionOrder>.Fail($"Số lượng thành phẩm với ID {finishProduct.ProductId} phải lớn hơn 0", 400));
                 }
 
-                var productFinishCheck = await _productService.GetByIdAsync(finishProduct.ProductId);
+                var productFinishCheck = listFinishProduct.FirstOrDefault(p => p.ProductId == finishProduct.ProductId);
                 if (productFinishCheck == null)
                 {
                     return BadRequest(ApiResponse<ProductionOrder>.Fail($"Sản phẩm hoàn thiện với ID {finishProduct.ProductId} không tồn tại", 404));
@@ -128,7 +129,6 @@ namespace NB.API.Controllers
                 };
                 var entityProductionOrder = _mapper.Map<ProductionOrderCreateVM, ProductionOrder>(entityProductionOrderCreate);
                 entityProductionOrder.Status = (int)ProductionOrderStatus.Pending;
-                entityProductionOrder.StartDate = DateTime.Now;
                 entityProductionOrder.CreatedAt = DateTime.Now;
                 await _productionOrderService.CreateAsync(entityProductionOrder);
 
@@ -142,12 +142,14 @@ namespace NB.API.Controllers
                 // Tạo Finishproducts
                 foreach (var finishProduct in po.ListFinishProduct)
                 {
+                    var product = listFinishProduct.FirstOrDefault(p => p.ProductId == finishProduct.ProductId);
                     var entityFinishProductProductionCreate = new FinishproductCreateVM
                     {
                         ProductionId = entityProductionOrder.Id,
                         ProductId = finishProduct.ProductId,
                         Quantity = finishProduct.Quantity,
-                        WarehouseId = 1 // Mặc định kho thành phẩm là 1
+                        WarehouseId = 1, // Mặc định kho thành phẩm là 1
+                        TotalWeight = (product.WeightPerUnit * finishProduct.Quantity) ?? 0
                     };
                     var entityFinishProductProduction = _mapper.Map<FinishproductCreateVM, Finishproduct>(entityFinishProductProductionCreate);
                     entityFinishProductProduction.CreatedAt = DateTime.Now;
@@ -160,7 +162,8 @@ namespace NB.API.Controllers
                     ProductionId = entityProductionOrder.Id,
                     ProductId = po.MaterialProductId,
                     Quantity = po.MaterialQuantity,
-                    WarehouseId = 2 // Mặc định kho nguyên liệu là 2
+                    WarehouseId = 2, // Mặc định kho nguyên liệu là 2
+                    TotalWeight = (productMaterioalCheck.WeightPerUnit * po.MaterialQuantity) ?? 0
                 };
                 var entityMaterial = _mapper.Map<MaterialCreateVM, Material>(entityMaterialUsage);
                 entityMaterial.CreatedAt = DateTime.Now;
@@ -392,7 +395,9 @@ namespace NB.API.Controllers
                     // Cập nhật số lượng thành phẩm trong bảng Finishproduct nếu có thay đổi
                     if (quantityUpdated)
                     {
+                        var product = await _productService.GetByIdAsync(finishProduct.ProductId);
                         finishProduct.Quantity = quantity;
+                        finishProduct.TotalWeight = (product.WeightPerUnit * quantity) ?? 0;
                         await _finishproductService.UpdateAsync(finishProduct);
                     }
 
@@ -627,6 +632,7 @@ namespace NB.API.Controllers
                         WarehouseId = fp.WarehouseId,
                         WarehouseName = warehouse?.WarehouseName ?? "N/A",
                         Quantity = fp.Quantity,
+                        WeightPerUnit = product?.WeightPerUnit ?? 0,
                         CreatedAt = fp.CreatedAt
                     };
                 }).ToList();
@@ -645,6 +651,7 @@ namespace NB.API.Controllers
                         WarehouseId = m.WarehouseId,
                         WarehouseName = warehouse?.WarehouseName ?? "N/A",
                         Quantity = m.Quantity,
+                        WeightPerUnit = product?.WeightPerUnit ?? 0,
                         CreatedAt = m.CreatedAt,
                         LastUpdated = m.LastUpdated
                     };
