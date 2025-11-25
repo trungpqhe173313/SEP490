@@ -397,6 +397,7 @@ namespace NB.API.Controllers
                 await _transactionService.CreateAsync(transactionEntity);
 
                 // 3️ Duyệt từng sản phẩm để tạo transaction detail
+                decimal totalWeight = 0;
                 foreach (var po in listProductOrder)
                 {
                     // 4 Tạo transaction detail
@@ -409,7 +410,18 @@ namespace NB.API.Controllers
                     };
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
                     await _transactionDetailService.CreateAsync(tranDetailEntity);
+
+                    // Tính TotalWeight
+                    var product = await _productService.GetByIdAsync(po.ProductId);
+                    if (product != null && product.WeightPerUnit.HasValue)
+                    {
+                        totalWeight += product.WeightPerUnit.Value * (po.Quantity ?? 0);
+                    }
                 }
+
+                // Cập nhật TotalWeight vào transaction
+                transactionEntity.TotalWeight = totalWeight;
+                await _transactionService.UpdateAsync(transactionEntity);
 
                 // 5 Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
                 return Ok(ApiResponse<string>.Ok("Tạo đơn hàng thành công"));
@@ -488,6 +500,7 @@ namespace NB.API.Controllers
                 }
                 await _transactionDetailService.DeleteRange(existingDetails);
                 // Thêm chi tiết đơn hàng mới
+                decimal totalWeight = 0;
                 foreach (var po in listProductOrder)
                 {
                     var tranDetail = new TransactionDetailCreateVM
@@ -499,6 +512,13 @@ namespace NB.API.Controllers
                     };
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
                     await _transactionDetailService.CreateAsync(tranDetailEntity);
+
+                    // Tính TotalWeight
+                    var product = await _productService.GetByIdAsync(po.ProductId);
+                    if (product != null && product.WeightPerUnit.HasValue)
+                    {
+                        totalWeight += product.WeightPerUnit.Value * (po.Quantity ?? 0);
+                    }
                 }
                 // Cập nhật thông tin đơn hàng
                 if (!string.IsNullOrEmpty(or.Note))
@@ -514,6 +534,8 @@ namespace NB.API.Controllers
                 {
                     transaction.PriceListId = or.PriceListId;
                 }
+                // Cập nhật TotalWeight
+                transaction.TotalWeight = totalWeight;
                 transaction.Status = (int)TransactionStatus.draft;
                 await _transactionService.UpdateAsync(transaction);
                 return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công"));
@@ -987,6 +1009,7 @@ namespace NB.API.Controllers
                 // --- 8️⃣ Xóa và tạo lại TransactionDetail ---
                 await _transactionDetailService.DeleteRange(oldDetails); // Xóa dữ liệu cũ để tạo lại chính xác
 
+                decimal totalWeight = 0;
                 foreach (var po in listProductOrder)
                 {
                     // Ánh xạ lại transaction detail dựa trên số lượng mới
@@ -999,6 +1022,13 @@ namespace NB.API.Controllers
                     };
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
                     await _transactionDetailService.CreateAsync(tranDetailEntity);
+
+                    // Tính TotalWeight
+                    var product = await _productService.GetByIdAsync(po.ProductId);
+                    if (product != null && product.WeightPerUnit.HasValue)
+                    {
+                        totalWeight += product.WeightPerUnit.Value * (po.Quantity ?? 0);
+                    }
                 }
 
                 // --- 9️⃣ Cập nhật thông tin đơn hàng ---
@@ -1022,6 +1052,8 @@ namespace NB.API.Controllers
                 {
                     transaction.PriceListId = or.PriceListId;
                 }
+                // Cập nhật TotalWeight
+                transaction.TotalWeight = totalWeight;
                 await _transactionService.UpdateAsync(transaction);
 
                 return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công"));
@@ -1184,11 +1216,21 @@ namespace NB.API.Controllers
                 var inventoryUpdates = new Dictionary<int, Inventory>();
                 var stockBatchUpdates = new Dictionary<int, StockBatch>();
 
+                // Tính lại TotalWeight cho các sản phẩm bị trả
+                decimal returnWeight = 0;
+
                 // Xử lý từng sản phẩm trả hàng
                 foreach (var returnItem in returnProductDict)
                 {
                     var productId = returnItem.Key;
                     var returnQuantity = returnItem.Value;
+
+                    // Tính weight của sản phẩm trả
+                    var productForWeight = await _productService.GetByIdAsync(productId);
+                    if (productForWeight != null && productForWeight.WeightPerUnit.HasValue)
+                    {
+                        returnWeight += productForWeight.WeightPerUnit.Value * returnQuantity;
+                    }
 
                     // Trả lại Inventory ở kho của transaction
                     var inventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(transaction.WarehouseId, productId);
@@ -1318,6 +1360,12 @@ namespace NB.API.Controllers
                     //gia goc tru di gia tong so hang bi tra
                     transaction.TotalCost -= or.TotalCost;
                     if (transaction.TotalCost < 0) transaction.TotalCost = 0;
+                }
+                // Cập nhật TotalWeight - trừ đi weight của hàng bị trả
+                if (transaction.TotalWeight.HasValue)
+                {
+                    transaction.TotalWeight -= returnWeight;
+                    if (transaction.TotalWeight < 0) transaction.TotalWeight = 0;
                 }
                 // Cập nhật note
                 if (!string.IsNullOrEmpty(or.Note))

@@ -15,6 +15,7 @@ namespace NB.Service.ProductionOrderService.Dto
         public int WarehouseId { get; set; }
         public string WarehouseName { get; set; } = null!;
         public int Quantity { get; set; }
+        public decimal? WeightPerUnit { get; set; }
         public DateTime? CreatedAt { get; set; }
     }
 }

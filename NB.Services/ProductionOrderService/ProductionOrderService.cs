@@ -38,19 +38,11 @@ namespace NB.Service.ProductionOrderService
                 }
                 if (search.StartDateFrom.HasValue)
                 {
-                    query = query.Where(po => po.StartDate >= search.StartDateFrom.Value);
+                    query = query.Where(po => po.StartDate.HasValue && po.StartDate >= search.StartDateFrom.Value);
                 }
                 if (search.StartDateTo.HasValue)
                 {
-                    query = query.Where(po => po.StartDate <= search.StartDateTo.Value);
-                }
-                if (search.EndDateFrom.HasValue)
-                {
-                    query = query.Where(po => po.EndDate.HasValue && po.EndDate >= search.EndDateFrom.Value);
-                }
-                if (search.EndDateTo.HasValue)
-                {
-                    query = query.Where(po => po.EndDate.HasValue && po.EndDate <= search.EndDateTo.Value);
+                    query = query.Where(po => po.StartDate.HasValue && po.StartDate <= search.StartDateTo.Value);
                 }
             }
 

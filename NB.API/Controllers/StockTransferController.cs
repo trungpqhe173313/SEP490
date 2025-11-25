@@ -137,6 +137,9 @@ namespace NB.API.Controllers
                 string batchCodePrefix = "BATCH-NUMBER";
                 int batchCounter = 1;
 
+                // Biến để tính TotalWeight
+                decimal totalWeight = 0;
+
                 // 3️ Xử lý từng sản phẩm để chuyển hàng
                 foreach (var po in listProductOrder)
                 {
@@ -257,7 +260,18 @@ namespace NB.API.Controllers
                     };
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
                     await _transactionDetailService.CreateAsync(tranDetailEntity);
+
+                    // Tính TotalWeight
+                    var productForWeight = await _productService.GetByIdAsync(po.ProductId);
+                    if (productForWeight != null && productForWeight.WeightPerUnit.HasValue)
+                    {
+                        totalWeight += productForWeight.WeightPerUnit.Value * transferQty;
+                    }
                 }
+
+                // Cập nhật TotalWeight vào transaction
+                transactionEntity.TotalWeight = totalWeight;
+                await _transactionService.UpdateAsync(transactionEntity);
 
                 // 9️ Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
                 return Ok(ApiResponse<string>.Ok("Chuyển kho thành công"));
@@ -803,6 +817,7 @@ namespace NB.API.Controllers
                 // --- 9️⃣ Xóa và tạo lại TransactionDetail ---
                 await _transactionDetailService.DeleteRange(oldDetails);
 
+                decimal totalWeight = 0;
                 foreach (var po in listProductOrder)
                 {
                     var tranDetail = new TransactionDetailCreateVM
@@ -814,6 +829,13 @@ namespace NB.API.Controllers
                     };
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
                     await _transactionDetailService.CreateAsync(tranDetailEntity);
+
+                    // Tính TotalWeight
+                    var productForWeight = await _productService.GetByIdAsync(po.ProductId);
+                    if (productForWeight != null && productForWeight.WeightPerUnit.HasValue)
+                    {
+                        totalWeight += productForWeight.WeightPerUnit.Value * (po.Quantity ?? 0);
+                    }
                 }
 
                 // --- 🔟 Cập nhật thông tin đơn chuyển kho ---
@@ -821,6 +843,8 @@ namespace NB.API.Controllers
                 {
                     transaction.Note = or.Note;
                 }
+                // Cập nhật TotalWeight
+                transaction.TotalWeight = totalWeight;
                 await _transactionService.UpdateAsync(transaction);
 
                 return Ok(ApiResponse<string>.Ok("Cập nhật đơn chuyển kho thành công"));

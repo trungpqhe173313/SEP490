@@ -17,6 +17,8 @@ public partial class Finishproduct
 
     public DateTime? CreatedAt { get; set; }
 
+    public decimal? TotalWeight { get; set; }
+
     public virtual Product Product { get; set; } = null!;
 
     public virtual ProductionOrder Production { get; set; } = null!;
