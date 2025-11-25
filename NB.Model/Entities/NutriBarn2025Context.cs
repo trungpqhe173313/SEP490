@@ -69,11 +69,11 @@ public partial class NutriBarn2025Context : DbContext
     {
         modelBuilder.Entity<Category>(entity =>
         {
-            entity.HasKey(e => e.CategoryId).HasName("PK__Category__19093A2B26E8ACB0");
+            entity.HasKey(e => e.CategoryId).HasName("PK__Category__19093A2BC08476DE");
 
             entity.ToTable("Category");
 
-            entity.HasIndex(e => e.CategoryName, "UQ__Category__8517B2E0999D7DC7").IsUnique();
+            entity.HasIndex(e => e.CategoryName, "UQ__Category__8517B2E0F8063CB7").IsUnique();
 
             entity.Property(e => e.CategoryId).HasColumnName("CategoryID");
             entity.Property(e => e.CategoryName).HasMaxLength(100);
@@ -89,7 +89,7 @@ public partial class NutriBarn2025Context : DbContext
 
         modelBuilder.Entity<Contract>(entity =>
         {
-            entity.HasKey(e => e.ContractId).HasName("PK__Contract__C90D34091EA05F75");
+            entity.HasKey(e => e.ContractId).HasName("PK__Contract__C90D340983696E22");
 
             entity.ToTable("Contract");
 
@@ -107,16 +107,16 @@ public partial class NutriBarn2025Context : DbContext
 
             entity.HasOne(d => d.Supplier).WithMany(p => p.Contracts)
                 .HasForeignKey(d => d.SupplierId)
-                .HasConstraintName("FK__Contract__Suppli__58D1301D");
+                .HasConstraintName("FK__Contract__Suppli__29221CFB");
 
             entity.HasOne(d => d.User).WithMany(p => p.Contracts)
                 .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK__Contract__UserID__59C55456");
+                .HasConstraintName("FK__Contract__UserID__2A164134");
         });
 
         modelBuilder.Entity<FinancialTransaction>(entity =>
         {
-            entity.HasKey(e => e.FinancialTransactionId).HasName("PK__Financia__6418105704E5BD7F");
+            entity.HasKey(e => e.FinancialTransactionId).HasName("PK__Financia__6418105764744B83");
 
             entity.ToTable("FinancialTransaction");
 
@@ -132,12 +132,12 @@ public partial class NutriBarn2025Context : DbContext
 
             entity.HasOne(d => d.RelatedTransaction).WithMany(p => p.FinancialTransactions)
                 .HasForeignKey(d => d.RelatedTransactionId)
-                .HasConstraintName("FK__Financial__Relat__57DD0BE4");
+                .HasConstraintName("FK__Financial__Relat__2B0A656D");
         });
 
         modelBuilder.Entity<Finishproduct>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Finishpr__3214EC279D2C3AF6");
+            entity.HasKey(e => e.Id).HasName("PK__Finishpr__3214EC27D9D5AFA3");
 
             entity.ToTable("Finishproduct");
 
@@ -158,22 +158,22 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasOne(d => d.Product).WithMany(p => p.Finishproducts)
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Finishpro__Produ__5CA1C101");
+                .HasConstraintName("FK__Finishpro__Produ__2CF2ADDF");
 
             entity.HasOne(d => d.Production).WithMany(p => p.Finishproducts)
                 .HasForeignKey(d => d.ProductionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Finishpro__Produ__5BAD9CC8");
+                .HasConstraintName("FK__Finishpro__Produ__2BFE89A6");
 
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Finishproducts)
                 .HasForeignKey(d => d.WarehouseId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Finishpro__Wareh__5E8A0973");
+                .HasConstraintName("FK__Finishpro__Wareh__2DE6D218");
         });
 
         modelBuilder.Entity<Inventory>(entity =>
         {
-            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__F5FDE6D3816AC174");
+            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__F5FDE6D35CA0BB94");
 
             entity.ToTable("Inventory");
 
@@ -196,17 +196,17 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasOne(d => d.Product).WithMany(p => p.Inventories)
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Inventory__Produ__4A8310C6");
+                .HasConstraintName("FK__Inventory__Produ__2EDAF651");
 
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Inventories)
                 .HasForeignKey(d => d.WarehouseId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Inventory__Wareh__498EEC8D");
+                .HasConstraintName("FK__Inventory__Wareh__2FCF1A8A");
         });
 
         modelBuilder.Entity<Job>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Job__3214EC2760D59A9B");
+            entity.HasKey(e => e.Id).HasName("PK__Job__3214EC271F77432F");
 
             entity.ToTable("Job");
 
@@ -224,7 +224,7 @@ public partial class NutriBarn2025Context : DbContext
 
         modelBuilder.Entity<Material>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Material__3214EC27928EA344");
+            entity.HasKey(e => e.Id).HasName("PK__Material__3214EC274BEFD44D");
 
             entity.ToTable("Material");
 
@@ -248,22 +248,22 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasOne(d => d.Product).WithMany(p => p.Materials)
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Material__Produc__5AB9788F");
+                .HasConstraintName("FK__Material__Produc__30C33EC3");
 
             entity.HasOne(d => d.Production).WithMany(p => p.Materials)
                 .HasForeignKey(d => d.ProductionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Material__Produc__5F7E2DAC");
+                .HasConstraintName("FK__Material__Produc__31B762FC");
 
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Materials)
                 .HasForeignKey(d => d.WarehouseId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Material__Wareho__5D95E53A");
+                .HasConstraintName("FK__Material__Wareho__32AB8735");
         });
 
         modelBuilder.Entity<Payroll>(entity =>
         {
-            entity.HasKey(e => e.PayrollId).HasName("PK__Payroll__99DFC69295B67641");
+            entity.HasKey(e => e.PayrollId).HasName("PK__Payroll__99DFC69277F3C5B6");
 
             entity.ToTable("Payroll");
 
@@ -284,16 +284,16 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasOne(d => d.Employee).WithMany(p => p.Payrolls)
                 .HasForeignKey(d => d.EmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Payroll__Employe__56E8E7AB");
+                .HasConstraintName("FK__Payroll__Employe__339FAB6E");
 
             entity.HasOne(d => d.FinancialTransaction).WithMany(p => p.Payrolls)
                 .HasForeignKey(d => d.FinancialTransactionId)
-                .HasConstraintName("FK__Payroll__Financi__55F4C372");
+                .HasConstraintName("FK__Payroll__Financi__3493CFA7");
         });
 
         modelBuilder.Entity<PriceList>(entity =>
         {
-            entity.HasKey(e => e.PriceListId).HasName("PK__PriceLis__1E30F34CE239C2B8");
+            entity.HasKey(e => e.PriceListId).HasName("PK__PriceLis__1E30F34C6FA6330E");
 
             entity.ToTable("PriceList");
 
@@ -311,7 +311,7 @@ public partial class NutriBarn2025Context : DbContext
 
         modelBuilder.Entity<PriceListDetail>(entity =>
         {
-            entity.HasKey(e => e.PriceListDetailId).HasName("PK__PriceLis__7BE7C664714F8A24");
+            entity.HasKey(e => e.PriceListDetailId).HasName("PK__PriceLis__7BE7C664535BD4BF");
 
             entity.ToTable("PriceListDetail");
 
@@ -323,16 +323,16 @@ public partial class NutriBarn2025Context : DbContext
 
             entity.HasOne(d => d.PriceList).WithMany(p => p.PriceListDetails)
                 .HasForeignKey(d => d.PriceListId)
-                .HasConstraintName("FK__PriceList__Price__625A9A57");
+                .HasConstraintName("FK__PriceList__Price__3587F3E0");
 
             entity.HasOne(d => d.Product).WithMany(p => p.PriceListDetails)
                 .HasForeignKey(d => d.ProductId)
-                .HasConstraintName("FK__PriceList__Produ__634EBE90");
+                .HasConstraintName("FK__PriceList__Produ__367C1819");
         });
 
         modelBuilder.Entity<Product>(entity =>
         {
-            entity.HasKey(e => e.ProductId).HasName("PK__Product__B40CC6EDD5E5D160");
+            entity.HasKey(e => e.ProductId).HasName("PK__Product__B40CC6ED5DBA61E3");
 
             entity.ToTable("Product");
 
@@ -340,7 +340,7 @@ public partial class NutriBarn2025Context : DbContext
 
             entity.HasIndex(e => e.SupplierId, "IX_Product_SupplierID");
 
-            entity.HasIndex(e => e.ProductCode, "UQ__Product__A25C5AA7FBE1AEE7").IsUnique();
+            entity.HasIndex(e => e.ProductCode, "UQ__Product__2F4E024F7AF0B4A5").IsUnique();
 
             entity.Property(e => e.ProductId).HasColumnName("ProductID");
             entity.Property(e => e.CategoryId).HasColumnName("CategoryID");
@@ -364,17 +364,17 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasOne(d => d.Category).WithMany(p => p.Products)
                 .HasForeignKey(d => d.CategoryId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Product__Categor__46B27FE2");
+                .HasConstraintName("FK__Product__Categor__37703C52");
 
             entity.HasOne(d => d.Supplier).WithMany(p => p.Products)
                 .HasForeignKey(d => d.SupplierId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Product__Supplie__6166761E");
+                .HasConstraintName("FK__Product__Supplie__3864608B");
         });
 
         modelBuilder.Entity<ProductionOrder>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Producti__3214EC27D879928F");
+            entity.HasKey(e => e.Id).HasName("PK__Producti__3214EC2705ADAE14");
 
             entity.ToTable("ProductionOrder");
 
@@ -394,7 +394,7 @@ public partial class NutriBarn2025Context : DbContext
 
         modelBuilder.Entity<ReturnTransaction>(entity =>
         {
-            entity.HasKey(e => e.ReturnTransactionId).HasName("PK__ReturnTr__4E8C11A6C3DD5F1B");
+            entity.HasKey(e => e.ReturnTransactionId).HasName("PK__ReturnTr__4E8C11A66868D007");
 
             entity.ToTable("ReturnTransaction");
 
@@ -406,12 +406,12 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasOne(d => d.Transaction).WithMany(p => p.ReturnTransactions)
                 .HasForeignKey(d => d.TransactionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__ReturnTra__Trans__09746778");
+                .HasConstraintName("FK__ReturnTra__Trans__395884C4");
         });
 
         modelBuilder.Entity<ReturnTransactionDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__ReturnTr__3214EC2729F1A7D7");
+            entity.HasKey(e => e.Id).HasName("PK__ReturnTr__3214EC27F15126BD");
 
             entity.ToTable("ReturnTransactionDetail");
 
@@ -423,21 +423,21 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasOne(d => d.Product).WithMany(p => p.ReturnTransactionDetails)
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__ReturnTra__Produ__0D44F85C");
+                .HasConstraintName("FK__ReturnTra__Produ__3A4CA8FD");
 
             entity.HasOne(d => d.ReturnTransaction).WithMany(p => p.ReturnTransactionDetails)
                 .HasForeignKey(d => d.ReturnTransactionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__ReturnTra__Retur__0C50D423");
+                .HasConstraintName("FK__ReturnTra__Retur__3B40CD36");
         });
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.RoleId).HasName("PK__Role__8AFACE3AACE974F4");
+            entity.HasKey(e => e.RoleId).HasName("PK__Role__8AFACE3A2AC65594");
 
             entity.ToTable("Role");
 
-            entity.HasIndex(e => e.RoleName, "UQ__Role__8A2B616027756D42").IsUnique();
+            entity.HasIndex(e => e.RoleName, "UQ__Role__8A2B61601B45407E").IsUnique();
 
             entity.Property(e => e.RoleId).HasColumnName("RoleID");
             entity.Property(e => e.CreatedAt)
@@ -449,7 +449,7 @@ public partial class NutriBarn2025Context : DbContext
 
         modelBuilder.Entity<StockAdjustment>(entity =>
         {
-            entity.HasKey(e => e.AdjustmentId).HasName("PK__StockAdj__E60DB8B3D0933BE7");
+            entity.HasKey(e => e.AdjustmentId).HasName("PK__StockAdj__E60DB8B3FC00D789");
 
             entity.ToTable("StockAdjustment");
 
@@ -466,7 +466,7 @@ public partial class NutriBarn2025Context : DbContext
 
         modelBuilder.Entity<StockAdjustmentDetail>(entity =>
         {
-            entity.HasKey(e => e.DetailId).HasName("PK__StockAdj__135C314D1C66B7A3");
+            entity.HasKey(e => e.DetailId).HasName("PK__StockAdj__135C314D238817F6");
 
             entity.ToTable("StockAdjustmentDetail");
 
@@ -496,7 +496,7 @@ public partial class NutriBarn2025Context : DbContext
 
         modelBuilder.Entity<StockBatch>(entity =>
         {
-            entity.HasKey(e => e.BatchId).HasName("PK__StockBat__5D55CE3810CAAE0B");
+            entity.HasKey(e => e.BatchId).HasName("PK__StockBat__5D55CE38AE290C30");
 
             entity.ToTable("StockBatch");
 
@@ -504,7 +504,7 @@ public partial class NutriBarn2025Context : DbContext
 
             entity.HasIndex(e => new { e.ProductId, e.ImportDate }, "StockBatch_index_24");
 
-            entity.HasIndex(e => e.BatchCode, "UQ__StockBat__B22ADA8E619FB711").IsUnique();
+            entity.HasIndex(e => e.BatchCode, "UQ__StockBat__B22ADA8EC12B1922").IsUnique();
 
             entity.Property(e => e.BatchId).HasColumnName("BatchID");
             entity.Property(e => e.BatchCode).HasMaxLength(50);
@@ -530,29 +530,29 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasOne(d => d.Product).WithMany(p => p.StockBatches)
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__StockBatc__Produ__4D5F7D71");
+                .HasConstraintName("FK__StockBatc__Produ__3F115E1A");
 
             entity.HasOne(d => d.ProductionFinish).WithMany(p => p.StockBatches)
                 .HasForeignKey(d => d.ProductionFinishId)
-                .HasConstraintName("FK__StockBatc__Produ__607251E5");
+                .HasConstraintName("FK__StockBatc__Produ__40058253");
 
             entity.HasOne(d => d.Transaction).WithMany(p => p.StockBatches)
                 .HasForeignKey(d => d.TransactionId)
-                .HasConstraintName("FK__StockBatc__Trans__4F47C5E3");
+                .HasConstraintName("FK__StockBatc__Trans__40F9A68C");
 
             entity.HasOne(d => d.Warehouse).WithMany(p => p.StockBatches)
                 .HasForeignKey(d => d.WarehouseId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__StockBatc__Wareh__4E53A1AA");
+                .HasConstraintName("FK__StockBatc__Wareh__41EDCAC5");
         });
 
         modelBuilder.Entity<Supplier>(entity =>
         {
-            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE6669425EB0661");
+            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE666945D9729E9");
 
             entity.ToTable("Supplier");
 
-            entity.HasIndex(e => e.Email, "UQ__Supplier__A9D10534111DD7E0").IsUnique();
+            entity.HasIndex(e => e.Email, "UQ__Supplier__A9D105349D40375F").IsUnique();
 
             entity.Property(e => e.SupplierId).HasColumnName("SupplierID");
             entity.Property(e => e.CreatedAt)
@@ -566,7 +566,7 @@ public partial class NutriBarn2025Context : DbContext
 
         modelBuilder.Entity<Transaction>(entity =>
         {
-            entity.HasKey(e => e.TransactionId).HasName("PK__Transact__55433A4BF72B868D");
+            entity.HasKey(e => e.TransactionId).HasName("PK__Transact__55433A4B1B211370");
 
             entity.ToTable("Transaction");
 
@@ -575,13 +575,13 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasIndex(e => e.CustomerId, "IX_Transaction_UserID");
 
             entity.Property(e => e.TransactionId).HasColumnName("TransactionID");
-            entity.Property(e => e.ConversionRate).HasColumnType("decimal(10, 3)");
             entity.Property(e => e.CustomerId).HasColumnName("CustomerID");
             entity.Property(e => e.Note).HasMaxLength(500);
             entity.Property(e => e.PriceListId).HasColumnName("PriceListID");
             entity.Property(e => e.Status).HasDefaultValue(1);
             entity.Property(e => e.SupplierId).HasColumnName("SupplierID");
             entity.Property(e => e.TotalCost).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TotalWeight).HasColumnType("decimal(10, 3)");
             entity.Property(e => e.TransactionCode).HasMaxLength(100);
             entity.Property(e => e.TransactionDate)
                 .HasDefaultValueSql("(getdate())")
@@ -596,7 +596,7 @@ public partial class NutriBarn2025Context : DbContext
 
         modelBuilder.Entity<TransactionDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Transact__3214EC27BB475695");
+            entity.HasKey(e => e.Id).HasName("PK__Transact__3214EC276AC542D8");
 
             entity.ToTable("TransactionDetail");
 
@@ -608,17 +608,17 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasOne(d => d.Product).WithMany(p => p.TransactionDetails)
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Transacti__Produ__489AC854");
+                .HasConstraintName("FK__Transacti__Produ__42E1EEFE");
 
             entity.HasOne(d => d.Transaction).WithMany(p => p.TransactionDetails)
                 .HasForeignKey(d => d.TransactionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Transacti__Trans__47A6A41B");
+                .HasConstraintName("FK__Transacti__Trans__43D61337");
         });
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.UserId).HasName("PK__User__1788CCACE2088B94");
+            entity.HasKey(e => e.UserId).HasName("PK__User__1788CCACDF3ADD0E");
 
             entity.ToTable("User");
 
@@ -626,11 +626,11 @@ public partial class NutriBarn2025Context : DbContext
 
             entity.HasIndex(e => e.Username, "IX_User_Username");
 
-            entity.HasIndex(e => e.Username, "UQ__User__536C85E451F6F0BC").IsUnique();
+            entity.HasIndex(e => e.Username, "UQ__User__536C85E4B5D0F734").IsUnique();
 
-            entity.HasIndex(e => e.Phone, "UQ__User__5C7E359E6078F33D").IsUnique();
+            entity.HasIndex(e => e.Phone, "UQ__User__5C7E359E9C47F59E").IsUnique();
 
-            entity.HasIndex(e => e.Email, "UQ__User__A9D105341696516F").IsUnique();
+            entity.HasIndex(e => e.Email, "UQ__User__A9D10534BDA1E04B").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("UserID");
             entity.Property(e => e.CreatedAt)
@@ -649,7 +649,7 @@ public partial class NutriBarn2025Context : DbContext
 
         modelBuilder.Entity<UserRole>(entity =>
         {
-            entity.HasKey(e => e.UserRoleId).HasName("PK__UserRole__3D978A55D2BEFDEB");
+            entity.HasKey(e => e.UserRoleId).HasName("PK__UserRole__3D978A5598895158");
 
             entity.ToTable("UserRole");
 
@@ -669,17 +669,17 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasOne(d => d.Role).WithMany(p => p.UserRoles)
                 .HasForeignKey(d => d.RoleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__UserRole__RoleID__531856C7");
+                .HasConstraintName("FK__UserRole__RoleID__44CA3770");
 
             entity.HasOne(d => d.User).WithMany(p => p.UserRoles)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__UserRole__UserID__540C7B00");
+                .HasConstraintName("FK__UserRole__UserID__45BE5BA9");
         });
 
         modelBuilder.Entity<Warehouse>(entity =>
         {
-            entity.HasKey(e => e.WarehouseId).HasName("PK__Warehous__2608AFD90A03C53B");
+            entity.HasKey(e => e.WarehouseId).HasName("PK__Warehous__2608AFD963218374");
 
             entity.ToTable("Warehouse");
 
@@ -695,7 +695,7 @@ public partial class NutriBarn2025Context : DbContext
 
         modelBuilder.Entity<Worklog>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Worklog__3214EC27F672ED73");
+            entity.HasKey(e => e.Id).HasName("PK__Worklog__3214EC275F752BAB");
 
             entity.ToTable("Worklog");
 
@@ -719,16 +719,16 @@ public partial class NutriBarn2025Context : DbContext
             entity.HasOne(d => d.Employee).WithMany(p => p.Worklogs)
                 .HasForeignKey(d => d.EmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Worklog__Employe__4C6B5938");
+                .HasConstraintName("FK__Worklog__Employe__46B27FE2");
 
             entity.HasOne(d => d.Job).WithMany(p => p.Worklogs)
                 .HasForeignKey(d => d.JobId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Worklog__JobID__4B7734FF");
+                .HasConstraintName("FK__Worklog__JobID__47A6A41B");
 
             entity.HasOne(d => d.Transaction).WithMany(p => p.Worklogs)
                 .HasForeignKey(d => d.TransactionId)
-                .HasConstraintName("FK__Worklog__Transac__55009F39");
+                .HasConstraintName("FK__Worklog__Transac__489AC854");
         });
 
         OnModelCreatingPartial(modelBuilder);
