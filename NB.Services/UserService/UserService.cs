@@ -172,8 +172,38 @@ namespace NB.Service.UserService
                 .FirstOrDefaultAsync(x => x.UserId == user.UserId);
 
             if (entity == null) return await Task.FromResult(false);
-            if (entity.Password != password) return await Task.FromResult(false);
-            return await Task.FromResult(true);
+
+            // MIGRATION STRATEGY: Hỗ trợ cả plain text và hashed password
+            if (PasswordHasher.IsBCryptHash(entity.Password))
+            {
+                // Password đã được hash → Verify bằng BCrypt
+                var isValid = PasswordHasher.VerifyPassword(password, entity.Password);
+                return await Task.FromResult(isValid);
+            }
+            else
+            {
+                // Password còn plain text → So sánh trực tiếp
+                if (entity.Password != password)
+                    return await Task.FromResult(false);
+
+                // ✅ Password đúng → MIGRATE sang hash ngay
+                try
+                {
+                    entity.Password = PasswordHasher.HashPassword(password);
+                    _userRepository.Update(entity);
+                    await _userRepository.SaveAsync();
+                    
+                    // Log migration
+                    Console.WriteLine($"[PASSWORD MIGRATION] User {entity.Username} (ID: {entity.UserId}) migrated to hashed password");
+                }
+                catch (Exception ex)
+                {
+                    // Nếu migration fail, vẫn cho login (không block user)
+                    Console.WriteLine($"[PASSWORD MIGRATION ERROR] User {entity.Username}: {ex.Message}");
+                }
+
+                return await Task.FromResult(true);
+            }
         }
 
         public async Task<UserDto?> GetByRefreshTokenAsync(string RefreshToken)
