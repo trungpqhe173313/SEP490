@@ -15,7 +15,7 @@ public partial class Transaction
 
     public int WarehouseId { get; set; }
 
-    public decimal? ConversionRate { get; set; }
+    public decimal? TotalWeight { get; set; }
 
     public string Type { get; set; } = null!;
 
