@@ -130,7 +130,8 @@ namespace NB.Service.AccountService
             if (oldPassword == newPassword)
                 return ApiResponse<bool>.Fail("Mật khẩu mới phải khác mật khẩu cũ", 400);
 
-            user.Password = newPassword;
+            // Hash password mới trước khi lưu
+            user.Password = PasswordHasher.HashPassword(newPassword);
             await _userService.UpdateAsync(user);
 
             return ApiResponse<bool>.Ok(true);
@@ -258,7 +259,8 @@ namespace NB.Service.AccountService
             var userEntity = await _userService.GetByIdAsync(user.UserId);
             if (userEntity != null)
             {
-                userEntity.Password = newPassword;
+                // Hash password trước khi lưu
+                userEntity.Password = PasswordHasher.HashPassword(newPassword);
                 // Xóa reset token sau khi đã sử dụng
                 userEntity.RefreshToken = null;
                 userEntity.RefreshTokenExpiryDate = null;
