@@ -87,6 +87,54 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<List<WorklogResponseVM>>.Fail(ex.Message));
             }
         }
+
+        /// <summary>
+        /// Lấy chi tiết 1 worklog theo ID
+        /// </summary>
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetWorklogById([FromRoute] int id)
+        {
+            try
+            {
+                var worklog = await _worklogService.GetWorklogByIdAsync(id);
+                return Ok(ApiResponse<WorklogResponseVM>.Ok(worklog));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy worklog {Id}", id);
+                return BadRequest(ApiResponse<WorklogResponseVM>.Fail(ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Cập nhật worklog
+        /// - Chỉ cho phép sửa Quantity khi PayType = Per_Tan
+        /// - Nếu PayType = Per_Ngay thì giữ nguyên Quantity = 1
+        /// - Có thể sửa Note
+        /// </summary>
+        [HttpPut("update")]
+        public async Task<IActionResult> UpdateWorklog([FromBody] UpdateWorklogDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+                    return BadRequest(ApiResponse<WorklogResponseVM>.Fail(string.Join(", ", errors)));
+                }
+
+                var worklog = await _worklogService.UpdateWorklogAsync(dto);
+                return Ok(ApiResponse<WorklogResponseVM>.Ok(worklog));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật worklog {Id}", dto.Id);
+                return BadRequest(ApiResponse<WorklogResponseVM>.Fail(ex.Message));
+            }
+        }
     }
 }
 
