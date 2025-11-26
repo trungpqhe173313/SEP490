@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NB.Model.Entities;
 using NB.Repository.Common;
 using NB.Service.Common;
+using NB.Service.WorklogService.Dto;
 using NB.Service.WorklogService.ViewModels;
 
 namespace NB.Service.WorklogService
@@ -28,19 +29,6 @@ namespace NB.Service.WorklogService
             // Kiểm tra employee tồn tại
             var employee = await _userRepository.GetQueryable()
                 .FirstOrDefaultAsync(u => u.UserId == employeeId);
-            if (employee == null)
-            {
-                throw new Exception("Nhân viên không tồn tại");
-            }
-
-            // Kiểm tra user có role Employee (RoleId = 3) không
-            var hasEmployeeRole = await _userRoleRepository.GetQueryable()
-                .AnyAsync(ur => ur.UserId == employeeId && ur.RoleId == 3);
-            if (!hasEmployeeRole)
-            {
-                throw new Exception("User này không phải là nhân viên (Employee)");
-            }
-
             // Kiểm tra job tồn tại
             var job = await _jobRepository.GetQueryable()
                 .FirstOrDefaultAsync(j => j.Id == jobId);
@@ -120,6 +108,69 @@ namespace NB.Service.WorklogService
                 Note = worklog.Note,
                 WorkDate = worklog.WorkDate
             };
+
+            return response;
+        }
+
+        public async Task<CreateWorklogBatchResponseVM> CreateWorklogBatchAsync(CreateWorklogBatchDto dto)
+        {
+            // Kiểm tra employee tồn tại
+            var employee = await _userRepository.GetQueryable()
+                .FirstOrDefaultAsync(u => u.UserId == dto.EmployeeId);
+            if (employee == null)
+            {
+                throw new Exception("Nhân viên không tồn tại");
+            }
+
+            // Kiểm tra user có role Employee (RoleId = 3) không
+            var hasEmployeeRole = await _userRoleRepository.GetQueryable()
+                .AnyAsync(ur => ur.UserId == dto.EmployeeId && ur.RoleId == 3);
+            if (!hasEmployeeRole)
+            {
+                throw new Exception("User này không phải là nhân viên (Employee)");
+            }
+
+            var workDateValue = dto.WorkDate ?? DateTime.Now;
+            var response = new CreateWorklogBatchResponseVM
+            {
+                EmployeeId = dto.EmployeeId,
+                EmployeeName = employee.FullName ?? string.Empty,
+                WorkDate = workDateValue,
+                SuccessfulWorklogs = new List<WorklogResponseVM>(),
+                FailedWorklogs = new List<WorklogErrorVM>()
+            };
+
+            // Xử lý từng job
+            foreach (var jobItem in dto.Jobs)
+            {
+                try
+                {
+                    // Gọi lại method CreateWorklogAsync đã có
+                    var worklog = await CreateWorklogAsync(
+                        dto.EmployeeId,
+                        jobItem.JobId,
+                        jobItem.Quantity,
+                        workDateValue,
+                        jobItem.Note);
+
+                    response.SuccessfulWorklogs.Add(worklog);
+                    response.SuccessCount++;
+                }
+                catch (Exception ex)
+                {
+                    // Lấy tên job để hiển thị lỗi
+                    var job = await _jobRepository.GetQueryable()
+                        .FirstOrDefaultAsync(j => j.Id == jobItem.JobId);
+
+                    response.FailedWorklogs.Add(new WorklogErrorVM
+                    {
+                        JobId = jobItem.JobId,
+                        JobName = job?.JobName ?? $"Job #{jobItem.JobId}",
+                        ErrorMessage = ex.Message
+                    });
+                    response.FailedCount++;
+                }
+            }
 
             return response;
         }
