@@ -21,6 +21,8 @@ public partial class Worklog
 
     public DateTime? WorkDate { get; set; }
 
+    public bool? IsActive { get; set; }
+
     public virtual User Employee { get; set; } = null!;
 
     public virtual Job Job { get; set; } = null!;
