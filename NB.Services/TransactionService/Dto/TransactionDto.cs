@@ -11,6 +11,7 @@ namespace NB.Service.TransactionService.Dto
     public class TransactionDto : Transaction
     {
         public string? WarehouseName { get; set; }
+        public string? WarehouseInName { get; set; }
         public string? StatusName { get; set; }
 
         public string? FullName { get; set; }

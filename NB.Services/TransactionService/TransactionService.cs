@@ -192,7 +192,6 @@ namespace NB.Service.TransactionService
         public async Task<PagedList<TransactionDto>> GetDataForExport(TransactionSearch search)
         {
             var query = from t in GetQueryable()
-                        where t.Type == "Export"
                         select new TransactionDto()
                         {
                             TransactionId = t.TransactionId,

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using NB.Model.Entities;
 using NB.Model.Enums;
+using NB.Service.Core.Enum;
 using NB.Service.Core.Mapper;
 using NB.Service.Dto;
 using NB.Service.InventoryService;
@@ -19,6 +20,9 @@ using NB.Service.TransactionService.ViewModels;
 using NB.Service.UserService;
 using NB.Service.UserService.Dto;
 using NB.Service.WarehouseService;
+using NB.Service.WarehouseService.Dto;
+using NB.Service.TransactionService.Dto;
+using NB.Service.Common;
 
 namespace NB.API.Controllers
 {
@@ -59,6 +63,155 @@ namespace NB.API.Controllers
             _mapper = mapper;
             _logger = logger;
         }
+
+        /// <summary>
+        /// Lấy ra tất cả các đơn chuyển kho
+        /// </summary>
+        /// <param name="search">tìm các đơn chuyển kho theo các điều kiện</param>
+        /// <returns>các đơn chuyển kho thỏa mãn các điều kiện của search nếu có</returns>
+        [HttpPost("GetData")]
+        public async Task<IActionResult> GetData([FromBody] TransactionSearch search)
+        {
+            try
+            {
+                search.Type = transactionType;
+                var result = await _transactionService.GetDataForExport(search);
+                if (result.Items == null || !result.Items.Any())
+                {
+                    return Ok(ApiResponse<PagedList<TransactionDto>>.Ok(result));
+                }
+                var listWarehouseId = result.Items.Select(t => t.WarehouseId).ToList();
+                var listWarehouseInId = result.Items.Where(t => t.WarehouseInId.HasValue).Select(t => t.WarehouseInId.Value).ToList();
+                var allWarehouseIds = listWarehouseId.Concat(listWarehouseInId).Distinct().ToList();
+                
+                var listWareHouse = await _warehouseService.GetByListWarehouseId(allWarehouseIds);
+                
+                if (listWareHouse == null || !listWareHouse.Any())
+                {
+                    return NotFound(ApiResponse<PagedList<WarehouseDto>>.Fail("Không tìm thấy kho"));
+                }
+                
+                foreach (var t in result.Items)
+                {
+                    //lấy tên kho nguồn
+                    var sourceWarehouse = listWareHouse?.FirstOrDefault(w => w != null && w.WarehouseId == t.WarehouseId);
+                    if (sourceWarehouse != null)
+                    {
+                        t.WarehouseName = sourceWarehouse.WarehouseName;
+                    }
+                    
+                    //lấy tên kho đích
+                    if (t.WarehouseInId.HasValue)
+                    {
+                        var destWarehouse = listWareHouse?.FirstOrDefault(w => w != null && w.WarehouseId == t.WarehouseInId.Value);
+                        if (destWarehouse != null)
+                        {
+                            t.WarehouseInName = destWarehouse.WarehouseName;
+                        }
+                    }
+                    
+                    //gắn statusName cho transaction
+                    if (t.Status.HasValue)
+                    {
+                        TransactionStatus status = (TransactionStatus)t.Status.Value;
+                        t.StatusName = status.GetDescription();
+                    }
+                }
+                return Ok(ApiResponse<PagedList<TransactionDto>>.Ok(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy dữ liệu đơn chuyển kho");
+                return BadRequest(ApiResponse<PagedList<TransactionDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+            }
+        }
+
+        /// <summary>
+        /// Hàm để lấy ra chi tiết của đơn chuyển kho
+        /// </summary>
+        /// <param name="Id">TransactionId</param>
+        /// <returns>Trả về chi tiết đơn chuyển kho bao gồm các sản phẩm có trong đơn</returns>
+        [HttpGet("GetDetail/{Id}")]
+        public async Task<IActionResult> GetDetail(int Id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            try
+            {
+                var transaction = new FullTransactionTransferVM();
+                if (Id > 0)
+                {
+                    var detail = await _transactionService.GetByTransactionId(Id);
+                    if (detail != null)
+                    {
+                        transaction.Status = detail.Status;
+                        transaction.TransactionId = detail.TransactionId;
+                        transaction.TransactionDate = detail.TransactionDate ?? DateTime.MinValue;
+                        transaction.TotalWeight = detail.TotalWeight;
+                        transaction.Note = detail.Note;
+                        
+                        // Lấy thông tin kho nguồn
+                        var sourceWarehouse = await _warehouseService.GetById(detail.WarehouseId);
+                        transaction.SourceWarehouseName = sourceWarehouse?.WarehouseName ?? "N/A";
+                        
+                        // Lấy thông tin kho đích
+                        if (detail.WarehouseInId.HasValue)
+                        {
+                            var destWarehouse = await _warehouseService.GetById(detail.WarehouseInId.Value);
+                            transaction.DestinationWarehouseName = destWarehouse?.WarehouseName ?? "N/A";
+                        }
+                        else
+                        {
+                            transaction.DestinationWarehouseName = "N/A";
+                        }
+                    }
+                    else
+                    {
+                        return NotFound(ApiResponse<FullTransactionTransferVM>.Fail("Không tìm thấy đơn chuyển kho.", 404));
+                    }
+                }
+                else if (Id <= 0)
+                {
+                    return BadRequest(ApiResponse<FullTransactionTransferVM>.Fail("Id không hợp lệ", 400));
+                }
+
+                var productDetails = await _transactionDetailService.GetByTransactionId(Id);
+                if (productDetails == null || !productDetails.Any())
+                {
+                    return NotFound(ApiResponse<FullTransactionTransferVM>.Fail("Không có thông tin cho giao dịch này.", 400));
+                }
+                
+                foreach (var item in productDetails)
+                {
+                    var product = await _productService.GetById(item.ProductId);
+                    item.ProductName = product != null ? product.ProductName : "N/A";
+                    item.Code = product != null ? product.ProductCode : "N/A";
+                }
+
+                var listResult = productDetails.Select(item => new TransactionDetailOutputVM
+                {
+                    TransactionDetailId = item.Id,
+                    ProductId = item.ProductId,
+                    Code = item.Code ?? "N/A",
+                    ProductName = item.ProductName ?? "N/A",
+                    UnitPrice = item.UnitPrice,
+                    WeightPerUnit = item.WeightPerUnit,
+                    Quantity = item.Quantity
+                }).ToList<TransactionDetailOutputVM?>();
+
+                transaction.list = listResult ?? new List<TransactionDetailOutputVM?>();
+                return Ok(ApiResponse<FullTransactionTransferVM>.Ok(transaction));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy dữ liệu đơn chuyển kho");
+                return BadRequest(ApiResponse<FullTransactionTransferVM>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+            }
+        }
+
         [HttpPost("CreateTransferOrder")]
         public async Task<IActionResult> CreateTransferOrder([FromBody] TransferRequest or)
         {

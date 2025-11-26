@@ -9,11 +9,8 @@ namespace NB.Service.MaterialService.ViewModels
     public class MaterialCreateVM
     {
         public int ProductionId { get; set; }
-
         public int ProductId { get; set; }
-
         public int WarehouseId { get; set; }
-
         public int Quantity { get; set; }
         public decimal? TotalWeight { get; set; }
     }
