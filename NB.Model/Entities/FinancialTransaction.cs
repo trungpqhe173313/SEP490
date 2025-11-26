@@ -21,7 +21,9 @@ public partial class FinancialTransaction
 
     public int? CreatedBy { get; set; }
 
-    public virtual ICollection<Payroll> Payrolls { get; set; } = new List<Payroll>();
+    public int? PayrollId { get; set; }
+
+    public virtual Payroll? Payroll { get; set; }
 
     public virtual Transaction? RelatedTransaction { get; set; }
 }
