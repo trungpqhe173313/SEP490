@@ -275,6 +275,7 @@ namespace NB.API.Controllers
                 var transactionEntity = _mapper.Map<TransactionCreateVM, Transaction>(tranCreate);
                 transactionEntity.TransactionDate = DateTime.Now;
                 transactionEntity.Type = transactionType;
+                transactionEntity.Status = (int)TransactionStatus.inTransit;
                 await _transactionService.CreateAsync(transactionEntity);
 
                 // 2️ Lấy tất cả stockBatch từ kho nguồn, sắp xếp theo ImportDate (hàng cũ nhất trước - FIFO)
@@ -479,10 +480,14 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<string>.Fail("Đơn này không phải là đơn chuyển kho", 400));
                 }
 
-                // Kiểm tra trạng thái - chỉ cho phép cập nhật nếu chưa hoàn thành hoặc hủy
-                if (transaction.Status == (int)TransactionStatus.done || transaction.Status == (int)TransactionStatus.cancel)
+                // Kiểm tra trạng thái - chỉ cho phép cập nhật khi đang ở trạng thái inTransit
+                if (transaction.Status == (int)TransactionStatus.transferred)
                 {
-                    return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn chuyển kho đã hoàn thành hoặc đã hủy", 400));
+                    return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn chuyển kho đã hoàn thành", 400));
+                }
+                if (transaction.Status == (int)TransactionStatus.cancel)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn chuyển kho đã hủy", 400));
                 }
 
                 // Lấy thông tin kho
@@ -1009,19 +1014,50 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpPut("UpdateToDoneStatus/{transactionId}")]
-        public async Task<IActionResult> UpdateToDoneStatus(int transactionId)
+        /// <summary>
+        /// Cập nhật trạng thái đơn chuyển kho sang "Đã Chuyển"
+        /// </summary>
+        /// <param name="transactionId">ID của đơn chuyển kho</param>
+        /// <returns>Kết quả cập nhật</returns>
+        [HttpPut("UpdateToTransferredStatus/{transactionId}")]
+        public async Task<IActionResult> UpdateToTransferredStatus(int transactionId)
         {
-            var transaction = await _transactionService.GetByTransactionId(transactionId);
-            if (transaction == null)
-            {
-                return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));
-            }
             try
             {
-                //cap nhat trang thai cho don hang
-                transaction.Status = (int)TransactionStatus.done;
+                // Lấy thông tin đơn chuyển kho
+                var transaction = await _transactionService.GetByIdAsync(transactionId);
+                if (transaction == null)
+                {
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn chuyển kho", 404));
+                }
+
+                // Kiểm tra loại transaction phải là Transfer
+                if (transaction.Type != transactionType)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Đơn này không phải là đơn chuyển kho", 400));
+                }
+
+                // Kiểm tra trạng thái hiện tại - chỉ cho phép chuyển từ inTransit sang transferred
+                if (transaction.Status != (int)TransactionStatus.inTransit)
+                {
+                    if (transaction.Status == (int)TransactionStatus.transferred)
+                    {
+                        return BadRequest(ApiResponse<string>.Fail("Đơn chuyển kho đã ở trạng thái hoàn thành", 400));
+                    }
+                    else if (transaction.Status == (int)TransactionStatus.cancel)
+                    {
+                        return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn chuyển kho đã hủy", 400));
+                    }
+                    else
+                    {
+                        return BadRequest(ApiResponse<string>.Fail("Chỉ có thể cập nhật trạng thái khi đơn đang ở trạng thái 'Đang Chuyển'", 400));
+                    }
+                }
+
+                // Cập nhật trạng thái
+                transaction.Status = (int)TransactionStatus.transferred;
                 await _transactionService.UpdateAsync(transaction);
+                
                 return Ok(ApiResponse<string>.Ok("Cập nhật đơn chuyển kho thành công"));
             }
             catch (Exception ex)
@@ -1052,10 +1088,14 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<string>.Fail("Đơn này không phải là đơn chuyển kho", 400));
                 }
 
-                // Kiểm tra trạng thái - không cho phép hủy nếu đã hủy hoặc đã hoàn thành
-                if (transaction.Status == (int)TransactionStatus.done || transaction.Status == (int)TransactionStatus.cancel)
+                // Kiểm tra trạng thái - chỉ cho phép hủy khi đang ở trạng thái inTransit
+                if (transaction.Status == (int)TransactionStatus.transferred)
                 {
-                    return BadRequest(ApiResponse<string>.Fail("Đơn chuyển kho đã được hủy hoặc hoàn thành trước đó", 400));
+                    return BadRequest(ApiResponse<string>.Fail("Không thể hủy đơn chuyển kho đã hoàn thành", 400));
+                }
+                if (transaction.Status == (int)TransactionStatus.cancel)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Đơn chuyển kho đã được hủy trước đó", 400));
                 }
 
                 // Lấy chi tiết đơn chuyển kho
