@@ -480,10 +480,10 @@ namespace NB.API.Controllers
                 }
 
                 // Kiểm tra trạng thái - chỉ cho phép cập nhật nếu chưa hoàn thành hoặc hủy
-                // if (transaction.Status == (int)TransactionStatus.done || transaction.Status == (int)TransactionStatus.cancel)
-                // {
-                //     return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn chuyển kho đã hoàn thành hoặc đã hủy", 400));
-                // }
+                if (transaction.Status == (int)TransactionStatus.done || transaction.Status == (int)TransactionStatus.cancel)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn chuyển kho đã hoàn thành hoặc đã hủy", 400));
+                }
 
                 // Lấy thông tin kho
                 var sourceWarehouse = await _warehouseService.GetByIdAsync(or.WarehouseId);
@@ -1009,6 +1009,28 @@ namespace NB.API.Controllers
             }
         }
 
+        [HttpPut("UpdateToDoneStatus/{transactionId}")]
+        public async Task<IActionResult> UpdateToDoneStatus(int transactionId)
+        {
+            var transaction = await _transactionService.GetByTransactionId(transactionId);
+            if (transaction == null)
+            {
+                return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));
+            }
+            try
+            {
+                //cap nhat trang thai cho don hang
+                transaction.Status = (int)TransactionStatus.done;
+                await _transactionService.UpdateAsync(transaction);
+                return Ok(ApiResponse<string>.Ok("Cập nhật đơn chuyển kho thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái đơn chuyển kho");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật trạng thái đơn chuyển kho"));
+            }
+        }
+
         /// <summary>
         /// Hủy đơn chuyển kho - Trả lại hàng về kho nguồn, xóa hàng ở kho đích
         /// </summary>
@@ -1031,9 +1053,9 @@ namespace NB.API.Controllers
                 }
 
                 // Kiểm tra trạng thái - không cho phép hủy nếu đã hủy hoặc đã hoàn thành
-                if (transaction.Status == (int)TransactionStatus.cancel)
+                if (transaction.Status == (int)TransactionStatus.done || transaction.Status == (int)TransactionStatus.cancel)
                 {
-                    return BadRequest(ApiResponse<string>.Fail("Đơn chuyển kho đã được hủy trước đó", 400));
+                    return BadRequest(ApiResponse<string>.Fail("Đơn chuyển kho đã được hủy hoặc hoàn thành trước đó", 400));
                 }
 
                 // Lấy chi tiết đơn chuyển kho
