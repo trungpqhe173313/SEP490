@@ -17,7 +17,7 @@ builder.Services.AddCors(options =>
         policy =>
         {
             policy
-                .WithOrigins("http://localhost:3000", "https://localhost:3000") // frontend origin
+                .WithOrigins("http://localhost:5524", "https://localhost:5524", "https://nutribarnapi.io.vn", "http://localhost:3000", "https://localhost:3000") // frontend origin
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
