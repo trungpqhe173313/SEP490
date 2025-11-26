@@ -26,6 +26,12 @@ namespace NB.Model.Enums
         [Description("Đang kiểm")]
         checking,
         [Description("Đã kiểm")]
-        @checked
+        @checked,
+
+        //chuyển kho
+        [Description("Đang Chuyển")]
+        inTransit,
+        [Description("Đã Chuyển")]
+        transferred
     }
 }
