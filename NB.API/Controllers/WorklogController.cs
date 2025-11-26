@@ -27,14 +27,16 @@ namespace NB.API.Controllers
         }
 
         /// <summary>
-        /// Tạo worklog (chấm công) cho nhân viên
+        /// Tạo worklog (chấm công) cho nhân viên - Hỗ trợ nhiều công việc cùng lúc
         /// - Admin tạo worklog cho nhân viên bằng cách chọn EmployeeId
+        /// - Có thể chọn nhiều công việc (Jobs) cùng lúc trong 1 request
         /// - Hệ thống kiểm tra EmployeeId có role Employee (RoleId = 3) không
         /// - Nếu Job.PayType = Per_Ngay → hệ thống tự set Quantity = 1
         /// - Nếu Job.PayType = Per_Tan → phải nhập Quantity (số tấn)
+        /// - Trả về danh sách thành công/thất bại cho từng công việc
         /// </summary>
         [HttpPost("create")]
-        public async Task<IActionResult> CreateWorklog([FromBody] CreateWorklogDto dto)
+        public async Task<IActionResult> CreateWorklog([FromBody] CreateWorklogBatchDto dto)
         {
             try
             {
@@ -44,22 +46,16 @@ namespace NB.API.Controllers
                         .SelectMany(v => v.Errors)
                         .Select(e => e.ErrorMessage)
                         .ToList();
-                    return BadRequest(ApiResponse<WorklogResponseVM>.Fail(string.Join(", ", errors)));
+                    return BadRequest(ApiResponse<CreateWorklogBatchResponseVM>.Fail(string.Join(", ", errors)));
                 }
 
-                var worklog = await _worklogService.CreateWorklogAsync(
-                    dto.EmployeeId,
-                    dto.JobId,
-                    dto.Quantity,
-                    dto.WorkDate,
-                    dto.Note);
-
-                return Ok(ApiResponse<WorklogResponseVM>.Ok(worklog));
+                var result = await _worklogService.CreateWorklogBatchAsync(dto);
+                return Ok(ApiResponse<CreateWorklogBatchResponseVM>.Ok(result));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi tạo worklog");
-                return BadRequest(ApiResponse<WorklogResponseVM>.Fail(ex.Message));
+                return BadRequest(ApiResponse<CreateWorklogBatchResponseVM>.Fail(ex.Message));
             }
         }
 
