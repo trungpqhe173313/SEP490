@@ -294,6 +294,40 @@ namespace NB.Service.WorklogService
             return result;
         }
 
+        public async Task<List<WorklogResponseVM>> GetWorklogsByDateAsync(DateTime workDate)
+        {
+            var startOfDay = workDate.Date;
+            var endOfDay = startOfDay.AddDays(1);
+
+            // Lấy tất cả worklog trong ngày của tất cả nhân viên
+            var worklogs = await GetQueryable()
+                .Include(w => w.Job)
+                .Include(w => w.Employee)
+                .Where(w => w.WorkDate >= startOfDay && w.WorkDate < endOfDay)
+                .OrderBy(w => w.Employee.FullName)
+                .ThenBy(w => w.WorkDate)
+                .ToListAsync();
+
+            // Map sang WorklogResponseVM
+            var result = worklogs.Select(w => new WorklogResponseVM
+            {
+                Id = w.Id,
+                EmployeeId = w.EmployeeId,
+                EmployeeName = w.Employee.FullName ?? string.Empty,
+                JobId = w.JobId,
+                JobName = w.Job.JobName,
+                PayType = w.Job.PayType,
+                Quantity = w.Quantity,
+                Rate = w.Rate,
+                TotalAmount = w.Quantity * w.Rate,
+                Note = w.Note,
+                WorkDate = w.WorkDate,
+                IsActive = w.IsActive
+            }).ToList();
+
+            return result;
+        }
+
         public async Task<WorklogResponseVM> GetWorklogByIdAsync(int id)
         {
             var worklog = await GetQueryable()

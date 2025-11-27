@@ -89,6 +89,35 @@ namespace NB.API.Controllers
         }
 
         /// <summary>
+        /// Lấy tất cả worklog trong ngày (tất cả nhân viên)
+        /// - Admin xem nhân viên nào làm công việc gì trong ngày đó
+        /// - Danh sách sắp xếp theo tên nhân viên
+        /// </summary>
+        [HttpPost("GetDataByDate")]
+        public async Task<IActionResult> GetWorklogsByDate([FromBody] GetWorklogsByDateDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+                    return BadRequest(ApiResponse<List<WorklogResponseVM>>.Fail(string.Join(", ", errors)));
+                }
+
+                var worklogs = await _worklogService.GetWorklogsByDateAsync(dto.WorkDate);
+                return Ok(ApiResponse<List<WorklogResponseVM>>.Ok(worklogs));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy worklog ngày {WorkDate}", dto.WorkDate);
+                return BadRequest(ApiResponse<List<WorklogResponseVM>>.Fail(ex.Message));
+            }
+        }
+
+        /// <summary>
         /// Lấy chi tiết 1 worklog theo ID
         /// </summary>
         [HttpGet("{id}")]
