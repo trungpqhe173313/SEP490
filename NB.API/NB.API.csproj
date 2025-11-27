@@ -19,6 +19,8 @@
 
 		  <PackageReference Include="AutoMapper" Version="15.1.0" />
 
+		  <PackageReference Include="QuestPDF" Version="2025.7.4" />
+
 	  <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
