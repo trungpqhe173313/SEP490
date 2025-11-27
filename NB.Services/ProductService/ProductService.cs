@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using NB.Model.Entities;
+using NB.Model.Enums;
 using NB.Repository.Common;
 using NB.Service.Common;
 using NB.Service.InventoryService.Dto;
@@ -18,16 +19,22 @@ namespace NB.Service.ProductService
         private readonly IRepository<Supplier> _supplierRepository;
         private readonly IRepository<Category> _categoryRepository;
         private readonly IRepository<Inventory> _inventoryRepository;
+        private readonly IRepository<Transaction> _transactionRepository;
+        private readonly IRepository<TransactionDetail> _transactionDetailRepository;
 
         public ProductService(
             IRepository<Product> serviceProvider,
             IRepository<Supplier> supplierRepository,
             IRepository<Category> categoryRepository,
-            IRepository<Inventory> inventoryRepository) : base(serviceProvider)
+            IRepository<Inventory> inventoryRepository,
+            IRepository<Transaction> transactionRepository,
+            IRepository<TransactionDetail> transactionDetailRepository) : base(serviceProvider)
         {
             _supplierRepository = supplierRepository;
             _categoryRepository = categoryRepository;
             _inventoryRepository = inventoryRepository;
+            _transactionRepository = transactionRepository;
+            _transactionDetailRepository = transactionDetailRepository;
         }
 
         public async Task<ProductDto?> GetById(int id)
@@ -337,6 +344,52 @@ namespace NB.Service.ProductService
                 });
 
             return await query.ToListAsync();
+        }
+
+        public async Task<List<TopSellingProductDto>> GetTopSellingProducts(DateTime fromDate, DateTime toDate)
+        {
+            // Tính toán ngày kết thúc (bao gồm cả ngày cuối cùng)
+            var toDateEnd = toDate.Date.AddDays(1).AddSeconds(-1);
+
+            // Query để lấy top 10 sản phẩm bán chạy nhất
+            var topProductsQuery = from detail in _transactionDetailRepository.GetQueryable()
+                                   join transaction in _transactionRepository.GetQueryable()
+                                       on detail.TransactionId equals transaction.TransactionId
+                                   join product in GetQueryable()
+                                       on detail.ProductId equals product.ProductId
+                                   where transaction.Type == "Export"
+                                      && transaction.Status == (int)TransactionStatus.done
+                                      && transaction.TransactionDate >= fromDate
+                                      && transaction.TransactionDate <= toDateEnd
+                                   group new { detail, product } by new
+                                   {
+                                       detail.ProductId,
+                                       product.ProductName,
+                                       product.ProductCode,
+                                       product.ImageUrl,
+                                       product.SellingPrice,
+                                       product.WeightPerUnit
+                                   } into grouped
+                                   select new TopSellingProductDto
+                                   {
+                                       ProductId = grouped.Key.ProductId,
+                                       ProductName = grouped.Key.ProductName ?? string.Empty,
+                                       ProductCode = grouped.Key.ProductCode ?? string.Empty,
+                                       ImageUrl = grouped.Key.ImageUrl,
+                                       SellingPrice = grouped.Key.SellingPrice,
+                                       WeightPerUnit = grouped.Key.WeightPerUnit,
+                                       TotalQuantitySold = grouped.Sum(x => x.detail.Quantity),
+                                       TotalRevenue = grouped.Sum(x => x.detail.Quantity * x.detail.UnitPrice),
+                                       NumberOfOrders = grouped.Select(x => x.detail.TransactionId).Distinct().Count()
+                                   };
+
+            // Sắp xếp theo số lượng bán giảm dần và lấy top 10
+            var topProducts = await topProductsQuery
+                .OrderByDescending(p => p.TotalQuantitySold)
+                .Take(10)
+                .ToListAsync();
+
+            return topProducts;
         }
     }
 }
