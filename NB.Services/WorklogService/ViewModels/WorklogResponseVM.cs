@@ -13,5 +13,6 @@ namespace NB.Service.WorklogService.ViewModels
         public decimal TotalAmount { get; set; } // = Quantity * Rate
         public string? Note { get; set; }
         public DateTime? WorkDate { get; set; }
+        public bool? IsActive { get; set; } // false: Chưa xác nhận, true: Đã chấm công
     }
 }

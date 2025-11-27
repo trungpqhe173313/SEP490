@@ -33,7 +33,7 @@ namespace NB.API.Controllers
         /// - Hệ thống kiểm tra EmployeeId có role Employee (RoleId = 3) không
         /// - Nếu Job.PayType = Per_Ngay → hệ thống tự set Quantity = 1
         /// - Nếu Job.PayType = Per_Tan → phải nhập Quantity (số tấn)
-        /// - Trả về danh sách thành công/thất bại cho từng công việc
+        /// - QUAN TRỌNG: Validate TẤT CẢ jobs trước, nếu CÓ 1 JOB LỖI → KHÔNG TẠO GÌ CẢ (All or Nothing)
         /// </summary>
         [HttpPost("create")]
         public async Task<IActionResult> CreateWorklog([FromBody] CreateWorklogBatchDto dto)
