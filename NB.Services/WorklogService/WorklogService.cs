@@ -359,19 +359,26 @@ namespace NB.Service.WorklogService
 
         public async Task<WorklogResponseVM> UpdateWorklogAsync(UpdateWorklogDto dto)
         {
+            var startOfDay = dto.WorkDate.Date;
+            var endOfDay = startOfDay.AddDays(1);
+
+            // Tìm worklog theo EmployeeId + WorkDate + JobId
             var worklog = await GetQueryable()
                 .Include(w => w.Job)
                 .Include(w => w.Employee)
-                .FirstOrDefaultAsync(w => w.Id == dto.Id);
+                .FirstOrDefaultAsync(w => w.EmployeeId == dto.EmployeeId
+                    && w.JobId == dto.JobId
+                    && w.WorkDate >= startOfDay
+                    && w.WorkDate < endOfDay);
 
             if (worklog == null)
             {
-                throw new Exception("Worklog không tồn tại");
+                throw new Exception("Không tìm thấy worklog của nhân viên cho công việc này trong ngày");
             }
 
             // Kiểm tra job
             var job = await _jobRepository.GetQueryable()
-                .FirstOrDefaultAsync(j => j.Id == worklog.JobId);
+                .FirstOrDefaultAsync(j => j.Id == dto.JobId);
 
             if (job == null)
             {

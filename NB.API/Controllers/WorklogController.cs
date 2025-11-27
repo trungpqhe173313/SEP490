@@ -136,7 +136,8 @@ namespace NB.API.Controllers
         }
 
         /// <summary>
-        /// Cập nhật worklog
+        /// Cập nhật worklog theo EmployeeId + WorkDate + JobId
+        /// - Tìm worklog của nhân viên cho công việc cụ thể trong ngày
         /// - Chỉ cho phép sửa Quantity khi PayType = Per_Tan
         /// - Nếu PayType = Per_Ngay thì giữ nguyên Quantity = 1
         /// - Có thể sửa Note
@@ -160,7 +161,8 @@ namespace NB.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi cập nhật worklog {Id}", dto.Id);
+                _logger.LogError(ex, "Lỗi khi cập nhật worklog của nhân viên {EmployeeId} ngày {WorkDate} job {JobId}", 
+                    dto.EmployeeId, dto.WorkDate, dto.JobId);
                 return BadRequest(ApiResponse<WorklogResponseVM>.Fail(ex.Message));
             }
         }
