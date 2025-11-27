@@ -421,6 +421,67 @@ namespace NB.Service.WorklogService
                 IsActive = worklog.IsActive
             };
         }
+
+        public async Task<List<WorklogResponseVM>> ConfirmWorklogAsync(ConfirmWorklogDto dto)
+        {
+            // Kiểm tra employee tồn tại
+            var employee = await _userRepository.GetQueryable()
+                .FirstOrDefaultAsync(u => u.UserId == dto.EmployeeId);
+            if (employee == null)
+            {
+                throw new Exception("Nhân viên không tồn tại");
+            }
+
+            // Kiểm tra user có role Employee (RoleId = 3) không
+            var hasEmployeeRole = await _userRoleRepository.GetQueryable()
+                .AnyAsync(ur => ur.UserId == dto.EmployeeId && ur.RoleId == 3);
+            if (!hasEmployeeRole)
+            {
+                throw new Exception("User này không phải là nhân viên (Employee)");
+            }
+
+            var startOfDay = dto.WorkDate.Date;
+            var endOfDay = startOfDay.AddDays(1);
+
+            // Lấy tất cả worklog của nhân viên trong ngày
+            var worklogs = await GetQueryable()
+                .Include(w => w.Job)
+                .Where(w => w.EmployeeId == dto.EmployeeId 
+                    && w.WorkDate >= startOfDay 
+                    && w.WorkDate < endOfDay)
+                .ToListAsync();
+
+            if (!worklogs.Any())
+            {
+                throw new Exception("Không tìm thấy worklog của nhân viên trong ngày này");
+            }
+
+            // Chuyển IsActive = true cho tất cả worklog trong ngày
+            foreach (var worklog in worklogs)
+            {
+                worklog.IsActive = true;
+                await UpdateAsync(worklog);
+            }
+
+            // Trả về danh sách worklog đã xác nhận
+            var result = worklogs.Select(w => new WorklogResponseVM
+            {
+                Id = w.Id,
+                EmployeeId = w.EmployeeId,
+                EmployeeName = employee.FullName ?? string.Empty,
+                JobId = w.JobId,
+                JobName = w.Job.JobName,
+                PayType = w.Job.PayType,
+                Quantity = w.Quantity,
+                Rate = w.Rate,
+                TotalAmount = w.Quantity * w.Rate,
+                Note = w.Note,
+                WorkDate = w.WorkDate,
+                IsActive = w.IsActive
+            }).ToList();
+
+            return result;
+        }
     }
 }
 

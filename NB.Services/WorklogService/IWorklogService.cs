@@ -13,6 +13,7 @@ namespace NB.Service.WorklogService
         Task<List<WorklogResponseVM>> GetWorklogsByDateAsync(DateTime workDate);
         Task<WorklogResponseVM> GetWorklogByIdAsync(int id);
         Task<WorklogResponseVM> UpdateWorklogAsync(UpdateWorklogDto dto);
+        Task<List<WorklogResponseVM>> ConfirmWorklogAsync(ConfirmWorklogDto dto);
     }
 }
 
