@@ -166,6 +166,36 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<WorklogResponseVM>.Fail(ex.Message));
             }
         }
+
+        /// <summary>
+        /// Xác nhận chấm công cho nhân viên trong ngày
+        /// - Chuyển IsActive = true cho TẤT CẢ worklog của nhân viên trong ngày đó
+        /// - Dùng để xác nhận sau khi nhân viên đã hoàn thành công việc
+        /// </summary>
+        [HttpPost("confirm")]
+        public async Task<IActionResult> ConfirmWorklog([FromBody] ConfirmWorklogDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+                    return BadRequest(ApiResponse<List<WorklogResponseVM>>.Fail(string.Join(", ", errors)));
+                }
+
+                var worklogs = await _worklogService.ConfirmWorklogAsync(dto);
+                return Ok(ApiResponse<List<WorklogResponseVM>>.Ok(worklogs));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xác nhận worklog của nhân viên {EmployeeId} ngày {WorkDate}", 
+                    dto.EmployeeId, dto.WorkDate);
+                return BadRequest(ApiResponse<List<WorklogResponseVM>>.Fail(ex.Message));
+            }
+        }
     }
 }
 
