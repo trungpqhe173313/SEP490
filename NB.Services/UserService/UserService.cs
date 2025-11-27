@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using NB.Model.Entities;
+using NB.Model.Enums;
 using NB.Repository.Common;
 using NB.Service.Common;
 using NB.Service.UserService.Dto;
@@ -17,14 +18,17 @@ namespace NB.Service.UserService
         private readonly IRepository<User> _userRepository;
         private readonly IRepository<UserRole> _userRoleRepository;
         private readonly IRepository<Role> _roleRepository;
+        private readonly IRepository<Transaction> _transactionRepository;
 
         public UserService(IRepository<User> userRepository,
             IRepository<UserRole> userRoleRepository,
-            IRepository<Role> roleRepository) : base(userRepository)
+            IRepository<Role> roleRepository,
+            IRepository<Transaction> transactionRepository) : base(userRepository)
         {
             _userRepository = userRepository;
             _userRoleRepository = userRoleRepository;
             _roleRepository = roleRepository;
+            _transactionRepository = transactionRepository;
         }
 
         public async Task<PagedList<UserDto>> GetData(UserSearch search)
@@ -263,6 +267,50 @@ namespace NB.Service.UserService
 
             query = query.OrderByDescending(u => u.CreatedAt);
             return await query.ToListAsync();
+        }
+
+        public async Task<List<TopCustomerDto>> GetTopCustomersByTotalSpent(DateTime fromDate, DateTime toDate)
+        {
+            // Tính toán ngày kết thúc (bao gồm cả ngày cuối cùng)
+            var toDateEnd = toDate.Date.AddDays(1).AddSeconds(-1);
+
+            // Query để lấy top 10 khách hàng mua hàng nhiều nhất
+            var topCustomersQuery = from transaction in _transactionRepository.GetQueryable()
+                                   join user in GetQueryable()
+                                       on transaction.CustomerId equals user.UserId
+                                   where transaction.Type == "Export"
+                                      && transaction.Status == (int)TransactionStatus.done
+                                      && transaction.TransactionDate >= fromDate
+                                      && transaction.TransactionDate <= toDateEnd
+                                      && transaction.CustomerId.HasValue
+                                      && transaction.TotalCost.HasValue
+                                   group new { transaction, user } by new
+                                   {
+                                       user.UserId,
+                                       user.FullName,
+                                       user.Email,
+                                       user.Phone,
+                                       user.Image
+                                   } into grouped
+                                   select new TopCustomerDto
+                                   {
+                                       UserId = grouped.Key.UserId,
+                                       FullName = grouped.Key.FullName ?? string.Empty,
+                                       Email = grouped.Key.Email ?? string.Empty,
+                                       Phone = grouped.Key.Phone ?? string.Empty,
+                                       Image = grouped.Key.Image,
+                                       TotalSpent = grouped.Sum(x => x.transaction.TotalCost ?? 0),
+                                       NumberOfOrders = grouped.Count(),
+                                       AverageOrderValue = grouped.Average(x => x.transaction.TotalCost ?? 0)
+                                   };
+
+            // Sắp xếp theo tổng tiền đã mua giảm dần và lấy top 10
+            var topCustomers = await topCustomersQuery
+                .OrderByDescending(c => c.TotalSpent)
+                .Take(10)
+                .ToListAsync();
+
+            return topCustomers;
         }
     }
 }
