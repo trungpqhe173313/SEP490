@@ -15,7 +15,6 @@ namespace NB.Service.TransactionService.ViewModels
     {
         public int TransactionId { get; set; }
         public DateTime TransactionDate { get; set; }
-        
         public int? Status { get; set; }
         public string WarehouseName { get; set; }
 

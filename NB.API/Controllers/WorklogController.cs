@@ -33,7 +33,7 @@ namespace NB.API.Controllers
         /// - Hệ thống kiểm tra EmployeeId có role Employee (RoleId = 3) không
         /// - Nếu Job.PayType = Per_Ngay → hệ thống tự set Quantity = 1
         /// - Nếu Job.PayType = Per_Tan → phải nhập Quantity (số tấn)
-        /// - Trả về danh sách thành công/thất bại cho từng công việc
+        /// - QUAN TRỌNG: Validate TẤT CẢ jobs trước, nếu CÓ 1 JOB LỖI → KHÔNG TẠO GÌ CẢ (All or Nothing)
         /// </summary>
         [HttpPost("create")]
         public async Task<IActionResult> CreateWorklog([FromBody] CreateWorklogBatchDto dto)
@@ -89,6 +89,35 @@ namespace NB.API.Controllers
         }
 
         /// <summary>
+        /// Lấy tất cả worklog trong ngày (tất cả nhân viên)
+        /// - Admin xem nhân viên nào làm công việc gì trong ngày đó
+        /// - Danh sách sắp xếp theo tên nhân viên
+        /// </summary>
+        [HttpPost("GetDataByDate")]
+        public async Task<IActionResult> GetWorklogsByDate([FromBody] GetWorklogsByDateDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+                    return BadRequest(ApiResponse<List<WorklogResponseVM>>.Fail(string.Join(", ", errors)));
+                }
+
+                var worklogs = await _worklogService.GetWorklogsByDateAsync(dto.WorkDate);
+                return Ok(ApiResponse<List<WorklogResponseVM>>.Ok(worklogs));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy worklog ngày {WorkDate}", dto.WorkDate);
+                return BadRequest(ApiResponse<List<WorklogResponseVM>>.Fail(ex.Message));
+            }
+        }
+
+        /// <summary>
         /// Lấy chi tiết 1 worklog theo ID
         /// </summary>
         [HttpGet("{id}")]
@@ -107,7 +136,8 @@ namespace NB.API.Controllers
         }
 
         /// <summary>
-        /// Cập nhật worklog
+        /// Cập nhật worklog theo EmployeeId + WorkDate + JobId
+        /// - Tìm worklog của nhân viên cho công việc cụ thể trong ngày
         /// - Chỉ cho phép sửa Quantity khi PayType = Per_Tan
         /// - Nếu PayType = Per_Ngay thì giữ nguyên Quantity = 1
         /// - Có thể sửa Note
@@ -131,8 +161,39 @@ namespace NB.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi cập nhật worklog {Id}", dto.Id);
+                _logger.LogError(ex, "Lỗi khi cập nhật worklog của nhân viên {EmployeeId} ngày {WorkDate} job {JobId}", 
+                    dto.EmployeeId, dto.WorkDate, dto.JobId);
                 return BadRequest(ApiResponse<WorklogResponseVM>.Fail(ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Xác nhận chấm công cho nhân viên trong ngày
+        /// - Chuyển IsActive = true cho TẤT CẢ worklog của nhân viên trong ngày đó
+        /// - Dùng để xác nhận sau khi nhân viên đã hoàn thành công việc
+        /// </summary>
+        [HttpPost("confirm")]
+        public async Task<IActionResult> ConfirmWorklog([FromBody] ConfirmWorklogDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+                    return BadRequest(ApiResponse<List<WorklogResponseVM>>.Fail(string.Join(", ", errors)));
+                }
+
+                var worklogs = await _worklogService.ConfirmWorklogAsync(dto);
+                return Ok(ApiResponse<List<WorklogResponseVM>>.Ok(worklogs));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xác nhận worklog của nhân viên {EmployeeId} ngày {WorkDate}", 
+                    dto.EmployeeId, dto.WorkDate);
+                return BadRequest(ApiResponse<List<WorklogResponseVM>>.Fail(ex.Message));
             }
         }
     }

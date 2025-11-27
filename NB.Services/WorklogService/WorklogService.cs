@@ -93,7 +93,8 @@ namespace NB.Service.WorklogService
                 Quantity = quantityValue,
                 Rate = job.Rate,
                 WorkDate = workDateValue,
-                Note = note
+                Note = note,
+                IsActive = false // Chưa xác nhận chấm công
             };
 
             await CreateAsync(worklog);
@@ -111,7 +112,8 @@ namespace NB.Service.WorklogService
                 Rate = worklog.Rate,
                 TotalAmount = worklog.Quantity * worklog.Rate,
                 Note = worklog.Note,
-                WorkDate = worklog.WorkDate
+                WorkDate = worklog.WorkDate,
+                IsActive = worklog.IsActive
             };
 
             return response;
@@ -136,48 +138,110 @@ namespace NB.Service.WorklogService
             }
 
             var workDateValue = dto.WorkDate ?? DateTime.Now;
-            var response = new CreateWorklogBatchResponseVM
+            var startOfDay = workDateValue.Date;
+            var endOfDay = startOfDay.AddDays(1);
+
+            //VALIDATE TẤT CẢ JOBS TRƯỚC =====
+            var validationErrors = new List<string>();
+            
+            foreach (var jobItem in dto.Jobs)
+            {
+                // Kiểm tra job tồn tại
+                var job = await _jobRepository.GetQueryable()
+                    .FirstOrDefaultAsync(j => j.Id == jobItem.JobId);
+                
+                if (job == null)
+                {
+                    validationErrors.Add($"Job #{jobItem.JobId}: Công việc không tồn tại");
+                    continue;
+                }
+
+                if (job.IsActive != true)
+                {
+                    validationErrors.Add($"Job '{job.JobName}': Công việc không còn hoạt động");
+                    continue;
+                }
+
+                // Kiểm tra đã tồn tại worklog cho employee + job + ngày này chưa
+                var existingWorklog = await GetQueryable()
+                    .FirstOrDefaultAsync(w => w.EmployeeId == dto.EmployeeId 
+                        && w.JobId == jobItem.JobId 
+                        && w.WorkDate >= startOfDay 
+                        && w.WorkDate < endOfDay);
+
+                if (existingWorklog != null)
+                {
+                    validationErrors.Add($"Job '{job.JobName}': Nhân viên đã có worklog cho công việc này trong ngày");
+                    continue;
+                }
+
+                // Kiểm tra Quantity theo PayType
+                if (job.PayType == "Per_Tan")
+                {
+                    if (!jobItem.Quantity.HasValue || jobItem.Quantity.Value <= 0)
+                    {
+                        validationErrors.Add($"Job '{job.JobName}': Vui lòng nhập số tấn (Quantity) cho công việc tính theo tấn");
+                    }
+                }
+            }
+
+            // Nếu có lỗi validation → THROW EXCEPTION, KHÔNG TẠO GÌ CẢ
+            if (validationErrors.Any())
+            {
+                throw new Exception(string.Join("; ", validationErrors));
+            }
+
+            // TẤT CẢ ĐÃ OK → TẠO TẤT CẢ WORKLOG =====
+            var successfulWorklogs = new List<WorklogResponseVM>();
+            
+            foreach (var jobItem in dto.Jobs)
+            {
+                // Lấy lại job (đã validate ở phase 1)
+                var job = await _jobRepository.GetQueryable()
+                    .FirstOrDefaultAsync(j => j.Id == jobItem.JobId);
+
+                decimal quantityValue = job!.PayType == "Per_Ngay" ? 1 : jobItem.Quantity!.Value;
+
+                // Tạo worklog mới
+                var worklog = new Worklog
+                {
+                    EmployeeId = dto.EmployeeId,
+                    JobId = jobItem.JobId,
+                    Quantity = quantityValue,
+                    Rate = job.Rate,
+                    WorkDate = workDateValue,
+                    Note = jobItem.Note,
+                    IsActive = false // Chưa xác nhận chấm công
+                };
+
+                await CreateAsync(worklog);
+
+                // Thêm vào response
+                successfulWorklogs.Add(new WorklogResponseVM
+                {
+                    Id = worklog.Id,
+                    EmployeeId = worklog.EmployeeId,
+                    EmployeeName = employee.FullName ?? string.Empty,
+                    JobId = worklog.JobId,
+                    JobName = job.JobName,
+                    PayType = job.PayType,
+                    Quantity = worklog.Quantity,
+                    Rate = worklog.Rate,
+                    TotalAmount = worklog.Quantity * worklog.Rate,
+                    Note = worklog.Note,
+                    WorkDate = worklog.WorkDate,
+                    IsActive = worklog.IsActive
+                });
+            }
+
+            return new CreateWorklogBatchResponseVM
             {
                 EmployeeId = dto.EmployeeId,
                 EmployeeName = employee.FullName ?? string.Empty,
                 WorkDate = workDateValue,
-                SuccessfulWorklogs = new List<WorklogResponseVM>(),
-                FailedWorklogs = new List<WorklogErrorVM>()
+                TotalCount = successfulWorklogs.Count,
+                Worklogs = successfulWorklogs
             };
-
-            // Xử lý từng job
-            foreach (var jobItem in dto.Jobs)
-            {
-                try
-                {
-                    // Gọi lại method CreateWorklogAsync đã có
-                    var worklog = await CreateWorklogAsync(
-                        dto.EmployeeId,
-                        jobItem.JobId,
-                        jobItem.Quantity,
-                        workDateValue,
-                        jobItem.Note);
-
-                    response.SuccessfulWorklogs.Add(worklog);
-                    response.SuccessCount++;
-                }
-                catch (Exception ex)
-                {
-                    // Lấy tên job để hiển thị lỗi
-                    var job = await _jobRepository.GetQueryable()
-                        .FirstOrDefaultAsync(j => j.Id == jobItem.JobId);
-
-                    response.FailedWorklogs.Add(new WorklogErrorVM
-                    {
-                        JobId = jobItem.JobId,
-                        JobName = job?.JobName ?? $"Job #{jobItem.JobId}",
-                        ErrorMessage = ex.Message
-                    });
-                    response.FailedCount++;
-                }
-            }
-
-            return response;
         }
 
         public async Task<List<WorklogResponseVM>> GetWorklogsByEmployeeAndDateAsync(int employeeId, DateTime workDate)
@@ -223,7 +287,42 @@ namespace NB.Service.WorklogService
                 Rate = w.Rate,
                 TotalAmount = w.Quantity * w.Rate,
                 Note = w.Note,
-                WorkDate = w.WorkDate
+                WorkDate = w.WorkDate,
+                IsActive = w.IsActive
+            }).ToList();
+
+            return result;
+        }
+
+        public async Task<List<WorklogResponseVM>> GetWorklogsByDateAsync(DateTime workDate)
+        {
+            var startOfDay = workDate.Date;
+            var endOfDay = startOfDay.AddDays(1);
+
+            // Lấy tất cả worklog trong ngày của tất cả nhân viên
+            var worklogs = await GetQueryable()
+                .Include(w => w.Job)
+                .Include(w => w.Employee)
+                .Where(w => w.WorkDate >= startOfDay && w.WorkDate < endOfDay)
+                .OrderBy(w => w.Employee.FullName)
+                .ThenBy(w => w.WorkDate)
+                .ToListAsync();
+
+            // Map sang WorklogResponseVM
+            var result = worklogs.Select(w => new WorklogResponseVM
+            {
+                Id = w.Id,
+                EmployeeId = w.EmployeeId,
+                EmployeeName = w.Employee.FullName ?? string.Empty,
+                JobId = w.JobId,
+                JobName = w.Job.JobName,
+                PayType = w.Job.PayType,
+                Quantity = w.Quantity,
+                Rate = w.Rate,
+                TotalAmount = w.Quantity * w.Rate,
+                Note = w.Note,
+                WorkDate = w.WorkDate,
+                IsActive = w.IsActive
             }).ToList();
 
             return result;
@@ -253,25 +352,33 @@ namespace NB.Service.WorklogService
                 Rate = worklog.Rate,
                 TotalAmount = worklog.Quantity * worklog.Rate,
                 Note = worklog.Note,
-                WorkDate = worklog.WorkDate
+                WorkDate = worklog.WorkDate,
+                IsActive = worklog.IsActive
             };
         }
 
         public async Task<WorklogResponseVM> UpdateWorklogAsync(UpdateWorklogDto dto)
         {
+            var startOfDay = dto.WorkDate.Date;
+            var endOfDay = startOfDay.AddDays(1);
+
+            // Tìm worklog theo EmployeeId + WorkDate + JobId
             var worklog = await GetQueryable()
                 .Include(w => w.Job)
                 .Include(w => w.Employee)
-                .FirstOrDefaultAsync(w => w.Id == dto.Id);
+                .FirstOrDefaultAsync(w => w.EmployeeId == dto.EmployeeId
+                    && w.JobId == dto.JobId
+                    && w.WorkDate >= startOfDay
+                    && w.WorkDate < endOfDay);
 
             if (worklog == null)
             {
-                throw new Exception("Worklog không tồn tại");
+                throw new Exception("Không tìm thấy worklog của nhân viên cho công việc này trong ngày");
             }
 
             // Kiểm tra job
             var job = await _jobRepository.GetQueryable()
-                .FirstOrDefaultAsync(j => j.Id == worklog.JobId);
+                .FirstOrDefaultAsync(j => j.Id == dto.JobId);
 
             if (job == null)
             {
@@ -310,8 +417,70 @@ namespace NB.Service.WorklogService
                 Rate = worklog.Rate,
                 TotalAmount = worklog.Quantity * worklog.Rate,
                 Note = worklog.Note,
-                WorkDate = worklog.WorkDate
+                WorkDate = worklog.WorkDate,
+                IsActive = worklog.IsActive
             };
+        }
+
+        public async Task<List<WorklogResponseVM>> ConfirmWorklogAsync(ConfirmWorklogDto dto)
+        {
+            // Kiểm tra employee tồn tại
+            var employee = await _userRepository.GetQueryable()
+                .FirstOrDefaultAsync(u => u.UserId == dto.EmployeeId);
+            if (employee == null)
+            {
+                throw new Exception("Nhân viên không tồn tại");
+            }
+
+            // Kiểm tra user có role Employee (RoleId = 3) không
+            var hasEmployeeRole = await _userRoleRepository.GetQueryable()
+                .AnyAsync(ur => ur.UserId == dto.EmployeeId && ur.RoleId == 3);
+            if (!hasEmployeeRole)
+            {
+                throw new Exception("User này không phải là nhân viên (Employee)");
+            }
+
+            var startOfDay = dto.WorkDate.Date;
+            var endOfDay = startOfDay.AddDays(1);
+
+            // Lấy tất cả worklog của nhân viên trong ngày
+            var worklogs = await GetQueryable()
+                .Include(w => w.Job)
+                .Where(w => w.EmployeeId == dto.EmployeeId 
+                    && w.WorkDate >= startOfDay 
+                    && w.WorkDate < endOfDay)
+                .ToListAsync();
+
+            if (!worklogs.Any())
+            {
+                throw new Exception("Không tìm thấy worklog của nhân viên trong ngày này");
+            }
+
+            // Chuyển IsActive = true cho tất cả worklog trong ngày
+            foreach (var worklog in worklogs)
+            {
+                worklog.IsActive = true;
+                await UpdateAsync(worklog);
+            }
+
+            // Trả về danh sách worklog đã xác nhận
+            var result = worklogs.Select(w => new WorklogResponseVM
+            {
+                Id = w.Id,
+                EmployeeId = w.EmployeeId,
+                EmployeeName = employee.FullName ?? string.Empty,
+                JobId = w.JobId,
+                JobName = w.Job.JobName,
+                PayType = w.Job.PayType,
+                Quantity = w.Quantity,
+                Rate = w.Rate,
+                TotalAmount = w.Quantity * w.Rate,
+                Note = w.Note,
+                WorkDate = w.WorkDate,
+                IsActive = w.IsActive
+            }).ToList();
+
+            return result;
         }
     }
 }
