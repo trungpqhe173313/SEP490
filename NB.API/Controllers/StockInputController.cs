@@ -356,16 +356,22 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail("Danh sách sản phẩm không được để trống.", 400));
                 }
 
-                
-
-                // Validate từng product trong list
+                decimal totalCost = 0;
+                decimal totalWeight = 0;
+                // Validate từng product trong list và tính tổng trọng lượng
                 foreach (var product in model.Products)
                 {
+                    if(product.Quantity <= 0)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail($"Số lượng sản phẩm với ID: {product.ProductId} phải lớn hơn 0.", 400));
+                    }
                     var existProduct = await _productService.GetById(product.ProductId);
                     if (existProduct == null)
                     {
                         return NotFound(ApiResponse<object>.Fail($"Không tìm thấy sản phẩm với ID: {product.ProductId}", 404));
                     }
+                    totalWeight += product.Quantity * (existProduct.WeightPerUnit ?? 0);
+                    totalCost += product.Quantity * product.UnitPrice;
                 }
 
                 try
@@ -378,8 +384,10 @@ namespace NB.API.Controllers
                         Type = "Import",
                         Status = 1, // Mặc định - Đang kiểm
                         TransactionDate = DateTime.UtcNow,
-                        Note = model.Note,
-                        TotalCost = model.TotalCost
+                        TotalWeight = totalWeight,
+                        TotalCost = totalCost,
+                        TransactionCode = $"IMPORT-{DateTime.UtcNow:yyyyMMddHHmmss}",
+                        Note = model.Note
                     };
                     await _transactionService.CreateAsync(newTransaction);
                     int transactionId = newTransaction.TransactionId;
@@ -565,7 +573,7 @@ namespace NB.API.Controllers
 
                     var result = new StockBatchImportResultVM();
                     var validationErrors = new List<string>();
-
+                   
                     using (var stream = new MemoryStream())
                     {
                         await file.CopyToAsync(stream);
@@ -685,7 +693,10 @@ namespace NB.API.Controllers
                                 string productName
                             )>();
 
+
                             // VALIDATE TẤT CẢ CÁC DÒNG SẢN PHẨM (từ dòng 3, cột D, E, F, G)
+                            decimal totalCost = 0;
+                            decimal totalWeight = 0;
                             for (int row = 3; row <= rowCount; row++)
                             {
                                 try
@@ -727,9 +738,11 @@ namespace NB.API.Controllers
                                     {
                                         rowErrors.Add($"Dòng {row}: Không tìm thấy sản phẩm với tên: {productName}");
                                     }
+                                    totalWeight += quantity * (existProduct?.WeightPerUnit ?? 0);
+                                    totalCost += quantity * unitPrice;
 
-                                    // Nếu có lỗi, thêm vào list và skip
-                                    if (rowErrors.Any())
+                                // Nếu có lỗi, thêm vào list và skip
+                                if (rowErrors.Any())
                                     {
                                         validationErrors.AddRange(rowErrors);
                                         continue;
@@ -771,6 +784,9 @@ namespace NB.API.Controllers
                                 WarehouseId = warehouse.WarehouseId,
                                 Type = "Import",
                                 Status = 1, // Completed
+                                TotalWeight = totalWeight,
+                                TotalCost = totalCost,
+                                TransactionCode = $"IMPORT-{DateTime.UtcNow:yyyyMMdd}",
                                 TransactionDate = DateTime.UtcNow,
                                 Note = $"Import từ Excel - NCC: {supplier.SupplierName} → Kho: {warehouse.WarehouseName}"
                             };
@@ -971,27 +987,49 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<string>.Fail("Không tìm thấy chi tiết đơn hàng.", 404));
                 }
-                transaction.TotalCost = model.TotalCost;
 
-                await _transactionService.UpdateAsync(transaction);
                 await _transactionDetailService.DeleteRange(oldDetails);
 
                 var listProductId = listProductOrder.Select(p => p.ProductId).ToList();
 
+                decimal totalCost = 0;
+                decimal totalWeight = 0;
+                // Tính tổng trọng lượng và tổng chi phí từ danh sách sản phẩm
                 foreach (var po in listProductOrder)
                 {
+                    var quantity = (decimal)(po.Quantity ?? 0);
+                    var unitPrice = (decimal)(po.UnitPrice ?? 0);
+
+                    if (quantity <= 0)
+                    {
+                        return BadRequest(ApiResponse<string>.Fail($"Số lượng sản phẩm với ID: {po.ProductId} phải lớn hơn 0.", 400));
+                    }
+
+                    var existProduct = await _productService.GetById(po.ProductId);
+                    if (existProduct == null)
+                    {
+                        return NotFound(ApiResponse<string>.Fail($"Không tìm thấy sản phẩm với ID: {po.ProductId}", 404));
+                    }
+
+                    totalWeight += quantity * (existProduct.WeightPerUnit ?? 0);
+                    totalCost += quantity * unitPrice;
+
                     var inventory = await _inventoryService.GetByProductIdRetriveOneObject(po.ProductId);
 
                     var tranDetail = new TransactionDetailCreateVM
                     {
                         ProductId = po.ProductId,
                         TransactionId = transaction.TransactionId,
-                        Quantity = (int)(po.Quantity ?? 0),
-                        UnitPrice = (decimal)(po.UnitPrice ?? 0),
+                        Quantity = (int)quantity,
+                        UnitPrice = unitPrice,
                     };
                     var tranDetailEntity = _mapper.Map<TransactionDetailCreateVM, TransactionDetail>(tranDetail);
                     await _transactionDetailService.CreateAsync(tranDetailEntity);
                 }
+
+                // Cập nhật TotalWeight và TotalCost
+                transaction.TotalWeight = totalWeight;
+                transaction.TotalCost = totalCost;
 
 
                 if (!string.IsNullOrEmpty(model.Note))
