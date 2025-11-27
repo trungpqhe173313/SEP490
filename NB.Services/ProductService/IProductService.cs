@@ -33,5 +33,7 @@ namespace NB.Service.ProductService
 
         Task<List<ProductDto>> GetProductsBySupplierIds(List<int> supplierIds);
 
+        Task<List<TopSellingProductDto>> GetTopSellingProducts(DateTime fromDate, DateTime toDate);
+
     }
 }
