@@ -10,6 +10,7 @@ namespace NB.Service.WorklogService
         Task<WorklogResponseVM> CreateWorklogAsync(int employeeId, int jobId, decimal? quantity, DateTime? workDate, string? note);
         Task<CreateWorklogBatchResponseVM> CreateWorklogBatchAsync(CreateWorklogBatchDto dto);
         Task<List<WorklogResponseVM>> GetWorklogsByEmployeeAndDateAsync(int employeeId, DateTime workDate);
+        Task<List<WorklogResponseVM>> GetWorklogsByDateAsync(DateTime workDate);
         Task<WorklogResponseVM> GetWorklogByIdAsync(int id);
         Task<WorklogResponseVM> UpdateWorklogAsync(UpdateWorklogDto dto);
     }
