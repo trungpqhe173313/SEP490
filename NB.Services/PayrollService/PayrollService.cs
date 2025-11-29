@@ -12,14 +12,17 @@ namespace NB.Service.PayrollService
     {
         private readonly IRepository<Worklog> _worklogRepository;
         private readonly IRepository<User> _userRepository;
+        private readonly IRepository<FinancialTransaction> _financialTransactionRepository;
 
         public PayrollService(
             IRepository<Payroll> repository,
             IRepository<Worklog> worklogRepository,
-            IRepository<User> userRepository) : base(repository)
+            IRepository<User> userRepository,
+            IRepository<FinancialTransaction> financialTransactionRepository) : base(repository)
         {
             _worklogRepository = worklogRepository;
             _userRepository = userRepository;
+            _financialTransactionRepository = financialTransactionRepository;
         }
 
         public async Task<List<PayrollOverviewDto>> GetPayrollOverviewAsync(int year, int month)
@@ -65,6 +68,13 @@ namespace NB.Service.PayrollService
                     && p.EndDate <= DateOnly.FromDateTime(endDate))
                 .ToListAsync();
 
+            // Step 4.5: Load FinancialTransaction để lấy PaymentMethod và Note
+            var payrollIds = existingPayrolls.Select(p => p.PayrollId).ToList();
+            var transactions = await _financialTransactionRepository.GetQueryable()
+                .Where(t => t.PayrollId.HasValue && payrollIds.Contains(t.PayrollId.Value)
+                    && t.Type == TransactionType.ThanhToanLuong.ToString())
+                .ToListAsync();
+
             var result = new List<PayrollOverviewDto>();
 
             // Step 5: Xử lý từng nhân viên có worklog
@@ -91,6 +101,9 @@ namespace NB.Service.PayrollService
                     existingPayroll.LastUpdated = DateTime.Now;
                     await UpdateAsync(existingPayroll);
 
+                    // Lấy PaymentMethod và Note từ FinancialTransaction nếu đã thanh toán
+                    var transaction = transactions.FirstOrDefault(t => t.PayrollId == existingPayroll.PayrollId);
+
                     result.Add(new PayrollOverviewDto
                     {
                         EmployeeId = empGroup.EmployeeId,
@@ -99,6 +112,8 @@ namespace NB.Service.PayrollService
                         Status = existingPayroll.IsPaid == true ? PayrollStatus.Paid.GetDescription() : PayrollStatus.Generated.GetDescription(),
                         PayrollId = existingPayroll.PayrollId,
                         PaidDate = existingPayroll.PaidDate,
+                        PaymentMethod = transaction?.PaymentMethod,
+                        Note = existingPayroll.Note,
                         JobDetails = jobDetails
                     });
                 }
@@ -192,6 +207,124 @@ namespace NB.Service.PayrollService
 
             await CreateAsync(payroll);
             return payroll;
+        }
+
+        public async Task<PayPayrollResponseDto> PayPayrollAsync(PayPayrollDto dto, int paidBy)
+        {
+            // Validate PaymentMethod
+            if (dto.PaymentMethod != "TienMat" && dto.PaymentMethod != "NganHang")
+            {
+                throw new ArgumentException("Phương thức thanh toán không hợp lệ. Chỉ chấp nhận: TienMat, NganHang");
+            }
+
+            // Lấy Payroll
+            var payroll = await GetQueryable()
+                .Include(p => p.Employee)
+                .FirstOrDefaultAsync(p => p.PayrollId == dto.PayrollId);
+
+            if (payroll == null)
+            {
+                throw new ArgumentException($"Không tìm thấy bảng lương với ID {dto.PayrollId}");
+            }
+
+            // Kiểm tra đã thanh toán chưa
+            if (payroll.IsPaid == true)
+            {
+                throw new InvalidOperationException($"Bảng lương này đã được thanh toán vào {payroll.PaidDate:dd/MM/yyyy}");
+            }
+
+            // Cập nhật Payroll
+            payroll.IsPaid = true;
+            payroll.PaidDate = DateTime.Now;
+            payroll.LastUpdated = DateTime.Now;
+            await UpdateAsync(payroll);
+
+            // Tạo FinancialTransaction
+            var transaction = new FinancialTransaction
+            {
+                TransactionDate = DateTime.Now,
+                Type = TransactionType.ThanhToanLuong.ToString(),
+                Amount = payroll.TotalAmount,
+                Description = dto.Note ?? $"Thanh toán lương tháng {payroll.StartDate.Month}/{payroll.StartDate.Year} cho {payroll.Employee.FullName}",
+                PaymentMethod = dto.PaymentMethod,
+                PayrollId = payroll.PayrollId,
+                CreatedBy = paidBy
+            };
+
+            _financialTransactionRepository.Add(transaction);
+            await _financialTransactionRepository.SaveAsync();
+
+            return new PayPayrollResponseDto
+            {
+                EmployeeId = payroll.EmployeeId,
+                EmployeeName = payroll.Employee.FullName ?? string.Empty,
+                PaidDate = payroll.PaidDate ?? DateTime.Now,
+                PaymentMethod = dto.PaymentMethod,
+                TotalAmount = payroll.TotalAmount
+            };
+        }
+
+        public async Task<PayrollDetailDto> GetPayrollDetailAsync(int payrollId)
+        {
+            // Lấy Payroll với thông tin liên quan
+            var payroll = await GetQueryable()
+                .Include(p => p.Employee)
+                .FirstOrDefaultAsync(p => p.PayrollId == payrollId);
+
+            if (payroll == null)
+            {
+                throw new ArgumentException($"Không tìm thấy bảng lương với ID {payrollId}");
+            }
+
+            // Lấy thông tin người tạo
+            string? createdByName = null;
+            if (payroll.CreatedBy.HasValue)
+            {
+                var creator = await _userRepository.GetByIdAsync(payroll.CreatedBy.Value);
+                createdByName = creator?.FullName;
+            }
+
+            // Lấy WorkLog chi tiết theo từng Job trong khoảng thời gian của Payroll
+            var startDate = payroll.StartDate.ToDateTime(TimeOnly.MinValue);
+            var endDate = payroll.EndDate.ToDateTime(TimeOnly.MinValue);
+
+            var worklogs = await _worklogRepository.GetQueryable()
+                .Include(w => w.Job)
+                .Where(w => w.EmployeeId == payroll.EmployeeId
+                    && w.WorkDate >= startDate
+                    && w.WorkDate <= endDate
+                    && w.IsActive == true)
+                .ToListAsync();
+
+            // Group theo Job để tính tổng
+            var jobDetails = worklogs
+                .GroupBy(w => w.JobId)
+                .Select(g => new JobDetailDto
+                {
+                    JobId = g.Key,
+                    JobName = g.First().Job.JobName,
+                    PayType = g.First().Job.PayType,
+                    Quantity = g.Sum(w => w.Quantity),
+                    Rate = g.First().Rate,
+                    Amount = g.Sum(w => w.Quantity * w.Rate)
+                })
+                .ToList();
+
+            return new PayrollDetailDto
+            {
+                PayrollId = payroll.PayrollId,
+                EmployeeId = payroll.EmployeeId,
+                EmployeeName = payroll.Employee.FullName ?? string.Empty,
+                StartDate = startDate,
+                EndDate = endDate,
+                TotalAmount = payroll.TotalAmount,
+                Status = payroll.IsPaid == true ? PayrollStatus.Paid.GetDescription() : PayrollStatus.Generated.GetDescription(),
+                PaidDate = payroll.PaidDate,
+                CreatedAt = payroll.CreatedAt,
+                CreatedByName = createdByName,
+                Note = payroll.Note,
+                JobDetails = jobDetails
+            };
         }
     }
 }

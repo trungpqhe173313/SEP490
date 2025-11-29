@@ -93,5 +93,64 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<Payroll>.Fail(ex.Message));
             }
         }
+
+        /// <summary>
+        /// Thanh toán lương cho nhân viên
+        /// - Cập nhật Payroll: IsPaid = true, PaidDate = Now
+        /// - Tạo FinancialTransaction với Type = ThanhToanLuong
+        /// - Không thanh toán được nếu đã thanh toán rồi
+        /// </summary>
+        [HttpPost("pay")]
+        public async Task<IActionResult> PayPayroll([FromBody] PayPayrollDto dto)
+        {
+            try
+            {
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userIdStr == null)
+                    return BadRequest(ApiResponse<PayPayrollResponseDto>.Fail("Không xác minh được vai trò"));
+
+                var userId = int.Parse(userIdStr);
+                var result = await _payrollService.PayPayrollAsync(dto, userId);
+                return Ok(ApiResponse<PayPayrollResponseDto>.Ok(result));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse<PayPayrollResponseDto>.Fail(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponse<PayPayrollResponseDto>.Fail(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi thanh toán lương");
+                return BadRequest(ApiResponse<PayPayrollResponseDto>.Fail(ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Xem chi tiết bảng lương
+        /// - Thông tin nhân viên, thời gian, tổng tiền
+        /// - Trạng thái thanh toán
+        /// - Chi tiết từng công việc (JobDetails)
+        /// </summary>
+        [HttpGet("{payrollId}")]
+        public async Task<IActionResult> GetPayrollDetail(int payrollId)
+        {
+            try
+            {
+                var detail = await _payrollService.GetPayrollDetailAsync(payrollId);
+                return Ok(ApiResponse<PayrollDetailDto>.Ok(detail));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse<PayrollDetailDto>.Fail(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy chi tiết bảng lương {PayrollId}", payrollId);
+                return BadRequest(ApiResponse<PayrollDetailDto>.Fail(ex.Message));
+            }
+        }
     }
 }

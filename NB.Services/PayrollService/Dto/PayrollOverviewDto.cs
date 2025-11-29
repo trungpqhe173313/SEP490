@@ -1,3 +1,4 @@
+using NB.Model.Entities;
 using NB.Model.Enums;
 using NB.Service.Core.Enum;
 
@@ -11,6 +12,38 @@ namespace NB.Service.PayrollService.Dto
         public string? Note { get; set; }
     }
 
+    public class PayPayrollDto
+    {
+        public int PayrollId { get; set; }
+        public string PaymentMethod { get; set; } = string.Empty; // TienMat, NganHang
+        public string? Note { get; set; }
+    }
+
+    public class PayPayrollResponseDto
+    {
+        public int EmployeeId { get; set; }
+        public string EmployeeName { get; set; } = string.Empty;
+        public DateTime PaidDate { get; set; }
+        public string PaymentMethod { get; set; } = string.Empty;
+        public decimal TotalAmount { get; set; }
+    }
+
+    public class PayrollDetailDto
+    {
+        public int PayrollId { get; set; }
+        public int EmployeeId { get; set; }
+        public string EmployeeName { get; set; } = string.Empty;
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public DateTime? PaidDate { get; set; }
+        public DateTime? CreatedAt { get; set; }
+        public string? CreatedByName { get; set; }
+        public string? Note { get; set; }
+        public List<JobDetailDto> JobDetails { get; set; } = new List<JobDetailDto>();
+    }
+
     public class PayrollOverviewDto
     {
         public int EmployeeId { get; set; }
@@ -19,6 +52,8 @@ namespace NB.Service.PayrollService.Dto
         public string Status { get; set; } = PayrollStatus.NotGenerated.GetDescription();
         public int? PayrollId { get; set; }
         public DateTime? PaidDate { get; set; }
+        public string? PaymentMethod { get; set; }
+        public string? Note { get; set; }
         public List<JobDetailDto> JobDetails { get; set; } = new List<JobDetailDto>();
     }
 
