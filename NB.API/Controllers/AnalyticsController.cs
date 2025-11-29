@@ -93,6 +93,44 @@ namespace NB.API.Controllers
                 _logger.LogError(ex, "Lỗi khi lấy top 10 khách hàng mua hàng nhiều nhất");
                 return BadRequest(ApiResponse<List<TopCustomerDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu phân tích"));
             }
+        }/// <summary>
+        /// Lấy top 10 khách hàng mua hàng nhiều nhất dựa trên tổng tiền đã mua trong khoảng thời gian
+        /// </summary>
+        /// <param name="fromDate">Ngày bắt đầu (yyyy-MM-dd)</param>
+        /// <param name="toDate">Ngày kết thúc (yyyy-MM-dd)</param>
+        /// <returns>Danh sách top 10 khách hàng mua hàng nhiều nhất</returns>
+        [HttpGet("GetCustomerTotalSpending/{userId}")]
+        public async Task<IActionResult> GetCustomerTotalSpending(int userId,[FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
+        {
+            try
+            {
+                // Validate input
+                if (!fromDate.HasValue || !toDate.HasValue)
+                {
+                    return BadRequest(ApiResponse<List<TopCustomerDto>>.Fail("Vui lòng cung cấp đầy đủ ngày bắt đầu và ngày kết thúc"));
+                }
+
+                if (fromDate.Value > toDate.Value)
+                {
+                    return BadRequest(ApiResponse<List<TopCustomerDto>>.Fail("Ngày bắt đầu không được lớn hơn ngày kết thúc"));
+                }
+
+                var exsitUser = await _userService.GetByIdAsync(userId);
+                if (exsitUser == null)
+                {
+                    return NotFound(ApiResponse<UserDto>.Fail("Không tìm thấy người dùng"));
+                }
+
+                // Gọi service để lấy dữ liệu
+                var customers = await _userService.GetCustomerTotalSpending(userId, fromDate.Value, toDate.Value);
+
+                return Ok(ApiResponse<TopCustomerDto>.Ok(customers));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy top 10 khách hàng mua hàng nhiều nhất");
+                return BadRequest(ApiResponse<List<TopCustomerDto>>.Fail("Có lỗi xảy ra khi lấy dữ liệu phân tích"));
+            }
         }
     }
 }
