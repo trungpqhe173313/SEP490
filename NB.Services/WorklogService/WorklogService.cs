@@ -482,6 +482,207 @@ namespace NB.Service.WorklogService
 
             return result;
         }
+
+        public async Task<CreateWorklogBatchResponseVM> UpdateWorklogBatchAsync(UpdateWorklogBatchDto dto)
+        {
+            // Kiểm tra employee tồn tại
+            var employee = await _userRepository.GetQueryable()
+                .FirstOrDefaultAsync(u => u.UserId == dto.EmployeeId);
+            if (employee == null)
+            {
+                throw new Exception("Nhân viên không tồn tại");
+            }
+
+            // Kiểm tra user có role Employee (RoleId = 3) không
+            var hasEmployeeRole = await _userRoleRepository.GetQueryable()
+                .AnyAsync(ur => ur.UserId == dto.EmployeeId && ur.RoleId == 3);
+            if (!hasEmployeeRole)
+            {
+                throw new Exception("User này không phải là nhân viên (Employee)");
+            }
+
+            var startOfDay = dto.WorkDate.Date;
+            var endOfDay = startOfDay.AddDays(1);
+
+            // Lấy tất cả worklog hiện tại của nhân viên trong ngày
+            var existingWorklogs = await GetQueryable()
+                .Include(w => w.Job)
+                .Where(w => w.EmployeeId == dto.EmployeeId 
+                    && w.WorkDate >= startOfDay 
+                    && w.WorkDate < endOfDay)
+                .ToListAsync();
+
+            // === CASE 1: Jobs null hoặc empty → XÓA TẤT CẢ ===
+            if (dto.Jobs == null || !dto.Jobs.Any())
+            {
+                if (!existingWorklogs.Any())
+                {
+                    throw new Exception("Không có worklog nào để xóa");
+                }
+
+                // Kiểm tra có worklog nào IsActive = true không
+                var hasActiveWorklog = existingWorklogs.Any(w => w.IsActive == true);
+                if (hasActiveWorklog)
+                {
+                    throw new Exception("Không thể xóa. Có worklog đã được xác nhận (IsActive = true)");
+                }
+
+                // Xóa tất cả worklog
+                foreach (var worklog in existingWorklogs)
+                {
+                    await DeleteAsync(worklog);
+                }
+
+                return new CreateWorklogBatchResponseVM
+                {
+                    EmployeeId = dto.EmployeeId,
+                    EmployeeName = employee.FullName ?? string.Empty,
+                    WorkDate = dto.WorkDate,
+                    TotalCount = 0,
+                    Worklogs = new List<WorklogResponseVM>()
+                };
+            }
+
+            // === CASE 2: Jobs có dữ liệu → CREATE/UPDATE/DELETE ===
+            
+            // PHASE 1: VALIDATE TẤT CẢ JOBS TRƯỚC
+            var validationErrors = new List<string>();
+            var jobIds = dto.Jobs.Select(j => j.JobId).ToList();
+            
+            // Lấy tất cả job từ DB để validate
+            var jobs = await _jobRepository.GetQueryable()
+                .Where(j => jobIds.Contains(j.Id))
+                .ToListAsync();
+
+            foreach (var jobItem in dto.Jobs)
+            {
+                var job = jobs.FirstOrDefault(j => j.Id == jobItem.JobId);
+                
+                if (job == null)
+                {
+                    validationErrors.Add($"Job #{jobItem.JobId}: Công việc không tồn tại");
+                    continue;
+                }
+
+                if (job.IsActive != true)
+                {
+                    validationErrors.Add($"Job '{job.JobName}': Công việc không còn hoạt động");
+                    continue;
+                }
+
+                // Kiểm tra Quantity theo PayType
+                if (job.PayType == "Per_Tan")
+                {
+                    if (!jobItem.Quantity.HasValue || jobItem.Quantity.Value <= 0)
+                    {
+                        validationErrors.Add($"Job '{job.JobName}': Vui lòng nhập số tấn (Quantity) cho công việc tính theo tấn");
+                    }
+                }
+            }
+
+            // Kiểm tra các worklog cần xóa có IsActive = true không
+            var jobIdsToKeep = dto.Jobs.Select(j => j.JobId).ToList();
+            var worklogsToDelete = existingWorklogs.Where(w => !jobIdsToKeep.Contains(w.JobId)).ToList();
+            
+            foreach (var worklog in worklogsToDelete)
+            {
+                if (worklog.IsActive == true)
+                {
+                    validationErrors.Add($"Không thể xóa worklog cho Job '{worklog.Job.JobName}' (đã được xác nhận - IsActive = true)");
+                }
+            }
+
+            // Nếu có lỗi validation → THROW EXCEPTION
+            if (validationErrors.Any())
+            {
+                throw new Exception(string.Join("; ", validationErrors));
+            }
+
+            // PHASE 2: THỰC HIỆN CREATE/UPDATE/DELETE
+            var resultWorklogs = new List<WorklogResponseVM>();
+
+            // XÓA các worklog không có trong list Jobs
+            foreach (var worklog in worklogsToDelete)
+            {
+                await DeleteAsync(worklog);
+            }
+
+            // CREATE hoặc UPDATE worklog
+            foreach (var jobItem in dto.Jobs)
+            {
+                var job = jobs.First(j => j.Id == jobItem.JobId);
+                var existingWorklog = existingWorklogs.FirstOrDefault(w => w.JobId == jobItem.JobId);
+
+                decimal quantityValue = job.PayType == "Per_Ngay" ? 1 : jobItem.Quantity!.Value;
+
+                if (existingWorklog != null)
+                {
+                    // UPDATE worklog hiện tại
+                    existingWorklog.Quantity = quantityValue;
+                    existingWorklog.Rate = job.Rate;
+                    existingWorklog.Note = jobItem.Note;
+                    
+                    await UpdateAsync(existingWorklog);
+
+                    resultWorklogs.Add(new WorklogResponseVM
+                    {
+                        Id = existingWorklog.Id,
+                        EmployeeId = existingWorklog.EmployeeId,
+                        EmployeeName = employee.FullName ?? string.Empty,
+                        JobId = existingWorklog.JobId,
+                        JobName = job.JobName,
+                        PayType = job.PayType,
+                        Quantity = existingWorklog.Quantity,
+                        Rate = existingWorklog.Rate,
+                        TotalAmount = existingWorklog.Quantity * existingWorklog.Rate,
+                        Note = existingWorklog.Note,
+                        WorkDate = existingWorklog.WorkDate,
+                        IsActive = existingWorklog.IsActive
+                    });
+                }
+                else
+                {
+                    // CREATE worklog mới
+                    var newWorklog = new Worklog
+                    {
+                        EmployeeId = dto.EmployeeId,
+                        JobId = jobItem.JobId,
+                        Quantity = quantityValue,
+                        Rate = job.Rate,
+                        WorkDate = dto.WorkDate,
+                        Note = jobItem.Note,
+                        IsActive = false
+                    };
+
+                    await CreateAsync(newWorklog);
+
+                    resultWorklogs.Add(new WorklogResponseVM
+                    {
+                        Id = newWorklog.Id,
+                        EmployeeId = newWorklog.EmployeeId,
+                        EmployeeName = employee.FullName ?? string.Empty,
+                        JobId = newWorklog.JobId,
+                        JobName = job.JobName,
+                        PayType = job.PayType,
+                        Quantity = newWorklog.Quantity,
+                        Rate = newWorklog.Rate,
+                        TotalAmount = newWorklog.Quantity * newWorklog.Rate,
+                        Note = newWorklog.Note,
+                        WorkDate = newWorklog.WorkDate,
+                        IsActive = newWorklog.IsActive
+                    });
+                }
+            }
+
+            return new CreateWorklogBatchResponseVM
+            {
+                EmployeeId = dto.EmployeeId,
+                EmployeeName = employee.FullName ?? string.Empty,
+                WorkDate = dto.WorkDate,
+                TotalCount = resultWorklogs.Count,
+                Worklogs = resultWorklogs
+            };
+        }
     }
 }
 

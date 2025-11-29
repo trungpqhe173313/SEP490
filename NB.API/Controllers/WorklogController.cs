@@ -168,6 +168,41 @@ namespace NB.API.Controllers
         }
 
         /// <summary>
+        /// Cập nhật worklog theo batch (list jobs) cho nhân viên trong ngày
+        /// - Truyền EmployeeId, WorkDate, và list Jobs
+        /// - Nếu Jobs = null hoặc empty: Xóa TẤT CẢ worklog trong ngày (chỉ xóa IsActive = false)
+        /// - Nếu Jobs có dữ liệu: So sánh với worklog hiện tại
+        ///   + JobId có trong list VÀ có worklog cũ → UPDATE
+        ///   + JobId có trong list NHƯNG KHÔNG có worklog cũ → CREATE
+        ///   + JobId KHÔNG có trong list NHƯNG có worklog cũ → DELETE (chỉ xóa IsActive = false)
+        /// - QUAN TRỌNG: Validate TẤT CẢ trước, nếu có lỗi → KHÔNG thay đổi gì (All or Nothing)
+        /// </summary>
+        [HttpPut("update-batch")]
+        public async Task<IActionResult> UpdateWorklogBatch([FromBody] UpdateWorklogBatchDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+                    return BadRequest(ApiResponse<CreateWorklogBatchResponseVM>.Fail(string.Join(", ", errors)));
+                }
+
+                var result = await _worklogService.UpdateWorklogBatchAsync(dto);
+                return Ok(ApiResponse<CreateWorklogBatchResponseVM>.Ok(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật batch worklog của nhân viên {EmployeeId} ngày {WorkDate}", 
+                    dto.EmployeeId, dto.WorkDate);
+                return BadRequest(ApiResponse<CreateWorklogBatchResponseVM>.Fail(ex.Message));
+            }
+        }
+
+        /// <summary>
         /// Xác nhận chấm công cho nhân viên trong ngày
         /// - Chuyển IsActive = true cho TẤT CẢ worklog của nhân viên trong ngày đó
         /// - Dùng để xác nhận sau khi nhân viên đã hoàn thành công việc
