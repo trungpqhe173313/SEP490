@@ -12,14 +12,17 @@ namespace NB.Service.PayrollService
     {
         private readonly IRepository<Worklog> _worklogRepository;
         private readonly IRepository<User> _userRepository;
+        private readonly IRepository<FinancialTransaction> _financialTransactionRepository;
 
         public PayrollService(
             IRepository<Payroll> repository,
             IRepository<Worklog> worklogRepository,
-            IRepository<User> userRepository) : base(repository)
+            IRepository<User> userRepository,
+            IRepository<FinancialTransaction> financialTransactionRepository) : base(repository)
         {
             _worklogRepository = worklogRepository;
             _userRepository = userRepository;
+            _financialTransactionRepository = financialTransactionRepository;
         }
 
         public async Task<List<PayrollOverviewDto>> GetPayrollOverviewAsync(int year, int month)
@@ -192,6 +195,61 @@ namespace NB.Service.PayrollService
 
             await CreateAsync(payroll);
             return payroll;
+        }
+
+        public async Task<PayPayrollResponseDto> PayPayrollAsync(PayPayrollDto dto, int paidBy)
+        {
+            // Validate PaymentMethod
+            if (dto.PaymentMethod != "TienMat" && dto.PaymentMethod != "NganHang")
+            {
+                throw new ArgumentException("Phương thức thanh toán không hợp lệ. Chỉ chấp nhận: TienMat, NganHang");
+            }
+
+            // Lấy Payroll
+            var payroll = await GetQueryable()
+                .Include(p => p.Employee)
+                .FirstOrDefaultAsync(p => p.PayrollId == dto.PayrollId);
+
+            if (payroll == null)
+            {
+                throw new ArgumentException($"Không tìm thấy bảng lương với ID {dto.PayrollId}");
+            }
+
+            // Kiểm tra đã thanh toán chưa
+            if (payroll.IsPaid == true)
+            {
+                throw new InvalidOperationException($"Bảng lương này đã được thanh toán vào {payroll.PaidDate:dd/MM/yyyy}");
+            }
+
+            // Cập nhật Payroll
+            payroll.IsPaid = true;
+            payroll.PaidDate = DateTime.Now;
+            payroll.LastUpdated = DateTime.Now;
+            await UpdateAsync(payroll);
+
+            // Tạo FinancialTransaction
+            var transaction = new FinancialTransaction
+            {
+                TransactionDate = DateTime.Now,
+                Type = TransactionType.ThanhToanLuong.ToString(),
+                Amount = payroll.TotalAmount,
+                Description = dto.Note ?? $"Thanh toán lương tháng {payroll.StartDate.Month}/{payroll.StartDate.Year} cho {payroll.Employee.FullName}",
+                PaymentMethod = dto.PaymentMethod,
+                PayrollId = payroll.PayrollId,
+                CreatedBy = paidBy
+            };
+
+            _financialTransactionRepository.Add(transaction);
+            await _financialTransactionRepository.SaveAsync();
+
+            return new PayPayrollResponseDto
+            {
+                EmployeeId = payroll.EmployeeId,
+                EmployeeName = payroll.Employee.FullName ?? string.Empty,
+                PaidDate = payroll.PaidDate ?? DateTime.Now,
+                PaymentMethod = dto.PaymentMethod,
+                TotalAmount = payroll.TotalAmount
+            };
         }
     }
 }
