@@ -6,6 +6,8 @@ using NB.Service.Common;
 using NB.Service.Core.Enum;
 using NB.Service.Core.Mapper;
 using NB.Service.Dto;
+using NB.Service.FinancialTransactionService;
+using NB.Service.FinancialTransactionService.ViewModels;
 using NB.Service.InventoryService;
 using NB.Service.InventoryService.Dto;
 using NB.Service.ProductService;
@@ -44,6 +46,7 @@ namespace NB.API.Controllers
         private readonly IInventoryService _inventoryService;
         private readonly IReturnTransactionService _returnTransactionService;
         private readonly IReturnTransactionDetailService _returnTransactionDetailService;
+        private readonly IFinancialTransactionService _financialTransactionService;
         private readonly ILogger<EmployeeController> _logger;
         private readonly IMapper _mapper;
         private readonly string transactionType = "Export";
@@ -57,6 +60,7 @@ namespace NB.API.Controllers
             IInventoryService inventoryService,
             IReturnTransactionService returnTransactionService,
             IReturnTransactionDetailService returnTransactionDetailService,
+            IFinancialTransactionService financialTransactionService,
             IMapper mapper,
             ILogger<EmployeeController> logger)
         {
@@ -69,6 +73,7 @@ namespace NB.API.Controllers
             _inventoryService = inventoryService;
             _returnTransactionService = returnTransactionService;
             _returnTransactionDetailService = returnTransactionDetailService;
+            _financialTransactionService = financialTransactionService;
             _mapper = mapper;
             _logger = logger;
         }
@@ -1110,8 +1115,55 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"));
             }
         }
+        /// <summary>
+        /// Chuyển trạng thái đơn hàng sang thanh toán tất
+        /// </summary>
+        /// <param name="transactionId"></param>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPut("UpdateToPaidInFullStatus/{transactionId}")]
+        public async Task<IActionResult> UpdateToPaidInFullStatus(int transactionId, FinancialTransactionCreateVM model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<FinancialTransactionCreateVM>.Fail("Dữ liệu không hợp lệ"));
+            }
+            var transaction = await _transactionService.GetByTransactionId(transactionId);
+            if (transaction == null)
+            {
+                return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));
+            }
+            if (transaction.Status == (int)TransactionStatus.paidInFull || transaction.Status == (int)TransactionStatus.partiallyPaid)
+            {
+                return BadRequest(ApiResponse<Transaction>.Fail("Đơn hàng đã được thanh toán hoặc thanh toán một phần"));
+            }
+            var financialTransactions = await _financialTransactionService.GetByRelatedTransactionID(transactionId);
+            if (financialTransactions == null || !financialTransactions.Any())
+            {
+                return BadRequest(ApiResponse<Transaction>.Fail("Đơn hàng đã được thanh toán một phần"));
+            }
+            try
+            {
+                var financialTransactionEntity = _mapper.Map<FinancialTransactionCreateVM, FinancialTransaction>(model);
+                financialTransactionEntity.RelatedTransactionId = transaction.TransactionId;
+                financialTransactionEntity.Amount = transaction.TotalCost ?? 0;
+                financialTransactionEntity.TransactionDate = DateTime.Now;
+                financialTransactionEntity.Type = FinancialTransactionType.ThuTienKhach.ToString();
 
+                await _financialTransactionService.CreateAsync(financialTransactionEntity);
 
+                //cap nhat trang thai cho don hang
+                transaction.Status = (int)TransactionStatus.paidInFull;
+                await _transactionService.UpdateAsync(transaction);
+                // 6️ Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
+                return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái đơn hàng");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"));
+            }
+        }
 
 
         [HttpGet("GetTransactionStatus")]
@@ -1125,7 +1177,9 @@ namespace NB.API.Controllers
                     TransactionStatus.order,
                     TransactionStatus.delivering,
                     TransactionStatus.failure,
-                    TransactionStatus.cancel
+                    TransactionStatus.cancel,
+                    TransactionStatus.paidInFull,
+                    TransactionStatus.partiallyPaid
                 };
 
                 // Tạo danh sách trả về gồm int + string
