@@ -9,5 +9,6 @@ namespace NB.Service.PayrollService
         Task<List<PayrollOverviewDto>> GetPayrollOverviewAsync(int year, int month);
         Task<Payroll> CreatePayrollAsync(CreatePayrollDto dto, int createdBy);
         Task<PayPayrollResponseDto> PayPayrollAsync(PayPayrollDto dto, int paidBy);
+        Task<PayrollDetailDto> GetPayrollDetailAsync(int payrollId);
     }
 }

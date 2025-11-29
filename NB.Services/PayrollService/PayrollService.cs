@@ -251,5 +251,68 @@ namespace NB.Service.PayrollService
                 TotalAmount = payroll.TotalAmount
             };
         }
+
+        public async Task<PayrollDetailDto> GetPayrollDetailAsync(int payrollId)
+        {
+            // Lấy Payroll với thông tin liên quan
+            var payroll = await GetQueryable()
+                .Include(p => p.Employee)
+                .FirstOrDefaultAsync(p => p.PayrollId == payrollId);
+
+            if (payroll == null)
+            {
+                throw new ArgumentException($"Không tìm thấy bảng lương với ID {payrollId}");
+            }
+
+            // Lấy thông tin người tạo
+            string? createdByName = null;
+            if (payroll.CreatedBy.HasValue)
+            {
+                var creator = await _userRepository.GetByIdAsync(payroll.CreatedBy.Value);
+                createdByName = creator?.FullName;
+            }
+
+            // Lấy WorkLog chi tiết theo từng Job trong khoảng thời gian của Payroll
+            var startDate = payroll.StartDate.ToDateTime(TimeOnly.MinValue);
+            var endDate = payroll.EndDate.ToDateTime(TimeOnly.MinValue);
+
+            var worklogs = await _worklogRepository.GetQueryable()
+                .Include(w => w.Job)
+                .Where(w => w.EmployeeId == payroll.EmployeeId
+                    && w.WorkDate >= startDate
+                    && w.WorkDate <= endDate
+                    && w.IsActive == true)
+                .ToListAsync();
+
+            // Group theo Job để tính tổng
+            var jobDetails = worklogs
+                .GroupBy(w => w.JobId)
+                .Select(g => new JobDetailDto
+                {
+                    JobId = g.Key,
+                    JobName = g.First().Job.JobName,
+                    PayType = g.First().Job.PayType,
+                    Quantity = g.Sum(w => w.Quantity),
+                    Rate = g.First().Rate,
+                    Amount = g.Sum(w => w.Quantity * w.Rate)
+                })
+                .ToList();
+
+            return new PayrollDetailDto
+            {
+                PayrollId = payroll.PayrollId,
+                EmployeeId = payroll.EmployeeId,
+                EmployeeName = payroll.Employee.FullName ?? string.Empty,
+                StartDate = startDate,
+                EndDate = endDate,
+                TotalAmount = payroll.TotalAmount,
+                Status = payroll.IsPaid == true ? PayrollStatus.Paid.GetDescription() : PayrollStatus.Generated.GetDescription(),
+                PaidDate = payroll.PaidDate,
+                CreatedAt = payroll.CreatedAt,
+                CreatedByName = createdByName,
+                Note = payroll.Note,
+                JobDetails = jobDetails
+            };
+        }
     }
 }
