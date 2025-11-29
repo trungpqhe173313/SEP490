@@ -7,5 +7,6 @@ namespace NB.Service.PayrollService
     public interface IPayrollService : IService<Payroll>
     {
         Task<List<PayrollOverviewDto>> GetPayrollOverviewAsync(int year, int month);
+        Task<Payroll> CreatePayrollAsync(CreatePayrollDto dto, int createdBy);
     }
 }
