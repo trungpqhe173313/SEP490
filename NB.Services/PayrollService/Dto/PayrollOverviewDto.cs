@@ -52,6 +52,8 @@ namespace NB.Service.PayrollService.Dto
         public string Status { get; set; } = PayrollStatus.NotGenerated.GetDescription();
         public int? PayrollId { get; set; }
         public DateTime? PaidDate { get; set; }
+        public string? PaymentMethod { get; set; }
+        public string? Note { get; set; }
         public List<JobDetailDto> JobDetails { get; set; } = new List<JobDetailDto>();
     }
 

@@ -68,6 +68,13 @@ namespace NB.Service.PayrollService
                     && p.EndDate <= DateOnly.FromDateTime(endDate))
                 .ToListAsync();
 
+            // Step 4.5: Load FinancialTransaction để lấy PaymentMethod và Note
+            var payrollIds = existingPayrolls.Select(p => p.PayrollId).ToList();
+            var transactions = await _financialTransactionRepository.GetQueryable()
+                .Where(t => t.PayrollId.HasValue && payrollIds.Contains(t.PayrollId.Value)
+                    && t.Type == TransactionType.ThanhToanLuong.ToString())
+                .ToListAsync();
+
             var result = new List<PayrollOverviewDto>();
 
             // Step 5: Xử lý từng nhân viên có worklog
@@ -94,6 +101,9 @@ namespace NB.Service.PayrollService
                     existingPayroll.LastUpdated = DateTime.Now;
                     await UpdateAsync(existingPayroll);
 
+                    // Lấy PaymentMethod và Note từ FinancialTransaction nếu đã thanh toán
+                    var transaction = transactions.FirstOrDefault(t => t.PayrollId == existingPayroll.PayrollId);
+
                     result.Add(new PayrollOverviewDto
                     {
                         EmployeeId = empGroup.EmployeeId,
@@ -102,6 +112,8 @@ namespace NB.Service.PayrollService
                         Status = existingPayroll.IsPaid == true ? PayrollStatus.Paid.GetDescription() : PayrollStatus.Generated.GetDescription(),
                         PayrollId = existingPayroll.PayrollId,
                         PaidDate = existingPayroll.PaidDate,
+                        PaymentMethod = transaction?.PaymentMethod,
+                        Note = existingPayroll.Note,
                         JobDetails = jobDetails
                     });
                 }
