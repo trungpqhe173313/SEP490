@@ -1115,6 +1115,7 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"));
             }
         }
+
         /// <summary>
         /// Chuyển trạng thái đơn hàng sang thanh toán tất
         /// </summary>
@@ -1138,9 +1139,11 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<Transaction>.Fail("Đơn hàng đã được thanh toán hoặc thanh toán một phần"));
             }
             var financialTransactions = await _financialTransactionService.GetByRelatedTransactionID(transactionId);
-            if (financialTransactions == null || !financialTransactions.Any())
+            // Kiểm tra nếu đã có thanh toán trước đó, không cho phép thanh toán đầy đủ
+            // Phải sử dụng CreatePartialPayment nếu đã có thanh toán một phần
+            if (financialTransactions != null && financialTransactions.Any())
             {
-                return BadRequest(ApiResponse<Transaction>.Fail("Đơn hàng đã được thanh toán một phần"));
+                return BadRequest(ApiResponse<Transaction>.Fail("Đơn hàng đã có thanh toán trước đó. Vui lòng sử dụng thanh toán một phần"));
             }
             try
             {
@@ -1154,6 +1157,82 @@ namespace NB.API.Controllers
 
                 //cap nhat trang thai cho don hang
                 transaction.Status = (int)TransactionStatus.paidInFull;
+                await _transactionService.UpdateAsync(transaction);
+                // 6️ Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
+                return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái đơn hàng");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"));
+            }
+        }
+        
+        /// <summary>
+        /// Trả một phần tiền giá trị đơn hàng
+        /// </summary>
+        /// <param name="transactionId"></param>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPut("CreatePartialPayment/{transactionId}")]
+        public async Task<IActionResult> CreatePartialPayment(int transactionId, FinancialTransactionCreateVM model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<FinancialTransactionCreateVM>.Fail("Dữ liệu không hợp lệ"));
+            }
+            if (!model.Amount.HasValue)
+            {
+                return BadRequest(ApiResponse<FinancialTransactionCreateVM>.Fail("Số tiền trả không được để trống"));
+            }
+            var transaction = await _transactionService.GetByTransactionId(transactionId);
+            if (transaction == null)
+            {
+                return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));
+            }
+            if (transaction.Status == (int)TransactionStatus.paidInFull)
+            {
+                return BadRequest(ApiResponse<Transaction>.Fail("Đơn hàng đã được thanh toán"));
+            }
+            var financialTransactions = await _financialTransactionService.GetByRelatedTransactionID(transactionId);
+            decimal totalPaid = 0;
+            if (financialTransactions != null && financialTransactions.Any())
+            {
+                totalPaid = financialTransactions.Sum(ft => ft.Amount);
+            }
+            
+            decimal newPaymentAmount = model.Amount.Value;
+            decimal totalAfterPayment = totalPaid + newPaymentAmount;
+            decimal transactionTotalCost = transaction.TotalCost ?? 0;
+            
+            //Kiểm tra tổng số tiền trả có vượt giá trị đơn hàng
+            if (totalAfterPayment > transactionTotalCost)
+            {
+                return BadRequest(ApiResponse<Transaction>.Fail("Tổng số tiền thanh toán vượt quá giá trị đơn hàng"));
+            }
+            
+            try
+            {
+                var financialTransactionEntity = _mapper.Map<FinancialTransactionCreateVM, FinancialTransaction>(model);
+                financialTransactionEntity.RelatedTransactionId = transaction.TransactionId;
+                financialTransactionEntity.Amount = newPaymentAmount;
+                financialTransactionEntity.TransactionDate = DateTime.Now;
+                financialTransactionEntity.Type = FinancialTransactionType.ThuTienKhach.ToString();
+
+                await _financialTransactionService.CreateAsync(financialTransactionEntity);
+                
+                //cap nhat trang thai cho don hang
+                // Sử dụng tolerance để so sánh số thập phân (tránh lỗi floating point precision)
+                const decimal tolerance = 0.01m;
+                //Tính độ lệch giữa số tiền đã thanh toán và tổng tiền cho phép sai số +-0.01 nếu nhỏ hơn 0.01 thì coi như đã thanh toán tất
+                if (Math.Abs(totalAfterPayment - transactionTotalCost) < tolerance || totalAfterPayment >= transactionTotalCost)
+                {
+                    transaction.Status = (int)TransactionStatus.paidInFull;
+                }
+                else
+                {
+                    transaction.Status = (int)TransactionStatus.partiallyPaid;
+                }
                 await _transactionService.UpdateAsync(transaction);
                 // 6️ Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
                 return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công"));
