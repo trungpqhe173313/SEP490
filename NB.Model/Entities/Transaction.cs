@@ -40,6 +40,4 @@ public partial class Transaction
     public virtual ICollection<StockBatch> StockBatches { get; set; } = new List<StockBatch>();
 
     public virtual ICollection<TransactionDetail> TransactionDetails { get; set; } = new List<TransactionDetail>();
-
-    public virtual ICollection<Worklog> Worklogs { get; set; } = new List<Worklog>();
 }

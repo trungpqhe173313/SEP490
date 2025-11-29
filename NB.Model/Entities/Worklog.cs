@@ -15,8 +15,6 @@ public partial class Worklog
 
     public decimal Rate { get; set; }
 
-    public int? TransactionId { get; set; }
-
     public string? Note { get; set; }
 
     public DateTime? WorkDate { get; set; }
@@ -26,6 +24,4 @@ public partial class Worklog
     public virtual User Employee { get; set; } = null!;
 
     public virtual Job Job { get; set; } = null!;
-
-    public virtual Transaction? Transaction { get; set; }
 }

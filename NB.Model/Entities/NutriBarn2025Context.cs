@@ -65,8 +65,6 @@ public partial class NutriBarn2025Context : DbContext
 
     public virtual DbSet<Worklog> Worklogs { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) { }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Category>(entity =>
@@ -705,15 +703,12 @@ public partial class NutriBarn2025Context : DbContext
 
             entity.HasIndex(e => e.JobId, "IX_Worklog_JobID");
 
-            entity.HasIndex(e => e.TransactionId, "IX_Worklog_TransactionID");
-
             entity.Property(e => e.Id).HasColumnName("ID");
             entity.Property(e => e.EmployeeId).HasColumnName("EmployeeID");
             entity.Property(e => e.JobId).HasColumnName("JobID");
             entity.Property(e => e.Note).HasMaxLength(500);
             entity.Property(e => e.Quantity).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.Rate).HasColumnType("decimal(10, 2)");
-            entity.Property(e => e.TransactionId).HasColumnName("TransactionID");
             entity.Property(e => e.WorkDate)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -727,10 +722,6 @@ public partial class NutriBarn2025Context : DbContext
                 .HasForeignKey(d => d.JobId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Worklog__JobID__3587F3E0");
-
-            entity.HasOne(d => d.Transaction).WithMany(p => p.Worklogs)
-                .HasForeignKey(d => d.TransactionId)
-                .HasConstraintName("FK__Worklog__Transac__367C1819");
         });
 
         OnModelCreatingPartial(modelBuilder);
