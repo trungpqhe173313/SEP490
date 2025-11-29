@@ -32,6 +32,11 @@ namespace NB.Model.Enums
         [Description("Đang Chuyển")]
         inTransit,
         [Description("Đã Chuyển")]
-        transferred
+        transferred,
+
+        [Description("Thanh Toán Tất")]
+        paidInFull,
+        [Description("Thanh Toán Một Phần")]
+        partiallyPaid
     }
 }
