@@ -120,5 +120,78 @@ namespace NB.Service.PayrollService
 
             return result.OrderBy(r => r.EmployeeName).ToList();
         }
+
+        public async Task<Payroll> CreatePayrollAsync(CreatePayrollDto dto, int createdBy)
+        {
+            // Validate tháng/năm
+            if (dto.Year < 2000 || dto.Year > 2100)
+            {
+                throw new ArgumentException("Năm không hợp lệ");
+            }
+
+            if (dto.Month < 1 || dto.Month > 12)
+            {
+                throw new ArgumentException("Tháng không hợp lệ (1-12)");
+            }
+
+            // Xác định ngày bắt đầu và kết thúc
+            var startDate = new DateTime(dto.Year, dto.Month, 1);
+            var endDate = startDate.AddMonths(1).AddDays(-1);
+
+            // Kiểm tra nhân viên tồn tại và có role Employee (RoleId = 3)
+            var employee = await _userRepository.GetQueryable()
+                .Include(u => u.UserRoles)
+                .FirstOrDefaultAsync(u => u.UserId == dto.EmployeeId);
+
+            if (employee == null)
+            {
+                throw new ArgumentException($"Không tìm thấy nhân viên với ID {dto.EmployeeId}");
+            }
+
+            var isEmployee = employee.UserRoles.Any(ur => ur.RoleId == 3);
+            if (!isEmployee)
+            {
+                throw new ArgumentException($"User {employee.FullName} không phải là nhân viên ");
+            }
+
+            // Kiểm tra đã tồn tại bảng lương trong tháng này chưa
+            var existingPayroll = await GetQueryable()
+                .FirstOrDefaultAsync(p => p.EmployeeId == dto.EmployeeId
+                    && p.StartDate >= DateOnly.FromDateTime(startDate)
+                    && p.EndDate <= DateOnly.FromDateTime(endDate));
+
+            if (existingPayroll != null)
+            {
+                throw new InvalidOperationException($"Bảng lương cho nhân viên {employee.FullName} tháng {dto.Month}/{dto.Year} đã tồn tại");
+            }
+
+            // Tính tổng tiền từ WorkLog (chỉ lấy IsActive = true)
+            var worklogs = await _worklogRepository.GetQueryable()
+                .Where(w => w.EmployeeId == dto.EmployeeId
+                    && w.WorkDate >= startDate
+                    && w.WorkDate <= endDate
+                    && w.IsActive == true)
+                .ToListAsync();
+
+            var totalAmount = worklogs.Sum(w => w.Quantity * w.Rate);
+
+            // Tạo Payroll mới
+            var payroll = new Payroll
+            {
+                EmployeeId = dto.EmployeeId,
+                StartDate = DateOnly.FromDateTime(startDate),
+                EndDate = DateOnly.FromDateTime(endDate),
+                TotalAmount = totalAmount,
+                IsPaid = false,
+                PaidDate = null,
+                CreatedAt = DateTime.Now,
+                CreatedBy = createdBy,
+                Note = dto.Note,
+                LastUpdated = DateTime.Now
+            };
+
+            await CreateAsync(payroll);
+            return payroll;
+        }
     }
 }

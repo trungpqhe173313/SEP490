@@ -3,6 +3,14 @@ using NB.Service.Core.Enum;
 
 namespace NB.Service.PayrollService.Dto
 {
+    public class CreatePayrollDto
+    {
+        public int EmployeeId { get; set; }
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public string? Note { get; set; }
+    }
+
     public class PayrollOverviewDto
     {
         public int EmployeeId { get; set; }
