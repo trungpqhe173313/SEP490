@@ -312,5 +312,43 @@ namespace NB.Service.UserService
 
             return topCustomers;
         }
+
+        public async Task<TopCustomerDto> GetCustomerTotalSpending(int userId, DateTime fromDate, DateTime toDate)
+        {
+            var toDateEnd = toDate.Date.AddDays(1).AddSeconds(-1);
+
+            var query = from transaction in _transactionRepository.GetQueryable()
+                        join user in GetQueryable()
+                        on transaction.CustomerId equals user.UserId
+                        where
+                            transaction.Type.Equals("Export")
+                            && transaction.Status == (int)TransactionStatus.done
+                            && transaction.CustomerId == userId
+                            && transaction.TransactionDate >= fromDate
+                            && transaction.TransactionDate <= toDateEnd
+                        group new { transaction, user } by new
+                        {
+                            user.UserId,
+                            user.FullName,
+                            user.Email,
+                            user.Phone,
+                            user.Image,
+
+                        } into grouped
+                        select new TopCustomerDto
+                        {
+                            UserId = grouped.Key.UserId,
+                            FullName = grouped.Key.FullName,
+                            Phone = grouped.Key.Phone,
+                            Email = grouped.Key.Email,
+                            Image = grouped.Key.Image,
+                            TotalSpent = grouped.Sum(x => x.transaction.TotalCost ?? 0),
+                            NumberOfOrders = grouped.Count(),
+                            AverageOrderValue = grouped.Average(x => x.transaction.TotalCost ?? 0)
+                        };
+
+            var result = await query.FirstAsync();
+            return result;
+        }
     }
 }

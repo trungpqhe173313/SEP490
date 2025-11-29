@@ -20,5 +20,6 @@ namespace NB.Service.UserService
         Task<UserDto?> GetByRefreshTokenAsync(string RefreshToken);
         Task<bool> CheckPasswordAsync(User user, string password);
         Task<List<TopCustomerDto>> GetTopCustomersByTotalSpent(DateTime fromDate, DateTime toDate);
+        Task<TopCustomerDto> GetCustomerTotalSpending(int userId, DateTime fromDate, DateTime toDate);
     }
 }
