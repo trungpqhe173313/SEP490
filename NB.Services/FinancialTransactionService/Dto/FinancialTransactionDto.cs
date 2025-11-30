@@ -11,5 +11,6 @@ namespace NB.Service.FinancialTransactionService.Dto
     {
         public string? TypeName { get; set; }
         public string? CreatedByName { get; set; }
+        public int? TypeInt { get; set; }
     }
 }
