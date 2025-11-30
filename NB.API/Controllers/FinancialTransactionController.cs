@@ -159,15 +159,16 @@ namespace NB.API.Controllers
                     }
                 }
 
-                // Enrich thông tin: thêm TypeName từ enum và CreatedByName
+                // Enrich thông tin: thêm TypeName, TypeInt từ enum và CreatedByName
                 foreach (var ft in result.Items)
                 {
-                    // Thêm TypeName từ enum
+                    // Thêm TypeName và TypeInt từ enum
                     if (!string.IsNullOrEmpty(ft.Type))
                     {
                         if (Enum.TryParse<FinancialTransactionType>(ft.Type, out var typeEnum))
                         {
                             ft.TypeName = typeEnum.GetDescription();
+                            ft.TypeInt = (int)typeEnum;
                         }
                     }
 
@@ -216,12 +217,13 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<FinancialTransactionDto>.Fail("Không tìm thấy giao dịch tài chính", 404));
                 }
 
-                // Enrich thông tin: thêm TypeName từ enum
+                // Enrich thông tin: thêm TypeName và TypeInt từ enum
                 if (!string.IsNullOrEmpty(result.Type))
                 {
                     if (Enum.TryParse<FinancialTransactionType>(result.Type, out var typeEnum))
                     {
                         result.TypeName = typeEnum.GetDescription();
+                        result.TypeInt = (int)typeEnum;
                     }
                 }
 
