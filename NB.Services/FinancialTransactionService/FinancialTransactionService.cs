@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using NB.Model.Entities;
+using NB.Model.Enums;
 using NB.Repository.Common;
 using NB.Service.Common;
 using NB.Service.FinancialTransactionService.Dto;
@@ -56,9 +57,12 @@ namespace NB.Service.FinancialTransactionService
 
             if (search != null)
             {
-                if (!string.IsNullOrEmpty(search.Type))
+                if (search.Type.HasValue)
                 {
-                    query = query.Where(ft => ft.Type == search.Type);
+                    // Chuyển đổi enum int sang string để so sánh với Type trong database
+                    var typeEnum = (FinancialTransactionType)search.Type.Value;
+                    var typeString = typeEnum.ToString();
+                    query = query.Where(ft => ft.Type == typeString);
                 }
                 if (search.RelatedTransactionId.HasValue && search.RelatedTransactionId.Value > 0)
                 {

@@ -5,7 +5,7 @@ namespace NB.Service.FinancialTransactionService.Dto
 {
     public class FinancialTransactionSearch : SearchBase
     {
-        public string? Type { get; set; }
+        public int? Type { get; set; }
         public int? RelatedTransactionId { get; set; }
         public int? PayrollId { get; set; }
         public int? CreatedBy { get; set; }
