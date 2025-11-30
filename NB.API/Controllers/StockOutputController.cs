@@ -397,8 +397,9 @@ namespace NB.API.Controllers
                 var transactionEntity = _mapper.Map<TransactionCreateVM, Transaction>(tranCreate);
 
                 transactionEntity.Status = (int?)TransactionStatus.draft; // đang xử lý
-                transactionEntity.TransactionDate = DateTime.Now;
+                transactionEntity.TransactionDate = DateTime.UtcNow.AddHours(7);
                 transactionEntity.Type = "Export";
+                transactionEntity.TransactionCode = $"EXPORT-{DateTime.UtcNow.AddHours(7):yyyyMMdd}";
                 await _transactionService.CreateAsync(transactionEntity);
 
                 // 3️ Duyệt từng sản phẩm để tạo transaction detail
