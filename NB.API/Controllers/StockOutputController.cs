@@ -1134,6 +1134,11 @@ namespace NB.API.Controllers
             {
                 return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));
             }
+            //Kiểm tra xem xem đơn hàng có phải đơn nhập
+            if (transaction.Type != transactionType)
+            {
+                return BadRequest(ApiResponse<TransactionDto>.Fail("Đơn hàng không phải đơn xuất", 404));
+            }
             if (transaction.Status == (int)TransactionStatus.paidInFull || transaction.Status == (int)TransactionStatus.partiallyPaid)
             {
                 return BadRequest(ApiResponse<Transaction>.Fail("Đơn hàng đã được thanh toán hoặc thanh toán một phần"));
@@ -1189,6 +1194,11 @@ namespace NB.API.Controllers
             if (transaction == null)
             {
                 return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));
+            }
+            //Kiểm tra xem xem đơn hàng có phải đơn nhập
+            if (transaction.Type != transactionType)
+            {
+                return BadRequest(ApiResponse<TransactionDto>.Fail("Đơn hàng không phải đơn xuất", 404));
             }
             if (transaction.Status == (int)TransactionStatus.paidInFull)
             {

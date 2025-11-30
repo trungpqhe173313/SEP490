@@ -12,5 +12,7 @@ namespace NB.Service.FinancialTransactionService
     public interface IFinancialTransactionService : IService<FinancialTransaction>
     {
         public Task<List<FinancialTransactionDto>> GetByRelatedTransactionID(int id);
+        public Task<PagedList<FinancialTransactionDto>> GetData(FinancialTransactionSearch search);
+        public Task<FinancialTransactionDto?> GetByIdAsync(int id);
     }
 }
