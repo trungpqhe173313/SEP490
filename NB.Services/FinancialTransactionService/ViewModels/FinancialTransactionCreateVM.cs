@@ -9,7 +9,7 @@ namespace NB.Service.FinancialTransactionService.ViewModels
 {
     public class FinancialTransactionCreateVM
     {
-        public string? Type { get; set; }
+        public int? Type { get; set; }
         public decimal? Amount { get; set; }
 
         public string? Description { get; set; }
