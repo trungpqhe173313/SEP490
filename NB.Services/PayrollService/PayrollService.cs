@@ -239,12 +239,12 @@ namespace NB.Service.PayrollService
             payroll.LastUpdated = DateTime.Now;
             await UpdateAsync(payroll);
 
-            // Tạo FinancialTransaction
+            // Tạo FinancialTransaction (số âm vì là chi ra)
             var transaction = new FinancialTransaction
             {
                 TransactionDate = DateTime.Now,
                 Type = TransactionType.ThanhToanLuong.ToString(),
-                Amount = payroll.TotalAmount,
+                Amount = -payroll.TotalAmount, // Số âm vì thanh toán lương là chi ra
                 Description = dto.Note ?? $"Thanh toán lương tháng {payroll.StartDate.Month}/{payroll.StartDate.Year} cho {payroll.Employee.FullName}",
                 PaymentMethod = dto.PaymentMethod,
                 PayrollId = payroll.PayrollId,
