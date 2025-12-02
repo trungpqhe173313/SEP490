@@ -48,4 +48,38 @@ namespace NB.Service.TransactionService.Dto
         public decimal TotalPrice { get; set; } // = Quantity * UnitPrice
         public decimal? TotalWeight { get; set; } // = Quantity * WeightPerUnit (tấn)
     }
+
+    public class ImportWeightSummaryDto
+    {
+        public DateTime FromDate { get; set; }
+        public DateTime ToDate { get; set; }
+        public decimal TotalWeight { get; set; }
+        public int TransactionCount { get; set; }
+        public List<ImportWeightDetailDto> Details { get; set; } = new List<ImportWeightDetailDto>();
+    }
+
+    public class ImportWeightDetailDto
+    {
+        public int SupplierId { get; set; }
+        public string SupplierName { get; set; } = string.Empty;
+        public decimal TotalWeight { get; set; }
+        public int TransactionCount { get; set; }
+    }
+
+    public class ExportWeightSummaryDto
+    {
+        public DateTime FromDate { get; set; }
+        public DateTime ToDate { get; set; }
+        public decimal TotalWeight { get; set; }
+        public int TransactionCount { get; set; }
+        public List<ExportWeightDetailDto> Details { get; set; } = new List<ExportWeightDetailDto>();
+    }
+
+    public class ExportWeightDetailDto
+    {
+        public int CustomerId { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public decimal TotalWeight { get; set; }
+        public int TransactionCount { get; set; }
+    }
 }
