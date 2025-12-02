@@ -1,23 +1,60 @@
-/NB.Repository/obj/Debug/net8.0
-/.vs/NutriBarn/CopilotIndices/
-/.vs/NutriBarn/FileContentIndex
-/NB.API/obj/Debug/net8.0
-/NB.API/obj
-/NB.Model/obj/Debug/net8.0
-/NB.Model/obj
-/NB.Repository/obj
-/NB.Services/obj/Debug/net8.0
-/NB.Services/obj
-/.vs/NutriBarn/v17
-/.vs/NutriBarn/DesignTimeBuild
-/.vs/ProjectEvaluation
+# Build output
+bin/
+obj/
+**/bin/
+**/obj/
 
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
 
-/NB.Model/bin/Debug
-/NB.Repository/bin/Debug
-/NB.Services/bin/Debug/net8.0
-/NB.API/bin/Debug
-.vs/NutriBarn/config/applicationhost.config
-NB.API/appsettings.json
-.vs/NutriBarn/copilot-chat
-.vscode/settings.json
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+
+# Logs
+*.log
+Logs/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.assets.json
+project.nuget.cache
+
+# EF Core generated temp files
+**/*.g.cs
+**/*.g.i.cs
+
+# Test Results
+TestResults/
+**/TestResults/
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# Copilot / AI files
+.vs/**/CopilotIndices/
+.vs/**/FileContentIndex
+.vs/**/copilot-chat/
+
+# Dotnet tools
+.dotnet/tools/
+
+# OS files
+Thumbs.db
+*.DS_Store
+
+# appsettings
+**/appsettings.Development.json
+# CHO PHÉP appsettings.json (QUAN TRỌNG)
+!**/appsettings.json
+
+###############################
+# END OF FILE
+###############################
