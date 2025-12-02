@@ -273,8 +273,9 @@ namespace NB.API.Controllers
                     Note = or.Note,
                 };
                 var transactionEntity = _mapper.Map<TransactionCreateVM, Transaction>(tranCreate);
-                transactionEntity.TransactionDate = DateTime.Now;
+                transactionEntity.TransactionDate = DateTime.UtcNow.AddHours(7);
                 transactionEntity.Type = transactionType;
+                transactionEntity.TransactionCode = $"TRANSFER-{DateTime.UtcNow.AddHours(7):yyyyMMdd}";
                 transactionEntity.Status = (int)TransactionStatus.inTransit;
                 await _transactionService.CreateAsync(transactionEntity);
 
