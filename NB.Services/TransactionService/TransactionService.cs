@@ -11,8 +11,19 @@ namespace NB.Service.TransactionService
 {
     public class TransactionService : Service<Transaction>, ITransactionService
     {
-        public TransactionService(IRepository<Transaction> repository) : base(repository)
+        private readonly IRepository<Warehouse> _warehouseRepository;
+        private readonly IRepository<User> _userRepository;
+        private readonly IRepository<Supplier> _supplierRepository;
+
+        public TransactionService(
+            IRepository<Transaction> repository,
+            IRepository<Warehouse> warehouseRepository,
+            IRepository<User> userRepository,
+            IRepository<Supplier> supplierRepository) : base(repository)
         {
+            _warehouseRepository = warehouseRepository;
+            _userRepository = userRepository;
+            _supplierRepository = supplierRepository;
         }
         public async Task<List<TransactionDto>> GetById(int? id)
         {
@@ -243,6 +254,81 @@ namespace NB.Service.TransactionService
 
             query = query.OrderByDescending(t => t.TransactionDate);
             return await PagedList<TransactionDto>.CreateAsync(query,search);
+        }
+
+        public async Task<TransactionDetailResponseDto> GetTransactionDetailById(int transactionId)
+        {
+            var transaction = await GetQueryable()
+                .Include(t => t.TransactionDetails)
+                    .ThenInclude(td => td.Product)
+                .FirstOrDefaultAsync(t => t.TransactionId == transactionId);
+
+            if (transaction == null)
+            {
+                throw new ArgumentException($"Không tìm thấy giao dịch với ID {transactionId}");
+            }
+
+            // Lấy tên Warehouse
+            var warehouse = await _warehouseRepository.GetByIdAsync(transaction.WarehouseId);
+            string warehouseName = warehouse?.WarehouseName ?? "N/A";
+
+            // Lấy tên WarehouseIn (nếu có - dùng cho Transfer)
+            string? warehouseInName = null;
+            if (transaction.WarehouseInId.HasValue)
+            {
+                var warehouseIn = await _warehouseRepository.GetByIdAsync(transaction.WarehouseInId.Value);
+                warehouseInName = warehouseIn?.WarehouseName;
+            }
+
+            // Lấy tên Customer (nếu có - dùng cho Export)
+            string? customerName = null;
+            if (transaction.CustomerId.HasValue)
+            {
+                var customer = await _userRepository.GetByIdAsync(transaction.CustomerId.Value);
+                customerName = customer?.FullName;
+            }
+
+            // Lấy tên Supplier (nếu có - dùng cho Import)
+            string? supplierName = null;
+            if (transaction.SupplierId.HasValue)
+            {
+                var supplier = await _supplierRepository.GetByIdAsync(transaction.SupplierId.Value);
+                supplierName = supplier?.SupplierName;
+            }
+
+            var details = transaction.TransactionDetails.Select(td => new TransactionDetailItemDto
+            {
+                ProductId = td.ProductId,
+                ProductName = td.Product?.ProductName ?? "N/A",
+                Quantity = td.Quantity,
+                UnitPrice = td.UnitPrice,
+                TotalPrice = td.Quantity * td.UnitPrice,
+                TotalWeight = td.Product?.WeightPerUnit.HasValue == true 
+                    ? td.Quantity * td.Product.WeightPerUnit.Value 
+                    : null
+            }).ToList();
+
+            return new TransactionDetailResponseDto
+            {
+                TransactionId = transaction.TransactionId,
+                Type = transaction.Type,
+                Status = transaction.Status?.ToString() ?? "N/A",
+                TransactionDate = transaction.TransactionDate,
+                TransactionCode = transaction.TransactionCode,
+                Note = transaction.Note,
+                TotalWeight = transaction.TotalWeight,
+                TotalCost = transaction.TotalCost,
+                WarehouseId = transaction.WarehouseId,
+                WarehouseName = warehouseName,
+                WarehouseInId = transaction.WarehouseInId,
+                WarehouseInName = warehouseInName,
+                CustomerId = transaction.CustomerId,
+                CustomerName = customerName,
+                SupplierId = transaction.SupplierId,
+                SupplierName = supplierName,
+                PriceListId = transaction.PriceListId,
+                Details = details
+            };
         }
     }
 }
