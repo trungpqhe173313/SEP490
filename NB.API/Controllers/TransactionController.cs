@@ -47,5 +47,59 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<TransactionDetailResponseDto>.Fail(ex.Message));
             }
         }
+
+        /// <summary>
+        /// Lấy tổng khối lượng ĐÃ NHẬP trong khoảng thời gian
+        /// - Tính Status: done(4), checked(8), paidInFull(11), partiallyPaid(12)
+        /// - Bao gồm chi tiết theo từng Supplier
+        /// </summary>
+        [HttpGet("import-weight")]
+        public async Task<IActionResult> GetImportWeight(
+            [FromQuery] DateTime fromDate,
+            [FromQuery] DateTime toDate)
+        {
+            try
+            {
+                if (fromDate > toDate)
+                {
+                    return BadRequest(ApiResponse<ImportWeightSummaryDto>.Fail("fromDate không được lớn hơn toDate"));
+                }
+
+                var result = await _transactionService.GetImportWeightAsync(fromDate, toDate);
+                return Ok(ApiResponse<ImportWeightSummaryDto>.Ok(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy khối lượng nhập từ {FromDate} đến {ToDate}", fromDate, toDate);
+                return BadRequest(ApiResponse<ImportWeightSummaryDto>.Fail(ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Lấy tổng khối lượng ĐÃ XUẤT trong khoảng thời gian
+        /// - Tính Status: done(4), paidInFull(11), partiallyPaid(12)
+        /// - Bao gồm chi tiết theo từng Customer
+        /// </summary>
+        [HttpGet("export-weight")]
+        public async Task<IActionResult> GetExportWeight(
+            [FromQuery] DateTime fromDate,
+            [FromQuery] DateTime toDate)
+        {
+            try
+            {
+                if (fromDate > toDate)
+                {
+                    return BadRequest(ApiResponse<ExportWeightSummaryDto>.Fail("fromDate không được lớn hơn toDate"));
+                }
+
+                var result = await _transactionService.GetExportWeightAsync(fromDate, toDate);
+                return Ok(ApiResponse<ExportWeightSummaryDto>.Ok(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy khối lượng xuất từ {FromDate} đến {ToDate}", fromDate, toDate);
+                return BadRequest(ApiResponse<ExportWeightSummaryDto>.Fail(ex.Message));
+            }
+        }
     }
 }
