@@ -352,13 +352,21 @@ namespace NB.Service.ProductService
             var toDateEnd = toDate.Date.AddDays(1).AddSeconds(-1);
 
             // Query để lấy top 10 sản phẩm bán chạy nhất
+            // Bao gồm các đơn hàng đã hoàn thành hoặc đã thanh toán
+            var validStatuses = new List<int>
+            {
+                (int)TransactionStatus.done,
+                (int)TransactionStatus.paidInFull,
+                (int)TransactionStatus.partiallyPaid
+            };
+
             var topProductsQuery = from detail in _transactionDetailRepository.GetQueryable()
                                    join transaction in _transactionRepository.GetQueryable()
                                        on detail.TransactionId equals transaction.TransactionId
                                    join product in GetQueryable()
                                        on detail.ProductId equals product.ProductId
                                    where transaction.Type == "Export"
-                                      && transaction.Status == (int)TransactionStatus.done
+                                      && validStatuses.Contains((int)transaction.Status)
                                       && transaction.TransactionDate >= fromDate
                                       && transaction.TransactionDate <= toDateEnd
                                    group new { detail, product } by new

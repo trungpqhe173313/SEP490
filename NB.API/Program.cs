@@ -17,7 +17,7 @@ builder.Services.AddCors(options =>
         policy =>
         {
             policy
-                .WithOrigins("http://localhost:5524", "https://localhost:5524", "https://nutribarnapi.io.vn", "http://localhost:3000", "https://localhost:3000") // frontend origin
+                .WithOrigins("http://localhost:5524", "https://nutribarn.io.vn", "https://localhost:5524", "https://nutribarnapi.io.vn", "http://localhost:3000", "https://localhost:3000") // frontend origin
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
@@ -76,7 +76,7 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]!)
         ),
-        ClockSkew = TimeSpan.Zero 
+        ClockSkew = TimeSpan.Zero
     };
 });
 
@@ -111,10 +111,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.UseCors("AllowLocalhost");
 
 app.UseHttpsRedirection();
 
-app.UseCors("AllowLocalhost");
 app.UseAuthentication();
 app.UseAuthorization();
 

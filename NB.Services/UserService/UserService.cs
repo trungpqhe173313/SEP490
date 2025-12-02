@@ -274,12 +274,20 @@ namespace NB.Service.UserService
             // Tính toán ngày kết thúc (bao gồm cả ngày cuối cùng)
             var toDateEnd = toDate.Date.AddDays(1).AddSeconds(-1);
 
+            // Bao gồm các đơn hàng đã hoàn thành hoặc đã thanh toán
+            var validStatuses = new List<int>
+            {
+                (int)TransactionStatus.done,
+                (int)TransactionStatus.paidInFull,
+                (int)TransactionStatus.partiallyPaid
+            };
+
             // Query để lấy top 10 khách hàng mua hàng nhiều nhất
             var topCustomersQuery = from transaction in _transactionRepository.GetQueryable()
                                    join user in GetQueryable()
                                        on transaction.CustomerId equals user.UserId
                                    where transaction.Type == "Export"
-                                      && transaction.Status == (int)TransactionStatus.done
+                                      && validStatuses.Contains((int)transaction.Status)
                                       && transaction.TransactionDate >= fromDate
                                       && transaction.TransactionDate <= toDateEnd
                                       && transaction.CustomerId.HasValue
@@ -317,12 +325,20 @@ namespace NB.Service.UserService
         {
             var toDateEnd = toDate.Date.AddDays(1).AddSeconds(-1);
 
+            // Bao gồm các đơn hàng đã hoàn thành hoặc đã thanh toán
+            var validStatuses = new List<int>
+            {
+                (int)TransactionStatus.done,
+                (int)TransactionStatus.paidInFull,
+                (int)TransactionStatus.partiallyPaid
+            };
+
             var query = from transaction in _transactionRepository.GetQueryable()
                         join user in GetQueryable()
                         on transaction.CustomerId equals user.UserId
                         where
                             transaction.Type.Equals("Export")
-                            && transaction.Status == (int)TransactionStatus.done
+                            && validStatuses.Contains((int)transaction.Status)
                             && transaction.CustomerId == userId
                             && transaction.TransactionDate >= fromDate
                             && transaction.TransactionDate <= toDateEnd
@@ -347,7 +363,23 @@ namespace NB.Service.UserService
                             AverageOrderValue = grouped.Average(x => x.transaction.TotalCost ?? 0)
                         };
 
-            var result = await query.FirstAsync();
+            var result = await query.FirstOrDefaultAsync();
+            if (result == null)
+            {
+                // Trả về DTO với giá trị mặc định nếu không tìm thấy
+                var user = await GetByIdAsync(userId);
+                return new TopCustomerDto
+                {
+                    UserId = userId,
+                    FullName = user?.FullName ?? string.Empty,
+                    Email = user?.Email ?? string.Empty,
+                    Phone = user?.Phone ?? string.Empty,
+                    Image = user?.Image,
+                    TotalSpent = 0,
+                    NumberOfOrders = 0,
+                    AverageOrderValue = 0
+                };
+            }
             return result;
         }
     }
