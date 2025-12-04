@@ -18,8 +18,9 @@ namespace NB.Service.Core.Forms
         /// Tạo file PDF cho phiếu giao dịch
         /// </summary>
         /// <param name="transaction">Thông tin giao dịch</param>
+        /// <param name="qrCodeBytes">QR code thanh toán (optional)</param>
         /// <returns>Byte array chứa file PDF</returns>
-        public static byte[] GenerateTransactionPdf(TransactionPrintVM transaction)
+        public static byte[] GenerateTransactionPdf(TransactionPrintVM transaction, byte[]? qrCodeBytes = null)
         {
             var document = Document.Create(container =>
             {
@@ -98,6 +99,13 @@ namespace NB.Service.Core.Forms
 
                             // Tổng cộng
                             column.Item().Element(c => ComposeTotalSection(c, transaction));
+
+                            // QR Code thanh toán
+                            if (qrCodeBytes != null && qrCodeBytes.Length > 0)
+                            {
+                                column.Item().PaddingTop(15);
+                                column.Item().Element(c => ComposeQRCodeSection(c, qrCodeBytes));
+                            }
                         });
 
                     // Footer
@@ -249,6 +257,30 @@ namespace NB.Service.Core.Forms
                         (transaction.TotalCost ?? 0).ToString("N0", new CultureInfo("vi-VN")))
                         .Bold().FontSize(12);
                 });
+            });
+        }
+
+        private static void ComposeQRCodeSection(IContainer container, byte[] qrCodeBytes)
+        {
+            container.Column(column =>
+            {
+                // Tiêu đề QR
+                column.Item().AlignCenter().Text("Quét mã QR để thanh toán")
+                    .FontSize(11)
+                    .Bold();
+
+                column.Item().PaddingTop(5);
+
+                // QR Code image
+                column.Item().AlignCenter().Width(150).Height(150).Image(qrCodeBytes);
+
+                column.Item().PaddingTop(5);
+
+                // Thông tin thanh toán
+                column.Item().AlignCenter().Text("STK: 1077909999 - Vietcombank")
+                    .FontSize(9);
+                column.Item().AlignCenter().Text("Chủ TK: Công ty TNHH TM DV Quang Thành")
+                    .FontSize(9);
             });
         }
     }

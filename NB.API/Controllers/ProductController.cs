@@ -632,14 +632,33 @@ namespace NB.API.Controllers
                             return BadRequest(ApiResponse<ProductImportResultVM>.Fail("Không tìm thấy sheet 'Nhập sản phẩm'", 400));
                         }
 
+                        // Tìm dòng cuối cùng có dữ liệu bằng cách kiểm tra cột ProductCode (cột C)
+                        // Bắt đầu từ dòng 3 (dòng đầu tiên có dữ liệu sản phẩm)
+                        int lastRowWithData = 2; // Khởi tạo là 2 (trước dòng dữ liệu đầu tiên)
+
+                        // Tìm dòng cuối cùng có ProductCode (cột 3)
+                        int maxRowToCheck = mainSheet.Dimension?.Rows ?? 1000; // Giới hạn tối đa 1000 dòng để tránh vòng lặp vô hạn
+                        for (int checkRow = 3; checkRow <= maxRowToCheck; checkRow++)
+                        {
+                            var productCodeCheck = mainSheet.Cells[checkRow, 3].Value?.ToString()?.Trim();
+                            if (!string.IsNullOrWhiteSpace(productCodeCheck))
+                            {
+                                lastRowWithData = checkRow;
+                            }
+                            else
+                            {
+                                // Nếu gặp dòng rỗng, dừng kiểm tra (giả định không có dữ liệu phía sau)
+                                break;
+                            }
+                        }
+
                         // Kiểm tra có dữ liệu không
-                        var rowCount = mainSheet.Dimension?.Rows ?? 0;
-                        if (rowCount < 3)
+                        if (lastRowWithData < 3)
                         {
                             return BadRequest(ApiResponse<ProductImportResultVM>.Fail("Sheet 'Nhập sản phẩm' không có dữ liệu", 400));
                         }
 
-                        result.TotalRows = rowCount - 2; // Trừ header và description
+                        result.TotalRows = lastRowWithData - 2; // Trừ 2 dòng header
 
                         // Class để chứa dữ liệu sản phẩm đã validate
                         var validatedProducts = new List<(
@@ -655,8 +674,8 @@ namespace NB.API.Controllers
                             string? description
                         )>();
 
-                        //Vallidate sản phẩm (từ dòng 3)
-                        for (int row = 3; row <= rowCount; row++)
+                        //Vallidate sản phẩm (từ dòng 3 đến dòng cuối cùng có dữ liệu)
+                        for (int row = 3; row <= lastRowWithData; row++)
                         {
                             try
                             {
