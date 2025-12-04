@@ -7,6 +7,7 @@ namespace NB.API.Utils
     public interface ICloudinaryService
     {
         Task<string?> UploadImageAsync(IFormFile file, string folder = "contracts/images");
+        Task<string?> UploadImageFromBytesAsync(byte[] imageBytes, string fileName, string folder = "qrcodes");
         Task<bool> DeleteFileAsync(string publicId);
         Task<string?> UpdateImageAsync(IFormFile newFile, string? oldPublicId, string folder = "contracts/images");
     }
@@ -63,6 +64,41 @@ namespace NB.API.Utils
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error uploading image to Cloudinary");
+                return null;
+            }
+        }
+
+        public async Task<string?> UploadImageFromBytesAsync(byte[] imageBytes, string fileName, string folder = "qrcodes")
+        {
+            if (imageBytes == null || imageBytes.Length == 0)
+                return null;
+
+            try
+            {
+                using var stream = new MemoryStream(imageBytes);
+                var uploadParams = new ImageUploadParams
+                {
+                    File = new FileDescription(fileName, stream),
+                    Folder = folder,
+                    UseFilename = false,
+                    UniqueFilename = true,
+                    Overwrite = false
+                };
+
+                var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+                if (uploadResult.Error != null)
+                {
+                    _logger.LogError($"Cloudinary upload error: {uploadResult.Error.Message}");
+                    return null;
+                }
+
+                // Return full URL (SecureUrl)
+                return uploadResult.SecureUrl.ToString();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading image bytes to Cloudinary");
                 return null;
             }
         }
