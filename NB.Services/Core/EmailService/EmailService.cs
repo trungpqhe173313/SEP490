@@ -162,6 +162,123 @@ namespace NB.Service.Core.EmailService
 
             return await SendEmailAsync(toEmail, subject, htmlBody, true);
         }
+
+        public async Task<bool> SendNewAccountEmailAsync(string toEmail, string username, string password)
+        {
+            var subject = "Tài khoản của bạn đã được tạo - NutriBarn";
+
+            var htmlBody = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        .container {{
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 20px 0;
+        }}
+        .header {{
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }}
+        .content {{
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }}
+        .credentials {{
+            background-color: #f0f8ff;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 15px 0;
+        }}
+        .credentials-item {{
+            margin: 10px 0;
+        }}
+        .credentials-label {{
+            font-weight: bold;
+            color: #555;
+        }}
+        .credentials-value {{
+            font-size: 16px;
+            color: #000;
+            margin-left: 10px;
+        }}
+        .warning {{
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin: 15px 0;
+        }}
+        .footer {{
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h1>Chào mừng đến với NutriBarn!</h1>
+        </div>
+        <div class='content'>
+            <p>Xin chào,</p>
+            <p>Tài khoản của bạn đã được tạo thành công trên hệ thống NutriBarn. Dưới đây là thông tin đăng nhập của bạn:</p>
+
+            <div class='credentials'>
+                <div class='credentials-item'>
+                    <span class='credentials-label'>Username:</span>
+                    <span class='credentials-value'>{username}</span>
+                </div>
+                <div class='credentials-item'>
+                    <span class='credentials-label'>Email:</span>
+                    <span class='credentials-value'>{toEmail}</span>
+                </div>
+                <div class='credentials-item'>
+                    <span class='credentials-label'>Mật khẩu:</span>
+                    <span class='credentials-value'>{password}</span>
+                </div>
+            </div>
+
+            <div class='warning'>
+                <strong>⚠️ Quan trọng:</strong>
+                <ul>
+                    <li>Vui lòng <strong>đổi mật khẩu</strong> ngay sau lần đăng nhập đầu tiên để bảo mật tài khoản</li>
+                    <li>Không chia sẻ thông tin đăng nhập với bất kỳ ai</li>
+                    <li>Giữ mật khẩu của bạn ở nơi an toàn</li>
+                </ul>
+            </div>
+
+            <p>Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với chúng tôi.</p>
+        </div>
+
+        <div class='footer'>
+            <p>Trân trọng,<br>Đội ngũ NutriBarn</p>
+            <p>Email này được gửi tự động, vui lòng không trả lời email này.</p>
+        </div>
+    </div>
+</body>
+</html>";
+
+            return await SendEmailAsync(toEmail, subject, htmlBody, true);
+        }
     }
 }
 
