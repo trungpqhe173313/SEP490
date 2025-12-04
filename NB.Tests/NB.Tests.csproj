@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NB.Services\NB.Service.csproj" />
+    <ProjectReference Include="..\NB.API\NB.API.csproj" />
   </ItemGroup>
 
 </Project>
