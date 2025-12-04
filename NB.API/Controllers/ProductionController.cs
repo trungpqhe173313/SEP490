@@ -26,6 +26,8 @@ namespace NB.API.Controllers
     [Route("api/production")]
     public class ProductionController : Controller
     {
+        private const int RawMaterialWarehouseId = 2; // Kho nguyên liệu mặc định
+
         private readonly IMapper _mapper;
         private readonly ILogger<ProductionController> _logger;
         private readonly ICloudinaryService _cloudinaryService;
@@ -162,7 +164,7 @@ namespace NB.API.Controllers
                     ProductionId = entityProductionOrder.Id,
                     ProductId = po.MaterialProductId,
                     Quantity = po.MaterialQuantity,
-                    WarehouseId = 2, // Mặc định kho nguyên liệu là 2
+                    WarehouseId = RawMaterialWarehouseId, // Mặc định kho nguyên liệu là 2
                     TotalWeight = (productMaterioalCheck.WeightPerUnit * po.MaterialQuantity) ?? 0
                 };
                 var entityMaterial = _mapper.Map<MaterialCreateVM, Material>(entityMaterialUsage);
@@ -216,7 +218,7 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<string>.Fail("Đơn sản xuất không có nguyên liệu", 400));
                 }
 
-                const int rawMaterialWarehouseId = 2; // Kho nguyên liệu mặc định
+                const int rawMaterialWarehouseId = RawMaterialWarehouseId; // Kho nguyên liệu mặc định
                 var inventoryUpdates = new Dictionary<int, Inventory>();
                 var stockBatchUpdates = new Dictionary<int, StockBatch>();
 
@@ -666,6 +668,38 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi lấy dữ liệu đơn sản xuất");
                 return BadRequest(ApiResponse<FullProductionOrderVM>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+            }
+        }
+
+        /// <summary>
+        /// Lấy số lượng sản phẩm tồn kho trong kho nguyên liệu (warehouseId = 2)
+        /// </summary>
+        /// <param name="productId">ID sản phẩm</param>
+        /// <returns>Số lượng tồn kho của sản phẩm trong kho nguyên liệu</returns>
+        [HttpPost("GetRawMaterialInventoryQuantity")]
+        public async Task<IActionResult> GetRawMaterialInventoryQuantity([FromBody] ProductIdRequest request)
+        {
+            try
+            {
+                if (request == null || request.ProductId <= 0)
+                {
+                    return BadRequest(ApiResponse<int>.Fail("ID sản phẩm không hợp lệ", 400));
+                }
+
+                // Kiểm tra sản phẩm có tồn tại
+                var productExists = await _productService.GetByIdAsync(request.ProductId);
+                if (productExists == null)
+                {
+                    return NotFound(ApiResponse<int>.Fail("Sản phẩm không tồn tại", 404));
+                }
+
+                var quantity = await _inventoryService.GetInventoryQuantity(RawMaterialWarehouseId, request.ProductId);
+                return Ok(ApiResponse<int>.Ok(quantity));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy số lượng tồn kho nguyên liệu cho sản phẩm {ProductId}", request?.ProductId);
+                return BadRequest(ApiResponse<int>.Fail("Có lỗi xảy ra khi lấy số lượng tồn kho: " + ex.Message));
             }
         }
 
