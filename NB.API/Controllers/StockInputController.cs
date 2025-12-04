@@ -370,7 +370,11 @@ namespace NB.API.Controllers
                     {
                         return BadRequest(ApiResponse<object>.Fail($"Số lượng sản phẩm với ID: {product.ProductId} phải lớn hơn 0.", 400));
                     }
-                    var existProduct = await _productService.GetById(product.ProductId);
+                    if(product.UnitPrice <= 0)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail($"Đơn giá sản phẩm với ID: {product.ProductId} phải lớn hơn 0.", 400));
+                }
+                var existProduct = await _productService.GetById(product.ProductId);
                     if (existProduct == null)
                     {
                         return NotFound(ApiResponse<object>.Fail($"Không tìm thấy sản phẩm với ID: {product.ProductId}", 404));
