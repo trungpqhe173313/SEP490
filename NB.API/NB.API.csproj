@@ -30,4 +30,6 @@
     <ProjectReference Include="..\NB.Services\NB.Service.csproj" />
   </ItemGroup>
 
+  <ProjectExtensions><VisualStudio><UserProperties appsettings_1json__JsonSchema="https://www.schemastore.org/aio-connector-metadata-7.0-preview.json" /></VisualStudio></ProjectExtensions>
+
 </Project>
