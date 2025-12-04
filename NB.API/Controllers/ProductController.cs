@@ -647,7 +647,7 @@ namespace NB.API.Controllers
                             }
                             else
                             {
-                                // Nếu gặp dòng rỗng, dừng kiểm tra (giả định không có dữ liệu phía sau)
+                                // Dừng ở dòng rỗng đầu tiên
                                 break;
                             }
                         }
