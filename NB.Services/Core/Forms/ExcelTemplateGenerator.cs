@@ -511,16 +511,21 @@ namespace NB.Service.Core.Forms
 
                 instructionSheet.Cells["A25"].Value = "5. Lưu ý quan trọng:";
                 instructionSheet.Cells["A25"].Style.Font.Bold = true;
-                instructionSheet.Cells["A26"].Value = "   - Tất cả sản phẩm phải hợp lệ mới được import";
-                instructionSheet.Cells["A27"].Value = "   - Nếu có 1 sản phẩm lỗi, toàn bộ file sẽ bị hủy (rollback)";
-                instructionSheet.Cells["A28"].Value = "   - Tên nhà cung cấp và danh mục phải chính xác (có phân biệt hoa thường)";
-                instructionSheet.Cells["A29"].Value = "   - ProductCode và ProductName không được trùng với sản phẩm đã có";
-                instructionSheet.Cells["A30"].Value = "   - Các dòng màu vàng là dữ liệu mẫu, có thể xóa và thay bằng dữ liệu thực";
-                instructionSheet.Cells["A31"].Value = "   - File chỉ chấp nhận định dạng .xlsx hoặc .xls";
-                instructionSheet.Cells["A32"].Value = "   - Kích thước file tối đa: 10MB";
+                instructionSheet.Cells["A26"].Value = "   - Không được cách dòng: Tất cả các dòng sản phẩm phải liền kề nhau (tính từ dòng 3 trở đi)";
+                instructionSheet.Cells["A26"].Style.Font.Bold = true;
+                instructionSheet.Cells["A26"].Style.Font.Color.SetColor(Color.Red);
+                instructionSheet.Cells["A27"].Value = "   - Nếu có dòng trống giữa các sản phẩm, hệ thống sẽ dừng đọc và bỏ qua các sản phẩm phía sau";
+                instructionSheet.Cells["A27"].Style.Font.Color.SetColor(Color.Red);
+                instructionSheet.Cells["A28"].Value = "   - Tất cả sản phẩm phải hợp lệ mới được import";
+                instructionSheet.Cells["A29"].Value = "   - Nếu có 1 sản phẩm lỗi, toàn bộ file sẽ bị hủy (rollback)";
+                instructionSheet.Cells["A30"].Value = "   - Tên nhà cung cấp và danh mục phải chính xác (có phân biệt hoa thường)";
+                instructionSheet.Cells["A31"].Value = "   - ProductCode và ProductName không được trùng với sản phẩm đã có";
+                instructionSheet.Cells["A32"].Value = "   - Các dòng màu vàng là dữ liệu mẫu, có thể xóa và thay bằng dữ liệu thực";
+                instructionSheet.Cells["A33"].Value = "   - File chỉ chấp nhận định dạng .xlsx hoặc .xls";
+                instructionSheet.Cells["A34"].Value = "   - Kích thước file tối đa: 10MB";
 
                 instructionSheet.Column(1).Width = 90;
-                instructionSheet.Cells["A1:A32"].Style.WrapText = true;
+                instructionSheet.Cells["A1:A34"].Style.WrapText = true;
 
                 package.Save();
             }
