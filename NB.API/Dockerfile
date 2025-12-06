@@ -42,6 +42,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 EXPOSE 5224
 
+# ----------------------------------------------------
+RUN apt-get update && apt-get install -y tzdata
+ENV TZ=Asia/Ho_Chi_Minh
+# ----------------------------------------------------
+
 # Copy published files
 COPY --from=publish /app/publish .
 
