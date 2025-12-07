@@ -194,14 +194,17 @@ namespace NB.API.Controllers
         {
             try
             {
+                // Kho tổng (mặc định Id = 1)
+                int mainWarehouseId = 1;
+                
                 //mặc định lấy available
                 search.IsAvailable = true;
                 //lay ra danh sach cac san pham co san
                 var listProductAvailale = await _productService.GetData(search);
                 //lay ra danh sach ProductId
                 List<int> listProductId = listProductAvailale.Items.Select(p => p.ProductId).ToList();
-                //lay ra danh sach inventory de lay so luong va gia trung binh cua san pham
-                var listInventory = await _inventoryService.GetByProductIds(listProductId);
+                //lay ra danh sach inventory de lay so luong va gia trung binh cua san pham trong kho tổng
+                var listInventory = await _inventoryService.GetByWarehouseAndProductIds(mainWarehouseId, listProductId);
                 //gắn averageCost và quantity cho product
                 foreach(var p in listProductAvailale.Items)
                 {

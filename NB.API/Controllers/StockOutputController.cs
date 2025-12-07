@@ -1124,6 +1124,33 @@ namespace NB.API.Controllers
             }
         }
 
+        [HttpPut("UpdateToCancelStatus/{transactionId}")]
+        public async Task<IActionResult> UpdateToCancelStatus(int transactionId)
+        {
+            var transaction = await _transactionService.GetByTransactionId(transactionId);
+            if (transaction == null)
+            {
+                return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));
+            }
+            if (transaction.Status != (int)TransactionStatus.draft)
+            {
+                return BadRequest(ApiResponse<TransactionDto>.Fail("Đơn hàng không trong trạng thái nháp", 404));
+            }
+            try
+            {
+                //cap nhat trang thai cho don hang
+                transaction.Status = (int)TransactionStatus.delivering;
+                await _transactionService.UpdateAsync(transaction);
+                // 6️ Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
+                return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái đơn hàng");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"));
+            }
+        }
+
         /// <summary>
         /// Chuyển trạng thái đơn hàng sang thanh toán tất
         /// </summary>
