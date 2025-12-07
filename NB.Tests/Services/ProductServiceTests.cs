@@ -22,6 +22,8 @@ namespace NB.Tests.Services
         private readonly Mock<IRepository<Supplier>> _supplierRepositoryMock;
         private readonly Mock<IRepository<Category>> _categoryRepositoryMock;
         private readonly Mock<IRepository<Inventory>> _inventoryRepositoryMock;
+        private readonly Mock<IRepository<Transaction>> _transactionRepositoryMock;
+        private readonly Mock<IRepository<TransactionDetail>> _transactionDetailRepositoryMock;
         private readonly ProductService _productService;
 
         public ProductServiceTests()
@@ -30,11 +32,15 @@ namespace NB.Tests.Services
             _supplierRepositoryMock = new Mock<IRepository<Supplier>>();
             _categoryRepositoryMock = new Mock<IRepository<Category>>();
             _inventoryRepositoryMock = new Mock<IRepository<Inventory>>();
+            _transactionRepositoryMock = new Mock<IRepository<Transaction>>();
+            _transactionDetailRepositoryMock = new Mock<IRepository<TransactionDetail>>();
             _productService = new ProductService(
                 _productRepositoryMock.Object,
                 _supplierRepositoryMock.Object,
                 _categoryRepositoryMock.Object,
-                _inventoryRepositoryMock.Object);
+                _inventoryRepositoryMock.Object,
+                _transactionRepositoryMock.Object,
+                _transactionDetailRepositoryMock.Object);
         }
         // GetById Tests
         private IQueryable<Product> GetTestProducts()
@@ -47,7 +53,7 @@ namespace NB.Tests.Services
                 new Product {
                     ProductId = 1,
                     ProductName = "Product 1",
-                    Code = "P001",
+                    ProductCode = "P001",
                     CategoryId = 1,
                     SupplierId = 1,
                     IsAvailable = true,
@@ -55,8 +61,8 @@ namespace NB.Tests.Services
                     Supplier = supplier,
                     Category = category
                 },
-                new Product { ProductId = 2, ProductName = "Product 2", Code = "P002", CategoryId = 2, SupplierId = 1, IsAvailable = false, CreatedAt = DateTime.UtcNow.AddDays(-1) },
-                new Product { ProductId = 3, ProductName = "Another Product", Code = "P003", CategoryId = 1, SupplierId = 2, IsAvailable = true, CreatedAt = DateTime.UtcNow }
+                new Product { ProductId = 2, ProductName = "Product 2", ProductCode = "P002", CategoryId = 2, SupplierId = 1, IsAvailable = false, CreatedAt = DateTime.UtcNow.AddDays(-1) },
+                new Product { ProductId = 3, ProductName = "Another Product", ProductCode = "P003", CategoryId = 1, SupplierId = 2, IsAvailable = true, CreatedAt = DateTime.UtcNow }
             }.AsQueryable();
         }
 
@@ -235,7 +241,7 @@ namespace NB.Tests.Services
 
             // Assert
             result.Should().NotBeNull();
-            result.Code.Should().Be("P001");
+            result.ProductCode.Should().Be("P001");
         }
 
         [Theory]

@@ -1,13 +1,18 @@
+﻿# ================================
 # Stage 1: Build
+# ================================
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy solution and project files
+# Copy solution
 COPY NutriBarn.sln ./
+
+# Copy all csproj files (ĐÚNG TÊN FILE THỰC TẾ)
 COPY NB.Model/NB.Model.csproj NB.Model/
 COPY NB.Repository/NB.Repository.csproj NB.Repository/
 COPY NB.Services/NB.Service.csproj NB.Services/
 COPY NB.API/NB.API.csproj NB.API/
+COPY NB.Tests/NB.Tests.csproj NB.Tests/
 
 # Restore dependencies
 RUN dotnet restore NutriBarn.sln
@@ -17,20 +22,30 @@ COPY NB.Model NB.Model/
 COPY NB.Repository NB.Repository/
 COPY NB.Services NB.Services/
 COPY NB.API NB.API/
+COPY NB.Tests NB.Tests/
 
-# Build the solution
+# Build
 WORKDIR /src/NB.API
 RUN dotnet build -c Release -o /app/build
 
+# ================================
 # Stage 2: Publish
+# ================================
 FROM build AS publish
 WORKDIR /src/NB.API
 RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 
+# ================================
 # Stage 3: Runtime
+# ================================
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 EXPOSE 5224
+
+# ----------------------------------------------------
+RUN apt-get update && apt-get install -y tzdata
+ENV TZ=Asia/Ho_Chi_Minh
+# ----------------------------------------------------
 
 # Copy published files
 COPY --from=publish /app/publish .

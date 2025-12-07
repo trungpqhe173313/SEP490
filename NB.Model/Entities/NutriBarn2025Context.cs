@@ -25,6 +25,8 @@ public partial class NutriBarn2025Context : DbContext
 
     public virtual DbSet<Inventory> Inventories { get; set; }
 
+    public virtual DbSet<IoTdevice> IoTdevices { get; set; }
+
     public virtual DbSet<Job> Jobs { get; set; }
 
     public virtual DbSet<Material> Materials { get; set; }
@@ -36,6 +38,8 @@ public partial class NutriBarn2025Context : DbContext
     public virtual DbSet<PriceListDetail> PriceListDetails { get; set; }
 
     public virtual DbSet<Product> Products { get; set; }
+
+    public virtual DbSet<ProductionLog> ProductionLogs { get; set; }
 
     public virtual DbSet<ProductionOrder> ProductionOrders { get; set; }
 
@@ -210,6 +214,39 @@ public partial class NutriBarn2025Context : DbContext
                 .HasConstraintName("FK__Inventory__Wareh__1EA48E88");
         });
 
+        modelBuilder.Entity<IoTdevice>(entity =>
+        {
+            entity.HasKey(e => e.DeviceId).HasName("PK__IoTDevic__49E12331B5D62A23");
+
+            entity.ToTable("IoTDevices");
+
+            entity.HasIndex(e => e.DeviceCode, "UQ__IoTDevic__AFFB3E95E14FE690").IsUnique();
+
+            entity.Property(e => e.DeviceId).HasColumnName("DeviceID");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.DeviceCode).HasMaxLength(50);
+            entity.Property(e => e.DeviceName).HasMaxLength(100);
+            entity.Property(e => e.Ipaddress)
+                .HasMaxLength(15)
+                .HasColumnName("IPAddress");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.LastSync).HasColumnType("datetime");
+            entity.Property(e => e.ProductionOrderId).HasColumnName("ProductionOrderID");
+            entity.Property(e => e.RemainingStock).HasColumnType("decimal(10, 3)");
+            entity.Property(e => e.WarehouseId).HasColumnName("WarehouseID");
+
+            entity.HasOne(d => d.ProductionOrder).WithMany(p => p.IoTdevices)
+                .HasForeignKey(d => d.ProductionOrderId)
+                .HasConstraintName("FK_IoTDevices_ProductionOrder");
+
+            entity.HasOne(d => d.Warehouse).WithMany(p => p.IoTdevices)
+                .HasForeignKey(d => d.WarehouseId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_IoTDevices_Warehouse");
+        });
+
         modelBuilder.Entity<Job>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Job__3214EC27018F5469");
@@ -372,6 +409,39 @@ public partial class NutriBarn2025Context : DbContext
                 .HasForeignKey(d => d.SupplierId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Product__Supplie__2645B050");
+        });
+
+        modelBuilder.Entity<ProductionLog>(entity =>
+        {
+            entity.HasKey(e => e.LogId).HasName("PK__Producti__5E5499A89F290EB3");
+
+            entity.Property(e => e.LogId).HasColumnName("LogID");
+            entity.Property(e => e.DeviceCode).HasMaxLength(50);
+            entity.Property(e => e.ExportedWeight).HasColumnType("decimal(10, 3)");
+            entity.Property(e => e.Note).HasMaxLength(200);
+            entity.Property(e => e.ProductId).HasColumnName("ProductID");
+            entity.Property(e => e.ProductionOrderId).HasColumnName("ProductionOrderID");
+            entity.Property(e => e.RemainingWeight).HasColumnType("decimal(10, 3)");
+            entity.Property(e => e.Timestamp)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.TotalProcessed).HasColumnType("decimal(10, 3)");
+
+            entity.HasOne(d => d.DeviceCodeNavigation).WithMany(p => p.ProductionLogs)
+                .HasPrincipalKey(p => p.DeviceCode)
+                .HasForeignKey(d => d.DeviceCode)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ProductionLogs_Device");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.ProductionLogs)
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ProductionLogs_Product");
+
+            entity.HasOne(d => d.ProductionOrder).WithMany(p => p.ProductionLogs)
+                .HasForeignKey(d => d.ProductionOrderId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ProductionLogs_ProductionOrder");
         });
 
         modelBuilder.Entity<ProductionOrder>(entity =>
