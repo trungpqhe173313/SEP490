@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 
 namespace NB.Service.UserService.ViewModels
@@ -7,6 +8,10 @@ namespace NB.Service.UserService.ViewModels
         [Required(ErrorMessage = "Username là bắt buộc")]
         [StringLength(50, ErrorMessage = "Username không được vượt quá 50 ký tự")]
         public string Username { get; set; } = null!;
+
+        [Required(ErrorMessage = "Tên người dùng là bắt buộc")]
+        [StringLength(100, ErrorMessage = "Tên người dùng không được vượt quá 100 ký tự")]
+        public string FullName { get; set; } = null;
 
         [Required(ErrorMessage = "Email là bắt buộc")]
         [EmailAddress(ErrorMessage = "Email không hợp lệ")]
@@ -18,6 +23,6 @@ namespace NB.Service.UserService.ViewModels
         [StringLength(20, ErrorMessage = "Số điện thoại không được vượt quá 20 ký tự")]
         public string Phone { get; set; } = null!;
 
-        public string? Image { get; set; }
-    }
+        public IFormFile? Image { get; set; }
+        }
 }

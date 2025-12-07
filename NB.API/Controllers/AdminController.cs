@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using NB.API.Utils;
 using NB.Service.AdminService;
 using NB.Service.AdminService.Dto;
 using NB.Service.Common;
@@ -27,6 +28,7 @@ namespace NB.API.Controllers
         private readonly IUserService _userService;
         private readonly IUserRoleService _userRoleService;
         private readonly IEmailService _emailService;
+        private readonly ICloudinaryService _cloudinaryService;
         private readonly ILogger<AdminController> _logger;
 
         public AdminController(
@@ -35,6 +37,7 @@ namespace NB.API.Controllers
             IUserService userService,
             IUserRoleService userRoleService,
             IEmailService emailService,
+            ICloudinaryService cloudinaryService,
             ILogger<AdminController> logger)
         {
             _adminService = adminService;
@@ -42,6 +45,7 @@ namespace NB.API.Controllers
             _userService = userService;
             _userRoleService = userRoleService;
             _emailService = emailService;
+            _cloudinaryService = cloudinaryService;
             _logger = logger;
         }
 
@@ -97,7 +101,7 @@ namespace NB.API.Controllers
         /// Tạo tài khoản mới cho Customer (chỉ Admin)
         /// </summary>
         [HttpPost("create-customer-account")]
-        public async Task<IActionResult> CreateCustomerAccount([FromBody] CreateCustomerAccountVM model)
+        public async Task<IActionResult> CreateCustomerAccount([FromForm] CreateCustomerAccountVM model)
         {
             if (!ModelState.IsValid)
             {
@@ -126,15 +130,26 @@ namespace NB.API.Controllers
                 // Tạo mật khẩu ngẫu nhiên
                 string generatedPassword = GenerateRandomPassword(12);
 
+                // Upload ảnh lên Cloudinary nếu có
+                string? imageUrl = null;
+                if (model.Image != null)
+                {
+                    imageUrl = await _cloudinaryService.UploadImageAsync(model.Image, "users/images");
+                    if (imageUrl == null)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail("Không thể upload ảnh", 400));
+                    }
+                }
+
                 // Tạo User entity
                 var newUser = new User
                 {
                     Username = model.Username,
                     Email = model.Email,
                     Password = PasswordHasher.HashPassword(generatedPassword), // Hash password đã gen
-                    FullName = model.Username, // Mặc định FullName = Username
+                    FullName = model.FullName ?? model.Username, // Sử dụng FullName từ model, nếu null thì dùng Username
                     Phone = model.Phone,
-                    Image = model.Image,
+                    Image = imageUrl ?? string.Empty, // Lưu relative path từ Cloudinary
                     IsActive = true,
                     CreatedAt = vietnamTime
                 };
