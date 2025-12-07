@@ -114,17 +114,17 @@ namespace NB.API.Controllers
                 var vietnamTime = DateTime.UtcNow.AddHours(7);
 
                 // Validate Username đã tồn tại chưa
-                var existingUsername = await _userService.GetByUsername(model.Username);
+                var existingUsername = await _userService.GetByUsername(model.username);
                 if (existingUsername != null)
                 {
-                    return BadRequest(ApiResponse<object>.Fail($"Username '{model.Username}' đã tồn tại", 400));
+                    return BadRequest(ApiResponse<object>.Fail($"Username '{model.username}' đã tồn tại", 400));
                 }
 
                 // Validate Email đã tồn tại chưa
-                var existingEmail = await _userService.GetByEmail(model.Email);
+                var existingEmail = await _userService.GetByEmail(model.email);
                 if (existingEmail != null)
                 {
-                    return BadRequest(ApiResponse<object>.Fail($"Email '{model.Email}' đã tồn tại", 400));
+                    return BadRequest(ApiResponse<object>.Fail($"Email '{model.email}' đã tồn tại", 400));
                 }
 
                 // Tạo mật khẩu ngẫu nhiên
@@ -132,9 +132,9 @@ namespace NB.API.Controllers
 
                 // Upload ảnh lên Cloudinary nếu có
                 string? imageUrl = null;
-                if (model.Image != null)
+                if (model.image != null)
                 {
-                    imageUrl = await _cloudinaryService.UploadImageAsync(model.Image, "users/images");
+                    imageUrl = await _cloudinaryService.UploadImageAsync(model.image, "users/images");
                     if (imageUrl == null)
                     {
                         return BadRequest(ApiResponse<object>.Fail("Không thể upload ảnh", 400));
@@ -144,11 +144,11 @@ namespace NB.API.Controllers
                 // Tạo User entity
                 var newUser = new User
                 {
-                    Username = model.Username,
-                    Email = model.Email,
+                    Username = model.username,
+                    Email = model.email,
                     Password = PasswordHasher.HashPassword(generatedPassword), // Hash password đã gen
-                    FullName = model.FullName ?? model.Username, // Sử dụng FullName từ model, nếu null thì dùng Username
-                    Phone = model.Phone,
+                    FullName = model.fullName ?? model.username, // Sử dụng FullName từ model, nếu null thì dùng Username
+                    Phone = model.phone,
                     Image = imageUrl ?? string.Empty, // Lưu relative path từ Cloudinary
                     IsActive = true,
                     CreatedAt = vietnamTime
@@ -168,11 +168,11 @@ namespace NB.API.Controllers
                 await _userRoleService.CreateAsync(userRole);
 
                 // Gửi email thông báo cho khách hàng với mật khẩu đã gen
-                bool emailSent = await _emailService.SendNewAccountEmailAsync(model.Email, model.Username, generatedPassword);
+                bool emailSent = await _emailService.SendNewAccountEmailAsync(model.email, model.username, generatedPassword);
 
                 if (!emailSent)
                 {
-                    _logger.LogWarning($"Không thể gửi email cho user {model.Email}. Tài khoản đã được tạo nhưng email thông báo thất bại.");
+                    _logger.LogWarning($"Không thể gửi email cho user {model.email}. Tài khoản đã được tạo nhưng email thông báo thất bại.");
                 }
 
                 // Trả về thông tin user đã tạo (không bao gồm password)
