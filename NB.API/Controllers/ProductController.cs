@@ -355,7 +355,7 @@ namespace NB.API.Controllers
                     WeightPerUnit = model.weightPerUnit,
                     SellingPrice = model.sellingPrice,
                     IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow.AddHours(7)
+                    CreatedAt = DateTime.UtcNow
                 };
                 await _productService.CreateAsync(newProductEntity);
 
@@ -537,7 +537,7 @@ namespace NB.API.Controllers
                 // Update Product nếu có thay đổi
                 if (isProductChanged)
                 {
-                    productEntity.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                    productEntity.UpdatedAt = DateTime.UtcNow;
                     await _productService.UpdateAsync(productEntity);
                 }
 
@@ -868,8 +868,8 @@ namespace NB.API.Controllers
                                 Description = product.description,
                                 ImageUrl = "ImagePath",
                                 IsAvailable = true,
-                                CreatedAt = DateTime.UtcNow.AddHours(7),
-                                UpdatedAt = DateTime.UtcNow.AddHours(7)
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
                             };
 
                             await _productService.CreateAsync(newProduct);
