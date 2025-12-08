@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using NB.Model.Entities;
 using NB.Service.Common;
 using NB.Service.Dto;
@@ -10,6 +11,7 @@ using NB.Service.UserService.ViewModels;
 using NB.Service.UserService;
 using NB.Service.Core.Mapper;
 using NB.API.Utils;
+using NB.Service.Core.EmailService;
 
 namespace NB.API.Controllers
 {
@@ -19,17 +21,19 @@ namespace NB.API.Controllers
         private readonly IUserService _userService;
         private readonly IUserRoleService _userRoleService;
         private readonly IRoleService _roleService;
-        private readonly ILogger<EmployeeController> _logger;
+        private readonly ILogger<CustomerController> _logger;
         private readonly ICloudinaryService _cloudinaryService;
         private readonly IMapper _mapper;
+        private readonly IEmailService _emailService;
         private readonly string roleName = "Customer";
         public CustomerController(
             IUserService userService,
             IUserRoleService userRoleService,
             IRoleService roleService,
             IMapper mapper,
-            ILogger<EmployeeController> logger,
-            ICloudinaryService cloudinaryService)
+            ILogger<CustomerController> logger,
+            ICloudinaryService cloudinaryService,
+            IEmailService emailService)
         {
             _userService = userService;
             _userRoleService = userRoleService;
@@ -37,6 +41,7 @@ namespace NB.API.Controllers
             _mapper = mapper;
             _logger = logger;
             _cloudinaryService = cloudinaryService;
+            _emailService = emailService;
         }
 
         [HttpPost("GetData")]
@@ -139,115 +144,6 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi lấy khách hàng với Id: {Id}", id);
                 return BadRequest(ApiResponse<UserDto>.Fail("Có lỗi xảy ra"));
-            }
-        }
-
-        [HttpPost("CreateCustomer")]
-        public async Task<IActionResult> CreateCustomer([FromForm] UserCreateVM model)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponse<User>.Fail("Dữ liệu không hợp lệ"));
-            }
-
-            //nếu ảnh không null thì kiểm tra định dạng
-            if (model.Image != null)
-            {
-                var imageExtension = Path.GetExtension(model.Image.FileName).ToLowerInvariant();
-                var allowedImageExtensions = new[] { ".png", ".jpg", ".jpeg" };
-
-                if (!allowedImageExtensions.Contains(imageExtension))
-                {
-                    return BadRequest(ApiResponse<object>.Fail(
-                        $"File ảnh phải có định dạng PNG, JPG hoặc JPEG. File hiện tại: {imageExtension}",
-                        400));
-                }
-            }
-
-            string? uploadedImageUrl = null;
-            try
-            {
-                // Validate email và username TRƯỚC khi upload ảnh
-                // Kiểm tra email da ton tai chua
-                if (!string.IsNullOrEmpty(model.Email))
-                {
-                    var existingEmail = await _userService.GetByEmail(model.Email);
-                    if (existingEmail != null)
-                    {
-                        return BadRequest(ApiResponse<User>.Fail("Email đã tồn tại"));
-                    }
-                }
-
-                // Kiểm tra username đã tồn tại chưa
-                var existingUsername = await _userService.GetByUsername(model.Username);
-                if (existingUsername != null)
-                {
-                    return BadRequest(ApiResponse<User>.Fail("Username đã tồn tại"));
-                }
-
-                // Chỉ upload ảnh sau khi đã pass tất cả validation
-                if (model.Image != null)
-                {
-                    uploadedImageUrl = await _cloudinaryService.UploadImageAsync(model.Image);
-                    if (uploadedImageUrl == null)
-                    {
-                        return BadRequest(ApiResponse<object>.Fail("Không thể upload ảnh", 400));
-                    }
-                }
-
-                var entity = _mapper.Map<UserCreateVM, User>(model);
-                entity.Password = "123"; // Mật khẩu mặc định
-                entity.IsActive = true;
-                entity.CreatedAt = DateTime.Now;
-                entity.Image = uploadedImageUrl;
-                await _userService.CreateAsync(entity);
-
-                // Gán role cho nhân viên
-                var role = await _roleService.GetByRoleName(roleName);
-                var entityUserRole = _mapper.Map<UserRoleCreateVM, UserRole>(
-                    new UserRoleCreateVM
-                    {
-                        RoleId = role.RoleId,
-                        UserId = entity.UserId,
-                    }
-                    );
-                entityUserRole.AssignedDate = DateTime.Now;
-                await _userRoleService.CreateAsync(entityUserRole);
-
-                return Ok(ApiResponse<User>.Ok(new User
-                {
-                    UserId = entity.UserId,
-                    FullName = entity.FullName,
-                    Email = entity.Email,
-                    Image = entity.Image,
-                    Username = entity.Username,
-                    Password = entity.Password,
-                    Phone = entity.Phone,
-                    IsActive = entity.IsActive,
-                    CreatedAt = entity.CreatedAt
-                }));
-            }
-            catch (Exception ex)
-            {
-                // Nếu có lỗi sau khi upload ảnh, xóa ảnh đã upload để tránh lãng phí storage
-                if (uploadedImageUrl != null)
-                {
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await _cloudinaryService.DeleteFileAsync(uploadedImageUrl);
-                            _logger.LogInformation($"Đã xóa ảnh không sử dụng: {uploadedImageUrl}");
-                        }
-                        catch (Exception deleteEx)
-                        {
-                            _logger.LogWarning(deleteEx, $"Không thể xóa ảnh đã upload: {uploadedImageUrl}");
-                        }
-                    });
-                }
-
-                _logger.LogError(ex, "Lỗi khi tạo khách hàng");
-                return BadRequest(ApiResponse<User>.Fail("Có lỗi xảy ra khi tạo khách hàng"));
             }
         }
 
@@ -418,6 +314,130 @@ namespace NB.API.Controllers
                 _logger.LogError(ex, "Lỗi khi xóa khách hàng với ID: {id}", id);
                 return BadRequest(ApiResponse<User>.Fail("Có lỗi xảy ra khi xóa khách hàng"));
             }
+        }
+
+        /// <summary>
+        /// Tạo tài khoản mới cho Customer (Manager)
+        /// </summary>
+        [Authorize(Roles = "Manager")]
+        [HttpPost("CreateCustomerAccount")]
+        public async Task<IActionResult> CreateCustomerAccount([FromForm] CreateCustomerAccountVM model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            try
+            {
+                // Lấy giờ Việt Nam (UTC+7)
+                var vietnamTime = DateTime.UtcNow;
+
+                // Validate Username đã tồn tại chưa
+                var existingUsername = await _userService.GetByUsername(model.username);
+                if (existingUsername != null)
+                {
+                    return BadRequest(ApiResponse<object>.Fail($"Username '{model.username}' đã tồn tại", 400));
+                }
+
+                // Validate Email đã tồn tại chưa
+                var existingEmail = await _userService.GetByEmail(model.email);
+                if (existingEmail != null)
+                {
+                    return BadRequest(ApiResponse<object>.Fail($"Email '{model.email}' đã tồn tại", 400));
+                }
+
+                // Tạo mật khẩu ngẫu nhiên
+                string generatedPassword = GenerateRandomPassword(12);
+
+                // Upload ảnh lên Cloudinary nếu có
+                string? imageUrl = null;
+                if (model.image != null)
+                {
+                    imageUrl = await _cloudinaryService.UploadImageAsync(model.image, "users/images");
+                    if (imageUrl == null)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail("Không thể upload ảnh", 400));
+                    }
+                }
+
+                // Tạo User entity
+                var newUser = new User
+                {
+                    Username = model.username,
+                    Email = model.email,
+                    Password = PasswordHasher.HashPassword(generatedPassword), // Hash password đã gen
+                    FullName = model.fullName ?? model.username, // Sử dụng FullName từ model, nếu null thì dùng Username
+                    Phone = model.phone,
+                    Image = imageUrl ?? string.Empty, // Lưu relative path từ Cloudinary
+                    IsActive = true,
+                    CreatedAt = vietnamTime
+                };
+
+                // Tạo User trong database
+                await _userService.CreateAsync(newUser);
+
+                // Sau khi tạo User thành công, tạo UserRole
+                var userRole = new UserRole
+                {
+                    UserId = newUser.UserId,
+                    RoleId = 4, // Customer role
+                    AssignedDate = vietnamTime
+                };
+
+                await _userRoleService.CreateAsync(userRole);
+
+                // Gửi email thông báo cho khách hàng với mật khẩu đã gen
+                bool emailSent = await _emailService.SendNewAccountEmailAsync(model.email, model.username, generatedPassword);
+
+                if (!emailSent)
+                {
+                    _logger.LogWarning($"Không thể gửi email cho user {model.email}. Tài khoản đã được tạo nhưng email thông báo thất bại.");
+                }
+
+                // Trả về thông tin user đã tạo (không bao gồm password)
+                var userDto = await _userService.GetByUserId(newUser.UserId);
+
+                return Ok(ApiResponse<Object>.Ok("Đã tạo tài khoản thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi tạo tài khoản customer");
+                return BadRequest(ApiResponse<object>.Fail($"Có lỗi xảy ra khi tạo tài khoản: {ex.Message}", 400));
+            }
+        }
+
+        private string GenerateRandomPassword(int length = 12)
+        {
+            const string upperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const string lowerCase = "abcdefghijklmnopqrstuvwxyz";
+            const string digits = "0123456789";
+            const string specialChars = "!@#$%^&*";
+            const string allChars = upperCase + lowerCase + digits + specialChars;
+
+            var random = new Random();
+            var password = new char[length];
+
+            // Đảm bảo mật khẩu có ít nhất 1 ký tự từ mỗi loại
+            password[0] = upperCase[random.Next(upperCase.Length)];
+            password[1] = lowerCase[random.Next(lowerCase.Length)];
+            password[2] = digits[random.Next(digits.Length)];
+            password[3] = specialChars[random.Next(specialChars.Length)];
+
+            // Fill phần còn lại với ký tự ngẫu nhiên
+            for (int i = 4; i < length; i++)
+            {
+                password[i] = allChars[random.Next(allChars.Length)];
+            }
+
+            // Shuffle để tránh pattern cố định
+            for (int i = password.Length - 1; i > 0; i--)
+            {
+                int j = random.Next(i + 1);
+                (password[i], password[j]) = (password[j], password[i]);
+            }
+
+            return new string(password);
         }
     }
 }
