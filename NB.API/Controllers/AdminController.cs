@@ -97,11 +97,8 @@ namespace NB.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Tạo tài khoản mới cho Customer (chỉ Admin)
-        /// </summary>
-        [HttpPost("create-customer-account")]
-        public async Task<IActionResult> CreateCustomerAccount([FromForm] CreateCustomerAccountVM model)
+        [HttpPost("create-employee-account")]
+        public async Task<IActionResult> CreateEmployeeAccount([FromForm] CreateCustomerAccountVM model)
         {
             if (!ModelState.IsValid)
             {
@@ -111,7 +108,7 @@ namespace NB.API.Controllers
             try
             {
                 // Lấy giờ Việt Nam (UTC+7)
-                var vietnamTime = DateTime.UtcNow.AddHours(7);
+                var vietnamTime = DateTime.UtcNow;
 
                 // Validate Username đã tồn tại chưa
                 var existingUsername = await _userService.GetByUsername(model.username);
@@ -161,7 +158,7 @@ namespace NB.API.Controllers
                 var userRole = new UserRole
                 {
                     UserId = newUser.UserId,
-                    RoleId = 4, // Customer role
+                    RoleId = 3, // Employee role
                     AssignedDate = vietnamTime
                 };
 
@@ -190,6 +187,7 @@ namespace NB.API.Controllers
         /// <summary>
         /// Tạo mật khẩu ngẫu nhiên an toàn
         /// </summary>
+
         private string GenerateRandomPassword(int length = 12)
         {
             const string upperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
