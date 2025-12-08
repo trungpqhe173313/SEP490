@@ -194,14 +194,17 @@ namespace NB.API.Controllers
         {
             try
             {
+                // Kho tổng (mặc định Id = 1)
+                int mainWarehouseId = 1;
+                
                 //mặc định lấy available
                 search.IsAvailable = true;
                 //lay ra danh sach cac san pham co san
                 var listProductAvailale = await _productService.GetData(search);
                 //lay ra danh sach ProductId
                 List<int> listProductId = listProductAvailale.Items.Select(p => p.ProductId).ToList();
-                //lay ra danh sach inventory de lay so luong va gia trung binh cua san pham
-                var listInventory = await _inventoryService.GetByProductIds(listProductId);
+                //lay ra danh sach inventory de lay so luong va gia trung binh cua san pham trong kho tổng
+                var listInventory = await _inventoryService.GetByWarehouseAndProductIds(mainWarehouseId, listProductId);
                 //gắn averageCost và quantity cho product
                 foreach(var p in listProductAvailale.Items)
                 {
@@ -292,16 +295,22 @@ namespace NB.API.Controllers
             {
                 return BadRequest(ApiResponse<object>.Fail("Danh mục không được để trống.", 400));
             }
+
             // Validate Code và kiểm tra trùng
             var code = model.code?.Trim().Replace(" ", "");
+
+            // Nếu code is null/empty, tự động generate theo format NSPxxxxxx
             if (string.IsNullOrWhiteSpace(code))
             {
-                return BadRequest(ApiResponse<object>.Fail("Mã sản phẩm không được để trống.", 400));
+                code = await GenerateProductCode();
             }
-
-            if (await _productService.GetByCode(code) != null)
+            else
             {
-                return BadRequest(ApiResponse<object>.Fail($"Mã sản phẩm {model.code} đã tồn tại.", 400));
+                // Nếu có code, kiểm tra trùng
+                if (await _productService.GetByCode(code) != null)
+                {
+                    return BadRequest(ApiResponse<object>.Fail($"Mã sản phẩm {code} đã tồn tại.", 400));
+                }
             }
 
             // Validate ProductName uniqueness
@@ -674,6 +683,25 @@ namespace NB.API.Controllers
                             string? description
                         )>();
 
+                        // Lấy ProductCode lớn nhất để làm base cho auto-generate
+                        const string prefix = "NSP";
+                        const int numberLength = 6;
+                        var allProducts = await _productService.GetData();
+                        var maxNumber = allProducts
+                            .Where(p => !string.IsNullOrEmpty(p.ProductCode) &&
+                                       p.ProductCode.StartsWith(prefix) &&
+                                       p.ProductCode.Length == prefix.Length + numberLength)
+                            .Select(p =>
+                            {
+                                var numberPart = p.ProductCode.Substring(prefix.Length);
+                                return int.TryParse(numberPart, out int num) ? num : 0;
+                            })
+                            .DefaultIfEmpty(0)
+                            .Max();
+
+                        var nextAutoNumber = maxNumber + 1;
+                        var generatedCodesInBatch = new HashSet<string>(); // Track codes đã generate trong batch này
+
                         //Vallidate sản phẩm (từ dòng 3 đến dòng cuối cùng có dữ liệu)
                         for (int row = 3; row <= lastRowWithData; row++)
                         {
@@ -705,7 +733,10 @@ namespace NB.API.Controllers
                                 //Validate ProductCode
                                 if (string.IsNullOrWhiteSpace(productCode))
                                 {
-                                    rowErrors.Add($"Dòng {row}: Mã sản phẩm không được để trống");
+                                    // Tự động generate ProductCode theo format NSPxxxxxx
+                                    productCode = $"{prefix}{nextAutoNumber:D6}";
+                                    generatedCodesInBatch.Add(productCode);
+                                    nextAutoNumber++;
                                 }
                                 else
                                 {
@@ -717,6 +748,16 @@ namespace NB.API.Controllers
                                     if (existingProduct != null)
                                     {
                                         rowErrors.Add($"Dòng {row}: Mã sản phẩm '{productCode}' đã tồn tại trong hệ thống");
+                                    }
+
+                                    // Kiểm tra trùng trong batch hiện tại (các dòng đã xử lý trước đó)
+                                    if (generatedCodesInBatch.Contains(productCode))
+                                    {
+                                        rowErrors.Add($"Dòng {row}: Mã sản phẩm '{productCode}' bị trùng với dòng khác trong file Excel");
+                                    }
+                                    else
+                                    {
+                                        generatedCodesInBatch.Add(productCode);
                                     }
                                 }
 
@@ -882,6 +923,37 @@ namespace NB.API.Controllers
                 _logger.LogError(ex, "Lỗi khi tạo template Excel");
                 return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi tạo template", 400));
             }
+        }
+
+        /// <summary>
+        /// Tự động generate ProductCode theo format NSPxxxxxx
+        /// Tìm ProductCode lớn nhất có format NSPxxxxxx và tăng lên 1
+        /// </summary>
+        /// <returns>ProductCode mới với format NSPxxxxxx (ví dụ: NSP000001)</returns>
+        private async Task<string> GenerateProductCode()
+        {
+            const string prefix = "NSP";
+            const int numberLength = 6;
+
+            // Lấy tất cả products từ DB
+            var allProducts = await _productService.GetData();
+
+            // Filter ra các ProductCode có format NSPxxxxxx và parse số
+            var maxNumber = allProducts
+                .Where(p => !string.IsNullOrEmpty(p.ProductCode) &&
+                           p.ProductCode.StartsWith(prefix) &&
+                           p.ProductCode.Length == prefix.Length + numberLength)
+                .Select(p =>
+                {
+                    var numberPart = p.ProductCode.Substring(prefix.Length);
+                    return int.TryParse(numberPart, out int num) ? num : 0;
+                })
+                .DefaultIfEmpty(0)
+                .Max();
+
+            // Tăng lên 1 và format lại thành NSPxxxxxx
+            var nextNumber = maxNumber + 1;
+            return $"{prefix}{nextNumber:D6}"; // D6 = 6 chữ số với leading zeros
         }
     }
 
