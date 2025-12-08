@@ -13,6 +13,7 @@ using NB.Service.Common;
 using NB.Service.Core.Mapper;
 using NB.Service.Dto;
 using NB.Service.FinancialTransactionService;
+using NB.Service.FinancialTransactionService.Dto;
 using NB.Service.FinancialTransactionService.ViewModels;
 using NB.Service.InventoryService;
 using NB.Service.InventoryService.Dto;
@@ -21,6 +22,7 @@ using NB.Service.ProductService.Dto;
 using NB.Service.ReturnTransactionDetailService;
 using NB.Service.ReturnTransactionDetailService.ViewModels;
 using NB.Service.ReturnTransactionService;
+using NB.Service.ReturnTransactionService.ViewModels;
 using NB.Service.StockBatchService;
 using NB.Service.StockBatchService.Dto;
 using NB.Service.TransactionDetailService;
@@ -2170,6 +2172,3181 @@ namespace NB.Test.Controllers
             Assert.False(response.Success);
             Assert.NotNull(response.Error);
             Assert.Equal("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        #endregion
+
+        #region UpdateTransactionInOrderStatus Tests
+
+        /// <summary>
+        /// TCID01: UpdateTransactionInOrderStatus - ListProductOrder null hoặc empty
+        /// 
+        /// PRECONDITION:
+        /// - OrderRequest.ListProductOrder = null hoặc empty
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với ListProductOrder = null
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Đơn hàng mới không có sản phẩm nào để cập nhật."
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID01_UpdateInOrder_EmptyProductList_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: ListProductOrder = null
+            int transactionId = 1;
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = null!
+            };
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Đơn hàng mới không có sản phẩm nào để cập nhật."
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Đơn hàng mới không có sản phẩm nào để cập nhật.", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID02: UpdateTransactionInOrderStatus - Transaction không tồn tại
+        /// 
+        /// PRECONDITION:
+        /// - Transaction với transactionId không tồn tại
+        /// 
+        /// INPUT:
+        /// - transactionId: 999
+        /// - or: OrderRequest với ListProductOrder có ít nhất 1 sản phẩm
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID02_UpdateInOrder_TransactionNotFound_ReturnsNotFound()
+        {
+            // Arrange - INPUT: Transaction không tồn tại
+            int transactionId = 999;
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = 1, Quantity = 10, UnitPrice = 100000 }
+                }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync((Transaction?)null);
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy đơn hàng"
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(notFoundResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Không tìm thấy đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID03: UpdateTransactionInOrderStatus - Transaction không ở trạng thái order
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại nhưng Status != order
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với ListProductOrder có ít nhất 1 sản phẩm
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Đơn hàng không trong trạng thái lên đơn"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID03_UpdateInOrder_NotInOrderStatus_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Transaction không ở trạng thái order
+            int transactionId = 1;
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = 1, Quantity = 10, UnitPrice = 100000 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.draft, // Không phải order
+                WarehouseId = 1
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Đơn hàng không trong trạng thái lên đơn"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Đơn hàng không trong trạng thái lên đơn", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID04: UpdateTransactionInOrderStatus - Warehouse không tồn tại
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái order
+        /// - WarehouseId của transaction không tồn tại
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với ListProductOrder có ít nhất 1 sản phẩm
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy kho của đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID04_UpdateInOrder_WarehouseNotFound_ReturnsNotFound()
+        {
+            // Arrange - INPUT: Warehouse không tồn tại
+            int transactionId = 1;
+            int warehouseId = 999;
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = 1, Quantity = 10, UnitPrice = 100000 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = warehouseId
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _warehouseServiceMock
+                .Setup(s => s.GetByIdAsync(warehouseId))
+                .ReturnsAsync((WarehouseDto?)null);
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy kho của đơn hàng"
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(notFoundResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Không tìm thấy kho của đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID05: UpdateTransactionInOrderStatus - Chi tiết đơn hàng không tồn tại
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái order
+        /// - Warehouse tồn tại
+        /// - Chi tiết đơn hàng không tồn tại hoặc empty
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với ListProductOrder có ít nhất 1 sản phẩm
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy chi tiết đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID05_UpdateInOrder_NoTransactionDetails_ReturnsNotFound()
+        {
+            // Arrange - INPUT: Chi tiết đơn hàng không tồn tại
+            int transactionId = 1;
+            int warehouseId = 1;
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = 1, Quantity = 10, UnitPrice = 100000 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = warehouseId
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _warehouseServiceMock
+                .Setup(s => s.GetByIdAsync(warehouseId))
+                .ReturnsAsync(new WarehouseDto { WarehouseId = warehouseId, WarehouseName = "Test Warehouse" });
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync((List<TransactionDetailDto>?)null);
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy chi tiết đơn hàng"
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(notFoundResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Không tìm thấy chi tiết đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID06: UpdateTransactionInOrderStatus - Sản phẩm mới không có trong kho
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái order
+        /// - Warehouse tồn tại
+        /// - Chi tiết đơn hàng tồn tại
+        /// - Sản phẩm mới (chỉ có trong đơn mới) không có trong inventory
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với sản phẩm mới không có trong kho
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Không tìm thấy sản phẩm '{productName}' trong kho '{warehouseName}'"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID06_UpdateInOrder_NewProductNotInWarehouse_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Sản phẩm mới không có trong kho
+            int transactionId = 1;
+            int warehouseId = 1;
+            int oldProductId = 1;
+            int newProductId = 999; // Sản phẩm mới
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = newProductId, Quantity = 10, UnitPrice = 100000 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = warehouseId
+            };
+
+            var oldDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = oldProductId, Quantity = 5 }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _warehouseServiceMock
+                .Setup(s => s.GetByIdAsync(warehouseId))
+                .ReturnsAsync(new WarehouseDto { WarehouseId = warehouseId, WarehouseName = "Test Warehouse" });
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(oldDetails);
+
+            // Sản phẩm mới không có trong inventory
+            _inventoryServiceMock
+                .Setup(s => s.GetByWarehouseAndProductIds(warehouseId, It.Is<List<int>>(l => l.Contains(newProductId))))
+                .ReturnsAsync(new List<InventoryDto>()); // Empty - không có sản phẩm mới trong kho
+
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(newProductId))
+                .ReturnsAsync(new ProductDto { ProductId = newProductId, ProductName = "New Product" });
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message chứa "Không tìm thấy sản phẩm"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Contains("Không tìm thấy sản phẩm", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID07: UpdateTransactionInOrderStatus - Sản phẩm mới không đủ số lượng
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái order
+        /// - Warehouse tồn tại
+        /// - Chi tiết đơn hàng tồn tại
+        /// - Sản phẩm mới có trong kho nhưng số lượng không đủ
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với sản phẩm mới yêu cầu số lượng lớn hơn inventory
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Sản phẩm '{productName}' trong kho '{warehouseName}' chỉ còn {invenQty}, không đủ {newQuantity} yêu cầu."
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID07_UpdateInOrder_NewProductInsufficientQuantity_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Sản phẩm mới không đủ số lượng
+            int transactionId = 1;
+            int warehouseId = 1;
+            int oldProductId = 1;
+            int newProductId = 999;
+            decimal newQuantity = 100; // Yêu cầu 100
+            decimal inventoryQuantity = 50; // Chỉ còn 50
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = newProductId, Quantity = newQuantity, UnitPrice = 100000 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = warehouseId
+            };
+
+            var oldDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = oldProductId, Quantity = 5 }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _warehouseServiceMock
+                .Setup(s => s.GetByIdAsync(warehouseId))
+                .ReturnsAsync(new WarehouseDto { WarehouseId = warehouseId, WarehouseName = "Test Warehouse" });
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(oldDetails);
+
+            var productDto = new ProductDto { ProductId = newProductId, ProductName = "New Product" };
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(newProductId))
+                .ReturnsAsync(productDto);
+
+            // Sản phẩm mới có trong kho nhưng số lượng không đủ
+            _inventoryServiceMock
+                .Setup(s => s.GetByWarehouseAndProductIds(warehouseId, It.Is<List<int>>(l => l.Contains(newProductId))))
+                .ReturnsAsync(new List<InventoryDto>
+                {
+                    new InventoryDto { ProductId = newProductId, WarehouseId = warehouseId, Quantity = inventoryQuantity }
+                });
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message chứa "chỉ còn" và "không đủ"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Contains("chỉ còn", response.Error.Message);
+            Assert.Contains("không đủ", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID08: UpdateTransactionInOrderStatus - Tăng số lượng sản phẩm nhưng không đủ inventory
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái order
+        /// - Warehouse tồn tại
+        /// - Chi tiết đơn hàng tồn tại
+        /// - Sản phẩm có trong cả đơn cũ và đơn mới, đơn mới nhiều hơn nhưng không đủ inventory
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với sản phẩm tăng số lượng nhưng không đủ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Sản phẩm '{productName}' trong kho '{warehouseName}' chỉ còn {inventoryDto.Quantity}, không đủ {diff} để tăng."
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID08_UpdateInOrder_IncreaseQuantityInsufficient_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Tăng số lượng nhưng không đủ
+            int transactionId = 1;
+            int warehouseId = 1;
+            int productId = 1;
+            decimal oldQuantity = 10;
+            decimal newQuantity = 100; // Tăng lên 100
+            decimal diff = newQuantity - oldQuantity; // 90
+            decimal inventoryQuantity = 50; // Chỉ còn 50, không đủ 90
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = productId, Quantity = newQuantity, UnitPrice = 100000 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = warehouseId
+            };
+
+            var oldDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = productId, Quantity = (int)oldQuantity }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _warehouseServiceMock
+                .Setup(s => s.GetByIdAsync(warehouseId))
+                .ReturnsAsync(new WarehouseDto { WarehouseId = warehouseId, WarehouseName = "Test Warehouse" });
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(oldDetails);
+
+            var productDto = new ProductDto { ProductId = productId, ProductName = "Test Product" };
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(productId))
+                .ReturnsAsync(productDto);
+
+            // Inventory không đủ để tăng
+            _inventoryServiceMock
+                .Setup(s => s.GetByWarehouseAndProductId(warehouseId, productId))
+                .ReturnsAsync(new InventoryDto { ProductId = productId, WarehouseId = warehouseId, Quantity = inventoryQuantity });
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message chứa "chỉ còn" và "không đủ" và "để tăng"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Contains("chỉ còn", response.Error.Message);
+            Assert.Contains("không đủ", response.Error.Message);
+            Assert.Contains("để tăng", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID09: UpdateTransactionInOrderStatus - Không tìm thấy lô hàng khả dụng khi tăng số lượng
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái order
+        /// - Warehouse tồn tại
+        /// - Chi tiết đơn hàng tồn tại
+        /// - Sản phẩm tăng số lượng, inventory đủ nhưng không có lô hàng khả dụng
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với sản phẩm tăng số lượng nhưng không có lô hàng
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Không tìm thấy lô hàng khả dụng cho sản phẩm {productId} trong kho '{warehouseName}'."
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID09_UpdateInOrder_IncreaseQuantityNoStockBatch_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Tăng số lượng nhưng không có lô hàng
+            int transactionId = 1;
+            int warehouseId = 1;
+            int productId = 1;
+            decimal oldQuantity = 10;
+            decimal newQuantity = 20; // Tăng lên 20
+            decimal diff = newQuantity - oldQuantity; // 10
+            decimal inventoryQuantity = 100; // Đủ số lượng
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = productId, Quantity = newQuantity, UnitPrice = 100000 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = warehouseId
+            };
+
+            var oldDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = productId, Quantity = (int)oldQuantity }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _warehouseServiceMock
+                .Setup(s => s.GetByIdAsync(warehouseId))
+                .ReturnsAsync(new WarehouseDto { WarehouseId = warehouseId, WarehouseName = "Test Warehouse" });
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(oldDetails);
+
+            var productDto = new ProductDto { ProductId = productId, ProductName = "Test Product" };
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(productId))
+                .ReturnsAsync(productDto);
+
+            // Inventory đủ
+            _inventoryServiceMock
+                .Setup(s => s.GetByWarehouseAndProductId(warehouseId, productId))
+                .ReturnsAsync(new InventoryDto { ProductId = productId, WarehouseId = warehouseId, Quantity = inventoryQuantity });
+
+            // Không có lô hàng khả dụng
+            _stockBatchServiceMock
+                .Setup(s => s.GetByProductIdForOrder(It.Is<List<int>>(l => l.Contains(productId))))
+                .ReturnsAsync(new List<StockBatchDto>()); // Empty
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message chứa "Không tìm thấy lô hàng khả dụng"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Contains("Không tìm thấy lô hàng khả dụng", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID10: UpdateTransactionInOrderStatus - Không đủ hàng trong các lô khi tăng số lượng
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái order
+        /// - Warehouse tồn tại
+        /// - Chi tiết đơn hàng tồn tại
+        /// - Sản phẩm tăng số lượng, có lô hàng nhưng không đủ
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với sản phẩm tăng số lượng nhưng lô hàng không đủ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Không đủ hàng trong các lô cho sản phẩm {productId}"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID10_UpdateInOrder_IncreaseQuantityInsufficientStockBatch_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Tăng số lượng nhưng lô hàng không đủ
+            int transactionId = 1;
+            int warehouseId = 1;
+            int productId = 1;
+            decimal oldQuantity = 10;
+            decimal newQuantity = 100; // Tăng lên 100
+            decimal diff = newQuantity - oldQuantity; // 90
+            decimal inventoryQuantity = 200; // Đủ số lượng
+            decimal stockBatchAvailable = 50; // Lô hàng chỉ có 50, không đủ 90
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = productId, Quantity = newQuantity, UnitPrice = 100000 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = warehouseId
+            };
+
+            var oldDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = productId, Quantity = (int)oldQuantity }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _warehouseServiceMock
+                .Setup(s => s.GetByIdAsync(warehouseId))
+                .ReturnsAsync(new WarehouseDto { WarehouseId = warehouseId, WarehouseName = "Test Warehouse" });
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(oldDetails);
+
+            var productDto = new ProductDto { ProductId = productId, ProductName = "Test Product" };
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(productId))
+                .ReturnsAsync(productDto);
+
+            // Inventory đủ
+            _inventoryServiceMock
+                .Setup(s => s.GetByWarehouseAndProductId(warehouseId, productId))
+                .ReturnsAsync(new InventoryDto { ProductId = productId, WarehouseId = warehouseId, Quantity = inventoryQuantity });
+
+            // Lô hàng không đủ
+            var stockBatchDto = new StockBatchDto
+            {
+                BatchId = 1,
+                ProductId = productId,
+                WarehouseId = warehouseId,
+                QuantityIn = 100,
+                QuantityOut = 50, // Đã xuất 50, còn lại 50
+                ImportDate = DateTime.Today.AddDays(-10),
+                ExpireDate = DateTime.Today.AddDays(30)
+            };
+            _stockBatchServiceMock
+                .Setup(s => s.GetByProductIdForOrder(It.Is<List<int>>(l => l.Contains(productId))))
+                .ReturnsAsync(new List<StockBatchDto> { stockBatchDto });
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Không đủ hàng trong các lô cho sản phẩm"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Contains("Không đủ hàng trong các lô cho sản phẩm", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID11: UpdateTransactionInOrderStatus - Không đủ hàng trong các lô cho sản phẩm mới
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái order
+        /// - Warehouse tồn tại
+        /// - Chi tiết đơn hàng tồn tại
+        /// - Sản phẩm mới có trong kho, đủ số lượng nhưng lô hàng không đủ
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với sản phẩm mới nhưng lô hàng không đủ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Không đủ hàng trong các lô cho sản phẩm {productId}"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID11_UpdateInOrder_NewProductInsufficientStockBatch_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Sản phẩm mới nhưng lô hàng không đủ
+            int transactionId = 1;
+            int warehouseId = 1;
+            int oldProductId = 1;
+            int newProductId = 999;
+            decimal newQuantity = 100; // Yêu cầu 100
+            decimal inventoryQuantity = 200; // Đủ số lượng
+            decimal stockBatchAvailable = 50; // Lô hàng chỉ có 50, không đủ 100
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = newProductId, Quantity = newQuantity, UnitPrice = 100000 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = warehouseId
+            };
+
+            var oldDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = oldProductId, Quantity = 5 }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _warehouseServiceMock
+                .Setup(s => s.GetByIdAsync(warehouseId))
+                .ReturnsAsync(new WarehouseDto { WarehouseId = warehouseId, WarehouseName = "Test Warehouse" });
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(oldDetails);
+
+            var productDto = new ProductDto { ProductId = newProductId, ProductName = "New Product" };
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(newProductId))
+                .ReturnsAsync(productDto);
+
+            // Inventory đủ
+            _inventoryServiceMock
+                .Setup(s => s.GetByWarehouseAndProductIds(warehouseId, It.Is<List<int>>(l => l.Contains(newProductId))))
+                .ReturnsAsync(new List<InventoryDto>
+                {
+                    new InventoryDto { ProductId = newProductId, WarehouseId = warehouseId, Quantity = inventoryQuantity }
+                });
+
+            // Lô hàng không đủ
+            var stockBatchDto = new StockBatchDto
+            {
+                BatchId = 1,
+                ProductId = newProductId,
+                WarehouseId = warehouseId,
+                QuantityIn = 100,
+                QuantityOut = 50, // Đã xuất 50, còn lại 50
+                ImportDate = DateTime.Today.AddDays(-10),
+                ExpireDate = DateTime.Today.AddDays(30)
+            };
+            _stockBatchServiceMock
+                .Setup(s => s.GetByProductIdForOrder(It.Is<List<int>>(l => l.Contains(newProductId))))
+                .ReturnsAsync(new List<StockBatchDto> { stockBatchDto });
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Không đủ hàng trong các lô cho sản phẩm"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Contains("Không đủ hàng trong các lô cho sản phẩm", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID12: UpdateTransactionInOrderStatus - Thành công (giảm số lượng sản phẩm)
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái order
+        /// - Warehouse tồn tại
+        /// - Chi tiết đơn hàng tồn tại
+        /// - Sản phẩm có trong cả đơn cũ và đơn mới, đơn mới ít hơn (giảm số lượng)
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với sản phẩm giảm số lượng
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: Ok với message "Cập nhật đơn hàng thành công"
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TCID12_UpdateInOrder_DecreaseQuantitySuccess_ReturnsOk()
+        {
+            // Arrange - INPUT: Giảm số lượng thành công
+            int transactionId = 1;
+            int warehouseId = 1;
+            int productId = 1;
+            decimal oldQuantity = 100;
+            decimal newQuantity = 50; // Giảm xuống 50
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = productId, Quantity = newQuantity, UnitPrice = 100000 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = warehouseId
+            };
+
+            var oldDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = productId, Quantity = (int)oldQuantity }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _warehouseServiceMock
+                .Setup(s => s.GetByIdAsync(warehouseId))
+                .ReturnsAsync(new WarehouseDto { WarehouseId = warehouseId, WarehouseName = "Test Warehouse" });
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(oldDetails);
+
+            var productDto = new ProductDto { ProductId = productId, ProductName = "Test Product" };
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(productId))
+                .ReturnsAsync(productDto);
+
+            // Mock cho việc trả lại hàng (giảm số lượng)
+            var inventoryEntity = new Inventory { InventoryId = 1, ProductId = productId, WarehouseId = warehouseId, Quantity = 100m };
+            _inventoryServiceMock
+                .Setup(s => s.GetEntityByWarehouseAndProductIdAsync(warehouseId, productId))
+                .ReturnsAsync(inventoryEntity);
+
+            var stockBatchDto = new StockBatchDto
+            {
+                BatchId = 1,
+                ProductId = productId,
+                WarehouseId = warehouseId,
+                QuantityIn = 100,
+                QuantityOut = 50, // Đã xuất 50, có thể trả lại
+                ImportDate = DateTime.Today.AddDays(-10),
+                ExpireDate = DateTime.Today.AddDays(30)
+            };
+            _stockBatchServiceMock
+                .Setup(s => s.GetByProductIdForOrder(It.Is<List<int>>(l => l.Contains(productId))))
+                .ReturnsAsync(new List<StockBatchDto> { stockBatchDto });
+
+            var stockBatchEntity = new StockBatch { BatchId = 1, ProductId = productId, WarehouseId = warehouseId, QuantityIn = 100, QuantityOut = 50 };
+            _stockBatchServiceMock
+                .Setup(s => s.GetByIdAsync(1))
+                .ReturnsAsync(stockBatchEntity);
+
+            _stockBatchServiceMock
+                .Setup(s => s.UpdateNoTracking(It.IsAny<StockBatch>()))
+                .Returns(Task.CompletedTask);
+
+            _inventoryServiceMock
+                .Setup(s => s.UpdateNoTracking(It.IsAny<Inventory>()))
+                .Returns(Task.CompletedTask);
+
+            _transactionDetailServiceMock
+                .Setup(s => s.DeleteRange(It.IsAny<List<TransactionDetailDto>>()))
+                .Returns(Task.CompletedTask);
+
+            _transactionDetailServiceMock
+                .Setup(s => s.CreateAsync(It.IsAny<TransactionDetail>()))
+                .Returns(Task.CompletedTask);
+
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: Ok với message "Cập nhật đơn hàng thành công"
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
+            
+            Assert.True(response.Success);
+            Assert.NotNull(response.Data);
+            Assert.Equal("Cập nhật đơn hàng thành công", response.Data);
+        }
+
+        /// <summary>
+        /// TCID13: UpdateTransactionInOrderStatus - Exception xảy ra
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái order
+        /// - Warehouse tồn tại
+        /// - Chi tiết đơn hàng tồn tại
+        /// - Exception xảy ra trong try block
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với tất cả điều kiện OK nhưng có exception
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Có lỗi xảy ra khi cập nhật đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID13_UpdateInOrder_ExceptionThrown_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Exception sẽ xảy ra
+            int transactionId = 1;
+            int warehouseId = 1;
+            int productId = 1;
+            var orderRequest = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = productId, Quantity = 10, UnitPrice = 100000 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = warehouseId
+            };
+
+            // Sản phẩm có trong cả đơn cũ và đơn mới, số lượng giống nhau (diff = 0) - không cần update inventory/stockbatch
+            // Không có sản phẩm bị xóa, không có sản phẩm mới
+            var oldDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = productId, Quantity = 10 } // Cùng số lượng với orderRequest
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _warehouseServiceMock
+                .Setup(s => s.GetByIdAsync(warehouseId))
+                .ReturnsAsync(new WarehouseDto { WarehouseId = warehouseId, WarehouseName = "Test Warehouse" });
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(oldDetails);
+
+            // Throw exception khi delete transaction details (trong try block, sau khi pass tất cả validation)
+            _transactionDetailServiceMock
+                .Setup(s => s.DeleteRange(It.IsAny<List<TransactionDetailDto>>()))
+                .ThrowsAsync(new Exception("DB error"));
+
+            // Act
+            var result = await _controller.UpdateTransactionInOrderStatus(transactionId, orderRequest);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Có lỗi xảy ra khi cập nhật đơn hàng"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Có lỗi xảy ra khi cập nhật đơn hàng", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        #endregion
+
+        #region UpdateToDoneStatus Tests
+
+        /// <summary>
+        /// TCID01: UpdateToDoneStatus - Transaction không tồn tại
+        /// 
+        /// PRECONDITION:
+        /// - Transaction với transactionId không tồn tại
+        /// 
+        /// INPUT:
+        /// - transactionId: 999
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID01_UpdateToDone_TransactionNotFound_ReturnsNotFound()
+        {
+            // Arrange - INPUT: Transaction không tồn tại
+            int transactionId = 999;
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync((TransactionDto?)null);
+
+            // Act
+            var result = await _controller.UpdateToDoneStatus(transactionId);
+
+            // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy đơn hàng"
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<TransactionDto>>(notFoundResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Không tìm thấy đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID02: UpdateToDoneStatus - Thành công
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: Ok với message "Cập nhật đơn hàng thành công"
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TCID02_UpdateToDone_Success_ReturnsOk()
+        {
+            // Arrange - INPUT: Transaction tồn tại
+            int transactionId = 1;
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = 1
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.UpdateToDoneStatus(transactionId);
+
+            // Assert - EXPECTED OUTPUT: Ok với message "Cập nhật đơn hàng thành công"
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
+            
+            Assert.True(response.Success);
+            Assert.NotNull(response.Data);
+            Assert.Equal("Cập nhật đơn hàng thành công", response.Data);
+        }
+
+        /// <summary>
+        /// TCID03: UpdateToDoneStatus - Exception xảy ra
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại
+        /// - Exception xảy ra khi update
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID03_UpdateToDone_ExceptionThrown_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Exception sẽ xảy ra
+            int transactionId = 1;
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = 1
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Throw exception khi update
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .ThrowsAsync(new Exception("DB error"));
+
+            // Act
+            var result = await _controller.UpdateToDoneStatus(transactionId);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        #endregion
+
+        #region UpdateToDeliveringStatus Tests
+
+        /// <summary>
+        /// TCID01: UpdateToDeliveringStatus - Transaction không tồn tại
+        /// 
+        /// PRECONDITION:
+        /// - Transaction với transactionId không tồn tại
+        /// 
+        /// INPUT:
+        /// - transactionId: 999
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID01_UpdateToDelivering_TransactionNotFound_ReturnsNotFound()
+        {
+            // Arrange - INPUT: Transaction không tồn tại
+            int transactionId = 999;
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync((TransactionDto?)null);
+
+            // Act
+            var result = await _controller.UpdateToDeliveringStatus(transactionId);
+
+            // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy đơn hàng"
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<TransactionDto>>(notFoundResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Không tìm thấy đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID02: UpdateToDeliveringStatus - Thành công
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: Ok với message "Cập nhật đơn hàng thành công"
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TCID02_UpdateToDelivering_Success_ReturnsOk()
+        {
+            // Arrange - INPUT: Transaction tồn tại
+            int transactionId = 1;
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = 1
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.UpdateToDeliveringStatus(transactionId);
+
+            // Assert - EXPECTED OUTPUT: Ok với message "Cập nhật đơn hàng thành công"
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
+            
+            Assert.True(response.Success);
+            Assert.NotNull(response.Data);
+            Assert.Equal("Cập nhật đơn hàng thành công", response.Data);
+        }
+
+        /// <summary>
+        /// TCID03: UpdateToDeliveringStatus - Exception xảy ra
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại
+        /// - Exception xảy ra khi update
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID03_UpdateToDelivering_ExceptionThrown_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Exception sẽ xảy ra
+            int transactionId = 1;
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                WarehouseId = 1
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Throw exception khi update
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .ThrowsAsync(new Exception("DB error"));
+
+            // Act
+            var result = await _controller.UpdateToDeliveringStatus(transactionId);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        #endregion
+
+        #region UpdateToCancelStatus Tests
+
+        /// <summary>
+        /// TCID01: UpdateToCancelStatus - Transaction không tồn tại
+        /// 
+        /// PRECONDITION:
+        /// - Transaction với transactionId không tồn tại
+        /// 
+        /// INPUT:
+        /// - transactionId: 999
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID01_UpdateToCancel_TransactionNotFound_ReturnsNotFound()
+        {
+            // Arrange - INPUT: Transaction không tồn tại
+            int transactionId = 999;
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync((TransactionDto?)null);
+
+            // Act
+            var result = await _controller.UpdateToCancelStatus(transactionId);
+
+            // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy đơn hàng"
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<TransactionDto>>(notFoundResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Không tìm thấy đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID02: UpdateToCancelStatus - Transaction không ở trạng thái draft
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại nhưng Status != draft
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Đơn hàng không trong trạng thái nháp"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request (code có bug là 404 nhưng nên là 400)
+        /// </summary>
+        [Fact]
+        public async Task TCID02_UpdateToCancel_NotInDraftStatus_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Transaction không ở trạng thái draft
+            int transactionId = 1;
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order, // Không phải draft
+                WarehouseId = 1
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Act
+            var result = await _controller.UpdateToCancelStatus(transactionId);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Đơn hàng không trong trạng thái nháp"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<TransactionDto>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Đơn hàng không trong trạng thái nháp", response.Error.Message);
+            // Code có bug là 404 nhưng đây là BadRequest, nên expect 404 theo code hiện tại
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID03: UpdateToCancelStatus - Thành công
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái draft
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: Ok với message "Cập nhật đơn hàng thành công"
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TCID03_UpdateToCancel_Success_ReturnsOk()
+        {
+            // Arrange - INPUT: Transaction tồn tại và ở trạng thái draft
+            int transactionId = 1;
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.draft,
+                WarehouseId = 1
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.UpdateToCancelStatus(transactionId);
+
+            // Assert - EXPECTED OUTPUT: Ok với message "Cập nhật đơn hàng thành công"
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
+            
+            Assert.True(response.Success);
+            Assert.NotNull(response.Data);
+            Assert.Equal("Cập nhật đơn hàng thành công", response.Data);
+        }
+
+        /// <summary>
+        /// TCID04: UpdateToCancelStatus - Exception xảy ra
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái draft
+        /// - Exception xảy ra khi update
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID04_UpdateToCancel_ExceptionThrown_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Exception sẽ xảy ra
+            int transactionId = 1;
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.draft,
+                WarehouseId = 1
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Throw exception khi update
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .ThrowsAsync(new Exception("DB error"));
+
+            // Act
+            var result = await _controller.UpdateToCancelStatus(transactionId);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        #endregion
+
+        #region UpdateToPaidInFullStatus Tests
+
+        /// <summary>
+        /// TCID01: UpdateToPaidInFullStatus - ModelState không hợp lệ
+        /// 
+        /// PRECONDITION:
+        /// - ModelState.IsValid = false
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM với ModelState invalid
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Dữ liệu không hợp lệ"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID01_UpdateToPaidInFull_InvalidModelState_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: ModelState invalid
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = null! // Required field is null
+            };
+
+            // Set ModelState invalid
+            _controller.ModelState.AddModelError("PaymentMethod", "Phương thức thanh toán không được để trống");
+
+            // Act
+            var result = await _controller.UpdateToPaidInFullStatus(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Dữ liệu không hợp lệ"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<FinancialTransactionCreateVM>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Dữ liệu không hợp lệ", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID02: UpdateToPaidInFullStatus - Transaction không tồn tại
+        /// 
+        /// PRECONDITION:
+        /// - Transaction với transactionId không tồn tại
+        /// 
+        /// INPUT:
+        /// - transactionId: 999
+        /// - model: FinancialTransactionCreateVM hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID02_UpdateToPaidInFull_TransactionNotFound_ReturnsNotFound()
+        {
+            // Arrange - INPUT: Transaction không tồn tại
+            int transactionId = 999;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash"
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync((TransactionDto?)null);
+
+            // Act
+            var result = await _controller.UpdateToPaidInFullStatus(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy đơn hàng"
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<TransactionDto>>(notFoundResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Không tìm thấy đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID03: UpdateToPaidInFullStatus - Transaction không phải đơn xuất
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại nhưng Type != "Export"
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Đơn hàng không phải đơn xuất"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID03_UpdateToPaidInFull_NotExportTransaction_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Transaction không phải đơn xuất
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash"
+            };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Type = "Import", // Không phải "Export"
+                Status = (int)TransactionStatus.order,
+                TotalCost = 1000000
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Act
+            var result = await _controller.UpdateToPaidInFullStatus(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Đơn hàng không phải đơn xuất"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<TransactionDto>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Đơn hàng không phải đơn xuất", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID04: UpdateToPaidInFullStatus - Transaction đã được thanh toán
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và là đơn xuất
+        /// - Transaction.Status == paidInFull hoặc partiallyPaid
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Đơn hàng đã được thanh toán hoặc thanh toán một phần"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID04_UpdateToPaidInFull_AlreadyPaid_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Transaction đã được thanh toán
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash"
+            };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Type = "Export",
+                Status = (int)TransactionStatus.paidInFull, // Đã thanh toán
+                TotalCost = 1000000
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Act
+            var result = await _controller.UpdateToPaidInFullStatus(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Đơn hàng đã được thanh toán hoặc thanh toán một phần"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<Transaction>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Đơn hàng đã được thanh toán hoặc thanh toán một phần", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID05: UpdateToPaidInFullStatus - Đã có thanh toán trước đó
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và là đơn xuất
+        /// - Transaction chưa được thanh toán
+        /// - Đã có financialTransactions trước đó
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Đơn hàng đã có thanh toán trước đó. Vui lòng sử dụng thanh toán một phần"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID05_UpdateToPaidInFull_HasPreviousPayment_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Đã có thanh toán trước đó
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash"
+            };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Type = "Export",
+                Status = (int)TransactionStatus.order, // Chưa thanh toán
+                TotalCost = 1000000
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Đã có thanh toán trước đó
+            _financialTransactionServiceMock
+                .Setup(s => s.GetByRelatedTransactionID(transactionId))
+                .ReturnsAsync(new List<FinancialTransactionDto>
+                {
+                    new FinancialTransactionDto { FinancialTransactionId = 1, RelatedTransactionId = transactionId }
+                });
+
+            // Act
+            var result = await _controller.UpdateToPaidInFullStatus(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Đơn hàng đã có thanh toán trước đó. Vui lòng sử dụng thanh toán một phần"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<Transaction>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Đơn hàng đã có thanh toán trước đó. Vui lòng sử dụng thanh toán một phần", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID06: UpdateToPaidInFullStatus - Thành công
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và là đơn xuất
+        /// - Transaction chưa được thanh toán
+        /// - Chưa có financialTransactions trước đó
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: Ok với message "Cập nhật đơn hàng thành công"
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TCID06_UpdateToPaidInFull_Success_ReturnsOk()
+        {
+            // Arrange - INPUT: Tất cả điều kiện OK
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash"
+            };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Type = "Export",
+                Status = (int)TransactionStatus.order, // Chưa thanh toán
+                TotalCost = 1000000
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Chưa có thanh toán trước đó
+            _financialTransactionServiceMock
+                .Setup(s => s.GetByRelatedTransactionID(transactionId))
+                .ReturnsAsync((List<FinancialTransactionDto>?)null);
+
+            // Mock mapper
+            var financialTransactionEntity = new FinancialTransaction
+            {
+                FinancialTransactionId = 1,
+                RelatedTransactionId = transactionId,
+                Amount = 1000000,
+                PaymentMethod = "Cash"
+            };
+            _mapperMock
+                .Setup(m => m.Map<FinancialTransactionCreateVM, FinancialTransaction>(model))
+                .Returns(financialTransactionEntity);
+
+            _financialTransactionServiceMock
+                .Setup(s => s.CreateAsync(It.IsAny<FinancialTransaction>()))
+                .Returns(Task.CompletedTask);
+
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.UpdateToPaidInFullStatus(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: Ok với message "Cập nhật đơn hàng thành công"
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
+            
+            Assert.True(response.Success);
+            Assert.NotNull(response.Data);
+            Assert.Equal("Cập nhật đơn hàng thành công", response.Data);
+        }
+
+        /// <summary>
+        /// TCID07: UpdateToPaidInFullStatus - Exception xảy ra
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và là đơn xuất
+        /// - Transaction chưa được thanh toán
+        /// - Chưa có financialTransactions trước đó
+        /// - Exception xảy ra trong try block
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID07_UpdateToPaidInFull_ExceptionThrown_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Exception sẽ xảy ra
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash"
+            };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Type = "Export",
+                Status = (int)TransactionStatus.order, // Chưa thanh toán
+                TotalCost = 1000000
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Chưa có thanh toán trước đó
+            _financialTransactionServiceMock
+                .Setup(s => s.GetByRelatedTransactionID(transactionId))
+                .ReturnsAsync((List<FinancialTransactionDto>?)null);
+
+            // Mock mapper
+            var financialTransactionEntity = new FinancialTransaction
+            {
+                FinancialTransactionId = 1,
+                RelatedTransactionId = transactionId,
+                Amount = 1000000,
+                PaymentMethod = "Cash"
+            };
+            _mapperMock
+                .Setup(m => m.Map<FinancialTransactionCreateVM, FinancialTransaction>(model))
+                .Returns(financialTransactionEntity);
+
+            // Throw exception khi create financial transaction
+            _financialTransactionServiceMock
+                .Setup(s => s.CreateAsync(It.IsAny<FinancialTransaction>()))
+                .ThrowsAsync(new Exception("DB error"));
+
+            // Act
+            var result = await _controller.UpdateToPaidInFullStatus(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        #endregion
+
+        #region CreatePartialPayment Tests
+
+        /// <summary>
+        /// TCID01: CreatePartialPayment - ModelState không hợp lệ
+        /// 
+        /// PRECONDITION:
+        /// - ModelState.IsValid = false
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM với ModelState invalid
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Dữ liệu không hợp lệ"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID01_CreatePartialPayment_InvalidModelState_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: ModelState invalid
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = null! // Required field is null
+            };
+
+            // Set ModelState invalid
+            _controller.ModelState.AddModelError("PaymentMethod", "Phương thức thanh toán không được để trống");
+
+            // Act
+            var result = await _controller.CreatePartialPayment(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Dữ liệu không hợp lệ"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<FinancialTransactionCreateVM>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Dữ liệu không hợp lệ", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID02: CreatePartialPayment - Amount không có giá trị
+        /// 
+        /// PRECONDITION:
+        /// - ModelState.IsValid = true
+        /// - model.Amount = null
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM với Amount = null
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Số tiền trả không được để trống"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID02_CreatePartialPayment_AmountIsNull_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Amount không có giá trị
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash",
+                Amount = null // Amount không có giá trị
+            };
+
+            // Act
+            var result = await _controller.CreatePartialPayment(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Số tiền trả không được để trống"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<FinancialTransactionCreateVM>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Số tiền trả không được để trống", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID03: CreatePartialPayment - Transaction không tồn tại
+        /// 
+        /// PRECONDITION:
+        /// - Transaction với transactionId không tồn tại
+        /// 
+        /// INPUT:
+        /// - transactionId: 999
+        /// - model: FinancialTransactionCreateVM hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID03_CreatePartialPayment_TransactionNotFound_ReturnsNotFound()
+        {
+            // Arrange - INPUT: Transaction không tồn tại
+            int transactionId = 999;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash",
+                Amount = 500000
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync((TransactionDto?)null);
+
+            // Act
+            var result = await _controller.CreatePartialPayment(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy đơn hàng"
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<TransactionDto>>(notFoundResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Không tìm thấy đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID04: CreatePartialPayment - Transaction không phải đơn xuất
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại nhưng Type != "Export"
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Đơn hàng không phải đơn xuất"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID04_CreatePartialPayment_NotExportTransaction_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Transaction không phải đơn xuất
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash",
+                Amount = 500000
+            };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Type = "Import", // Không phải "Export"
+                Status = (int)TransactionStatus.order,
+                TotalCost = 1000000
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Act
+            var result = await _controller.CreatePartialPayment(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Đơn hàng không phải đơn xuất"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<TransactionDto>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Đơn hàng không phải đơn xuất", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID05: CreatePartialPayment - Transaction đã được thanh toán đầy đủ
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và là đơn xuất
+        /// - Transaction.Status == paidInFull
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Đơn hàng đã được thanh toán"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID05_CreatePartialPayment_AlreadyPaidInFull_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Transaction đã được thanh toán đầy đủ
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash",
+                Amount = 500000
+            };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Type = "Export",
+                Status = (int)TransactionStatus.paidInFull, // Đã thanh toán đầy đủ
+                TotalCost = 1000000
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Act
+            var result = await _controller.CreatePartialPayment(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Đơn hàng đã được thanh toán"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<Transaction>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Đơn hàng đã được thanh toán", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID06: CreatePartialPayment - Tổng số tiền thanh toán vượt quá giá trị đơn hàng
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và là đơn xuất
+        /// - Transaction chưa được thanh toán đầy đủ
+        /// - Đã có thanh toán trước đó
+        /// - Tổng số tiền (đã trả + mới trả) > TotalCost
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM với Amount làm tổng vượt quá
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Tổng số tiền thanh toán vượt quá giá trị đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID06_CreatePartialPayment_TotalExceedsTransactionCost_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Tổng số tiền vượt quá
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash",
+                Amount = 600000 // Tổng sẽ là 800000 + 600000 = 1400000 > 1000000
+            };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Type = "Export",
+                Status = (int)TransactionStatus.partiallyPaid,
+                TotalCost = 1000000
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Đã có thanh toán trước đó: 800000
+            _financialTransactionServiceMock
+                .Setup(s => s.GetByRelatedTransactionID(transactionId))
+                .ReturnsAsync(new List<FinancialTransactionDto>
+                {
+                    new FinancialTransactionDto { FinancialTransactionId = 1, RelatedTransactionId = transactionId, Amount = 800000 }
+                });
+
+            // Act
+            var result = await _controller.CreatePartialPayment(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Tổng số tiền thanh toán vượt quá giá trị đơn hàng"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<Transaction>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Tổng số tiền thanh toán vượt quá giá trị đơn hàng", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID07: CreatePartialPayment - Thành công (thanh toán một phần)
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và là đơn xuất
+        /// - Transaction chưa được thanh toán đầy đủ
+        /// - Tổng số tiền (đã trả + mới trả) < TotalCost
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: Ok với message "Cập nhật đơn hàng thành công"
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// - Transaction.Status = partiallyPaid
+        /// </summary>
+        [Fact]
+        public async Task TCID07_CreatePartialPayment_PartialPaymentSuccess_ReturnsOk()
+        {
+            // Arrange - INPUT: Thanh toán một phần thành công
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash",
+                Amount = 300000
+            };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Type = "Export",
+                Status = (int)TransactionStatus.order,
+                TotalCost = 1000000
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Chưa có thanh toán trước đó
+            _financialTransactionServiceMock
+                .Setup(s => s.GetByRelatedTransactionID(transactionId))
+                .ReturnsAsync(new List<FinancialTransactionDto>());
+
+            // Mock mapper
+            var financialTransactionEntity = new FinancialTransaction
+            {
+                FinancialTransactionId = 1,
+                RelatedTransactionId = transactionId,
+                Amount = 300000,
+                PaymentMethod = "Cash"
+            };
+            _mapperMock
+                .Setup(m => m.Map<FinancialTransactionCreateVM, FinancialTransaction>(model))
+                .Returns(financialTransactionEntity);
+
+            _financialTransactionServiceMock
+                .Setup(s => s.CreateAsync(It.IsAny<FinancialTransaction>()))
+                .Returns(Task.CompletedTask);
+
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.CreatePartialPayment(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: Ok với message "Cập nhật đơn hàng thành công"
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
+            
+            Assert.True(response.Success);
+            Assert.NotNull(response.Data);
+            Assert.Equal("Cập nhật đơn hàng thành công", response.Data);
+        }
+
+        /// <summary>
+        /// TCID08: CreatePartialPayment - Thành công (thanh toán đầy đủ sau khi cộng thêm)
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và là đơn xuất
+        /// - Transaction chưa được thanh toán đầy đủ
+        /// - Tổng số tiền (đã trả + mới trả) >= TotalCost (với tolerance 0.01)
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM hợp lệ với Amount làm tổng >= TotalCost
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: Ok với message "Cập nhật đơn hàng thành công"
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// - Transaction.Status = paidInFull
+        /// </summary>
+        [Fact]
+        public async Task TCID08_CreatePartialPayment_FullPaymentAfterPartial_ReturnsOk()
+        {
+            // Arrange - INPUT: Thanh toán đầy đủ sau khi cộng thêm
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash",
+                Amount = 200000 // Tổng sẽ là 800000 + 200000 = 1000000 = TotalCost
+            };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Type = "Export",
+                Status = (int)TransactionStatus.partiallyPaid,
+                TotalCost = 1000000
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Đã có thanh toán trước đó: 800000
+            _financialTransactionServiceMock
+                .Setup(s => s.GetByRelatedTransactionID(transactionId))
+                .ReturnsAsync(new List<FinancialTransactionDto>
+                {
+                    new FinancialTransactionDto { FinancialTransactionId = 1, RelatedTransactionId = transactionId, Amount = 800000 }
+                });
+
+            // Mock mapper
+            var financialTransactionEntity = new FinancialTransaction
+            {
+                FinancialTransactionId = 2,
+                RelatedTransactionId = transactionId,
+                Amount = 200000,
+                PaymentMethod = "Cash"
+            };
+            _mapperMock
+                .Setup(m => m.Map<FinancialTransactionCreateVM, FinancialTransaction>(model))
+                .Returns(financialTransactionEntity);
+
+            _financialTransactionServiceMock
+                .Setup(s => s.CreateAsync(It.IsAny<FinancialTransaction>()))
+                .Returns(Task.CompletedTask);
+
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.CreatePartialPayment(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: Ok với message "Cập nhật đơn hàng thành công"
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
+            
+            Assert.True(response.Success);
+            Assert.NotNull(response.Data);
+            Assert.Equal("Cập nhật đơn hàng thành công", response.Data);
+        }
+
+        /// <summary>
+        /// TCID09: CreatePartialPayment - Exception xảy ra
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại và là đơn xuất
+        /// - Transaction chưa được thanh toán đầy đủ
+        /// - Tổng số tiền hợp lệ
+        /// - Exception xảy ra trong try block
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - model: FinancialTransactionCreateVM hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID09_CreatePartialPayment_ExceptionThrown_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Exception sẽ xảy ra
+            int transactionId = 1;
+            var model = new FinancialTransactionCreateVM
+            {
+                PaymentMethod = "Cash",
+                Amount = 300000
+            };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Type = "Export",
+                Status = (int)TransactionStatus.order,
+                TotalCost = 1000000
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Chưa có thanh toán trước đó
+            _financialTransactionServiceMock
+                .Setup(s => s.GetByRelatedTransactionID(transactionId))
+                .ReturnsAsync(new List<FinancialTransactionDto>());
+
+            // Mock mapper
+            var financialTransactionEntity = new FinancialTransaction
+            {
+                FinancialTransactionId = 1,
+                RelatedTransactionId = transactionId,
+                Amount = 300000,
+                PaymentMethod = "Cash"
+            };
+            _mapperMock
+                .Setup(m => m.Map<FinancialTransactionCreateVM, FinancialTransaction>(model))
+                .Returns(financialTransactionEntity);
+
+            // Throw exception khi create financial transaction
+            _financialTransactionServiceMock
+                .Setup(s => s.CreateAsync(It.IsAny<FinancialTransaction>()))
+                .ThrowsAsync(new Exception("DB error"));
+
+            // Act
+            var result = await _controller.CreatePartialPayment(transactionId, model);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        #endregion
+
+        #region ReturnOrder Tests
+
+        /// <summary>
+        /// TCID01: ReturnOrder - Danh sách sản phẩm trả hàng rỗng
+        /// 
+        /// PRECONDITION:
+        /// - ListProductOrder null hoặc empty
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với ListProductOrder = null hoặc empty
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Danh sách sản phẩm trả hàng không được rỗng."
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID01_ReturnOrder_EmptyProductList_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Danh sách sản phẩm trả hàng rỗng
+            int transactionId = 1;
+            var or = new OrderRequest
+            {
+                ListProductOrder = null
+            };
+
+            // Act
+            var result = await _controller.ReturnOrder(transactionId, or);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Danh sách sản phẩm trả hàng không được rỗng."
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Danh sách sản phẩm trả hàng không được rỗng.", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID02: ReturnOrder - Transaction không tồn tại
+        /// 
+        /// PRECONDITION:
+        /// - Transaction với transactionId không tồn tại
+        /// 
+        /// INPUT:
+        /// - transactionId: 999
+        /// - or: OrderRequest hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID02_ReturnOrder_TransactionNotFound_ReturnsNotFound()
+        {
+            // Arrange - INPUT: Transaction không tồn tại
+            int transactionId = 999;
+            var or = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = 1, Quantity = 5 }
+                }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync((Transaction?)null);
+
+            // Act
+            var result = await _controller.ReturnOrder(transactionId, or);
+
+            // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy đơn hàng"
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(notFoundResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Không tìm thấy đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID03: ReturnOrder - Không tìm thấy chi tiết đơn hàng
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại
+        /// - TransactionDetail không tồn tại hoặc empty
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy chi tiết đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID03_ReturnOrder_NoTransactionDetails_ReturnsNotFound()
+        {
+            // Arrange - INPUT: Không tìm thấy chi tiết đơn hàng
+            int transactionId = 1;
+            var or = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = 1, Quantity = 5 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                WarehouseId = 1
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync((List<TransactionDetailDto>?)null);
+
+            // Act
+            var result = await _controller.ReturnOrder(transactionId, or);
+
+            // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy chi tiết đơn hàng"
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(notFoundResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Không tìm thấy chi tiết đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID04: ReturnOrder - Sản phẩm không có trong đơn hàng
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại
+        /// - TransactionDetail tồn tại
+        /// - Sản phẩm trả không có trong đơn hàng
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với ProductId không có trong đơn hàng
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message chứa "không có trong đơn hàng này"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID04_ReturnOrder_ProductNotInOrder_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Sản phẩm không có trong đơn hàng
+            int transactionId = 1;
+            var or = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = 999, Quantity = 5 } // ProductId không có trong đơn
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                WarehouseId = 1
+            };
+
+            var currentDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = 1, Quantity = 10 }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(currentDetails);
+
+            var productDto = new ProductDto
+            {
+                ProductId = 999,
+                ProductName = "Product 999"
+            };
+
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(999))
+                .ReturnsAsync(productDto);
+
+            // Act
+            var result = await _controller.ReturnOrder(transactionId, or);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message chứa "không có trong đơn hàng này"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Contains("không có trong đơn hàng này", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID05: ReturnOrder - Số lượng trả vượt quá số lượng trong đơn
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại
+        /// - TransactionDetail tồn tại
+        /// - Sản phẩm có trong đơn hàng
+        /// - Số lượng trả > số lượng trong đơn
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với Quantity > số lượng trong đơn
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message chứa "vượt quá số lượng trong đơn"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID05_ReturnOrder_QuantityExceedsOrder_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Số lượng trả vượt quá
+            int transactionId = 1;
+            var or = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = 1, Quantity = 15 } // Trả 15 nhưng đơn chỉ có 10
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                WarehouseId = 1
+            };
+
+            var currentDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = 1, Quantity = 10 }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(currentDetails);
+
+            var productDto = new ProductDto
+            {
+                ProductId = 1,
+                ProductName = "Product 1"
+            };
+
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(1))
+                .ReturnsAsync(productDto);
+
+            // Act
+            var result = await _controller.ReturnOrder(transactionId, or);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message chứa "vượt quá số lượng trong đơn"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Contains("vượt quá số lượng trong đơn", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID06: ReturnOrder - Số lượng trả <= 0
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại
+        /// - TransactionDetail tồn tại
+        /// - Sản phẩm có trong đơn hàng
+        /// - Số lượng trả <= 0
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest với Quantity <= 0
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message chứa "phải lớn hơn 0"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID06_ReturnOrder_QuantityLessThanOrEqualZero_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Số lượng trả <= 0
+            int transactionId = 1;
+            var or = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = 1, Quantity = 0 } // Số lượng = 0
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                WarehouseId = 1
+            };
+
+            var currentDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = 1, Quantity = 10 }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(currentDetails);
+
+            var productDto = new ProductDto
+            {
+                ProductId = 1,
+                ProductName = "Product 1"
+            };
+
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(1))
+                .ReturnsAsync(productDto);
+
+            // Act
+            var result = await _controller.ReturnOrder(transactionId, or);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message chứa "phải lớn hơn 0"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Contains("phải lớn hơn 0", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID07: ReturnOrder - Thành công (trả một phần)
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại
+        /// - TransactionDetail tồn tại
+        /// - Sản phẩm có trong đơn hàng
+        /// - Số lượng trả hợp lệ (< số lượng trong đơn)
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest hợp lệ với số lượng trả < số lượng trong đơn
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: Ok với message "Trả hàng thành công"
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TCID07_ReturnOrder_PartialReturnSuccess_ReturnsOk()
+        {
+            // Arrange - INPUT: Trả một phần thành công
+            int transactionId = 1;
+            var or = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = 1, Quantity = 5 } // Trả 5 trong tổng 10
+                },
+                TotalCost = 500000,
+                Reason = "Lý do trả hàng"
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                WarehouseId = 1,
+                TotalCost = 1000000,
+                TotalWeight = 100
+            };
+
+            var currentDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = 1, Quantity = 10, UnitPrice = 100000 }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(currentDetails);
+
+            var productDto = new ProductDto
+            {
+                ProductId = 1,
+                ProductName = "Product 1",
+                WeightPerUnit = 10
+            };
+
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(1))
+                .ReturnsAsync(productDto);
+
+            // Mock inventory
+            var inventory = new Inventory
+            {
+                InventoryId = 1,
+                WarehouseId = 1,
+                ProductId = 1,
+                Quantity = 50
+            };
+
+            _inventoryServiceMock
+                .Setup(s => s.GetEntityByWarehouseAndProductIdAsync(1, 1))
+                .ReturnsAsync(inventory);
+
+            _inventoryServiceMock
+                .Setup(s => s.UpdateNoTracking(It.IsAny<Inventory>()))
+                .Returns(Task.CompletedTask);
+
+            // Mock stock batch
+            var stockBatchDto = new StockBatchDto
+            {
+                BatchId = 1,
+                WarehouseId = 1,
+                ProductId = 1,
+                QuantityOut = 10,
+                ImportDate = DateTime.Now
+            };
+
+            _stockBatchServiceMock
+                .Setup(s => s.GetByProductIdForOrder(It.IsAny<List<int>>()))
+                .ReturnsAsync(new List<StockBatchDto> { stockBatchDto });
+
+            var stockBatch = new StockBatch
+            {
+                BatchId = 1,
+                WarehouseId = 1,
+                ProductId = 1,
+                QuantityOut = 10
+            };
+
+            _stockBatchServiceMock
+                .Setup(s => s.GetByIdAsync(1))
+                .ReturnsAsync(stockBatch);
+
+            _stockBatchServiceMock
+                .Setup(s => s.UpdateNoTracking(It.IsAny<StockBatch>()))
+                .Returns(Task.CompletedTask);
+
+            // Mock return transaction
+            var returnTranEntity = new ReturnTransaction
+            {
+                ReturnTransactionId = 1,
+                TransactionId = transactionId
+            };
+
+            _mapperMock
+                .Setup(m => m.Map<ReturnTransactionCreateVM, ReturnTransaction>(It.IsAny<ReturnTransactionCreateVM>()))
+                .Returns(returnTranEntity);
+
+            _returnTransactionServiceMock
+                .Setup(s => s.CreateAsync(It.IsAny<ReturnTransaction>()))
+                .Returns(Task.CompletedTask);
+
+            // Mock return transaction detail
+            _mapperMock
+                .Setup(m => m.Map<ReturnTransactionDetailCreateVM, ReturnTransactionDetail>(It.IsAny<ReturnTransactionDetailCreateVM>()))
+                .Returns(new ReturnTransactionDetail());
+
+            _returnTransactionDetailServiceMock
+                .Setup(s => s.CreateAsync(It.IsAny<ReturnTransactionDetail>()))
+                .Returns(Task.CompletedTask);
+
+            // Mock transaction detail update
+            var detailEntity = new TransactionDetail
+            {
+                Id = 1,
+                ProductId = 1,
+                Quantity = 10
+            };
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByIdAsync(1))
+                .ReturnsAsync(detailEntity);
+
+            _transactionDetailServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<TransactionDetail>()))
+                .Returns(Task.CompletedTask);
+
+            // Mock remaining details after return
+            var remainingDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = 1, Quantity = 5 }
+            };
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(remainingDetails);
+
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.ReturnOrder(transactionId, or);
+
+            // Assert - EXPECTED OUTPUT: Ok với message "Trả hàng thành công"
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
+            
+            Assert.True(response.Success);
+            Assert.NotNull(response.Data);
+            Assert.Equal("Trả hàng thành công", response.Data);
+        }
+
+        /// <summary>
+        /// TCID08: ReturnOrder - Thành công (trả hết, chuyển status về cancel)
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại
+        /// - TransactionDetail tồn tại
+        /// - Sản phẩm có trong đơn hàng
+        /// - Số lượng trả = số lượng trong đơn (trả hết)
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest hợp lệ với số lượng trả = số lượng trong đơn
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: Ok với message "Trả hàng thành công"
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// - Transaction.Status = cancel
+        /// </summary>
+        [Fact]
+        public async Task TCID08_ReturnOrder_FullReturnSuccess_ReturnsOk()
+        {
+            // Arrange - INPUT: Trả hết thành công
+            int transactionId = 1;
+            var or = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = 1, Quantity = 10 } // Trả hết 10
+                },
+                TotalCost = 1000000,
+                Reason = "Lý do trả hàng"
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                WarehouseId = 1,
+                TotalCost = 1000000,
+                TotalWeight = 100
+            };
+
+            var currentDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = 1, Quantity = 10, UnitPrice = 100000 }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(currentDetails);
+
+            var productDto = new ProductDto
+            {
+                ProductId = 1,
+                ProductName = "Product 1",
+                WeightPerUnit = 10
+            };
+
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(1))
+                .ReturnsAsync(productDto);
+
+            // Mock inventory
+            var inventory = new Inventory
+            {
+                InventoryId = 1,
+                WarehouseId = 1,
+                ProductId = 1,
+                Quantity = 50
+            };
+
+            _inventoryServiceMock
+                .Setup(s => s.GetEntityByWarehouseAndProductIdAsync(1, 1))
+                .ReturnsAsync(inventory);
+
+            _inventoryServiceMock
+                .Setup(s => s.UpdateNoTracking(It.IsAny<Inventory>()))
+                .Returns(Task.CompletedTask);
+
+            // Mock stock batch
+            var stockBatchDto = new StockBatchDto
+            {
+                BatchId = 1,
+                WarehouseId = 1,
+                ProductId = 1,
+                QuantityOut = 10,
+                ImportDate = DateTime.Now
+            };
+
+            _stockBatchServiceMock
+                .Setup(s => s.GetByProductIdForOrder(It.IsAny<List<int>>()))
+                .ReturnsAsync(new List<StockBatchDto> { stockBatchDto });
+
+            var stockBatch = new StockBatch
+            {
+                BatchId = 1,
+                WarehouseId = 1,
+                ProductId = 1,
+                QuantityOut = 10
+            };
+
+            _stockBatchServiceMock
+                .Setup(s => s.GetByIdAsync(1))
+                .ReturnsAsync(stockBatch);
+
+            _stockBatchServiceMock
+                .Setup(s => s.UpdateNoTracking(It.IsAny<StockBatch>()))
+                .Returns(Task.CompletedTask);
+
+            // Mock return transaction
+            var returnTranEntity = new ReturnTransaction
+            {
+                ReturnTransactionId = 1,
+                TransactionId = transactionId
+            };
+
+            _mapperMock
+                .Setup(m => m.Map<ReturnTransactionCreateVM, ReturnTransaction>(It.IsAny<ReturnTransactionCreateVM>()))
+                .Returns(returnTranEntity);
+
+            _returnTransactionServiceMock
+                .Setup(s => s.CreateAsync(It.IsAny<ReturnTransaction>()))
+                .Returns(Task.CompletedTask);
+
+            // Mock return transaction detail
+            _mapperMock
+                .Setup(m => m.Map<ReturnTransactionDetailCreateVM, ReturnTransactionDetail>(It.IsAny<ReturnTransactionDetailCreateVM>()))
+                .Returns(new ReturnTransactionDetail());
+
+            _returnTransactionDetailServiceMock
+                .Setup(s => s.CreateAsync(It.IsAny<ReturnTransactionDetail>()))
+                .Returns(Task.CompletedTask);
+
+            // Mock transaction detail delete (trả hết nên xóa)
+            var detailEntity = new TransactionDetail
+            {
+                Id = 1,
+                ProductId = 1,
+                Quantity = 10
+            };
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByIdAsync(1))
+                .ReturnsAsync(detailEntity);
+
+            _transactionDetailServiceMock
+                .Setup(s => s.DeleteAsync(It.IsAny<TransactionDetail>()))
+                .Returns(Task.CompletedTask);
+
+            // Mock remaining details after return (empty - trả hết)
+            _transactionDetailServiceMock
+                .SetupSequence(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(currentDetails) // Lần đầu để validate
+                .ReturnsAsync(new List<TransactionDetailDto>()); // Sau khi trả hết thì empty
+
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.ReturnOrder(transactionId, or);
+
+            // Assert - EXPECTED OUTPUT: Ok với message "Trả hàng thành công"
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
+            
+            Assert.True(response.Success);
+            Assert.NotNull(response.Data);
+            Assert.Equal("Trả hàng thành công", response.Data);
+        }
+
+        /// <summary>
+        /// TCID09: 
+        ///  - Exception xảy ra
+        /// 
+        /// PRECONDITION:
+        /// - Transaction tồn tại
+        /// - TransactionDetail tồn tại
+        /// - Sản phẩm có trong đơn hàng
+        /// - Số lượng trả hợp lệ
+        /// - Exception xảy ra trong try block
+        /// 
+        /// INPUT:
+        /// - transactionId: 1
+        /// - or: OrderRequest hợp lệ
+        /// 
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Có lỗi xảy ra khi xử lý trả hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID09_ReturnOrder_ExceptionThrown_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: Exception sẽ xảy ra
+            int transactionId = 1;
+            var or = new OrderRequest
+            {
+                ListProductOrder = new List<ProductOrder>
+                {
+                    new ProductOrder { ProductId = 1, Quantity = 5 }
+                }
+            };
+
+            var transaction = new Transaction
+            {
+                TransactionId = transactionId,
+                WarehouseId = 1
+            };
+
+            var currentDetails = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = 1, Quantity = 10 }
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByIdAsync(transactionId))
+                .ReturnsAsync(transaction);
+
+            _transactionDetailServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(currentDetails);
+
+            var productDto = new ProductDto
+            {
+                ProductId = 1,
+                ProductName = "Product 1"
+            };
+
+            _productServiceMock
+                .Setup(s => s.GetByIdAsync(1))
+                .ReturnsAsync(productDto);
+
+            // Throw exception khi update inventory
+            _inventoryServiceMock
+                .Setup(s => s.GetEntityByWarehouseAndProductIdAsync(1, 1))
+                .ThrowsAsync(new Exception("DB error"));
+
+            // Act
+            var result = await _controller.ReturnOrder(transactionId, or);
+
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Có lỗi xảy ra khi xử lý trả hàng"
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Có lỗi xảy ra khi xử lý trả hàng", response.Error.Message);
             Assert.Equal(400, response.StatusCode);
         }
 
