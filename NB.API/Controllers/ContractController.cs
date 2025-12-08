@@ -64,7 +64,7 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<object>.Fail("Mã khách hàng không hợp lệ", 400));
             if (search.SupplierId <= 0)
                 return BadRequest(ApiResponse<object>.Fail("Mã nhà cung cấp không hợp lệ", 400));
-            if (search.FromDate > DateTime.UtcNow.AddHours(7))
+            if (search.FromDate > DateTime.UtcNow)
                 return BadRequest(ApiResponse<object>.Fail("Ngày tạo phải là ngày quá khứ", 400));
             try
             {
@@ -245,8 +245,8 @@ namespace NB.API.Controllers
                     UserId = request.UserId,
                     SupplierId = request.SupplierId,
                     Image = imageUrl,
-                    CreatedAt = DateTime.UtcNow.AddHours(7),
-                    UpdatedAt = DateTime.UtcNow.AddHours(7),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
                     IsActive = true
                 };
 
@@ -330,7 +330,7 @@ namespace NB.API.Controllers
                     contract.IsActive = request.IsActive;
                 }
 
-                contract.UpdatedAt = DateTime.UtcNow.AddHours(7);
+                contract.UpdatedAt = DateTime.UtcNow;
                 await _contractService.UpdateAsync(contract);
 
                 return Ok(ApiResponse<object>.Ok("Cập nhật hợp đồng thành công"));
