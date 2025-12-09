@@ -80,47 +80,6 @@ namespace NB.API.Controllers
 
         }
 
-        [HttpPost("PaySalary")]
-        public async Task<IActionResult> PaySalary(FinancialTransactionCreateVM model)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponse<FinancialTransactionCreateVM>.Fail("Dữ liệu không hợp lệ"));
-            }
-            if (!model.Amount.HasValue)
-            {
-                return BadRequest(ApiResponse<FinancialTransactionCreateVM>.Fail("Số tiền thu chi không được để trống"));
-            }
-            // Kiểm tra Type phải là UngLuong HOẶC ThanhToanLuong
-            if (model.Type != (int)FinancialTransactionType.UngLuong && model.Type != (int)FinancialTransactionType.ThanhToanLuong)
-            {
-                return BadRequest(ApiResponse<FinancialTransactionCreateVM>.Fail("Kiểu thu chi không hợp lệ"));
-            }
-            try
-            {
-                var entity = _mapper.Map<FinancialTransactionCreateVM, FinancialTransaction>(model);
-                entity.TransactionDate = DateTime.Now;
-                entity.Amount = - (model.Amount ?? 0);
-                if (model.Type == (int)FinancialTransactionType.UngLuong)
-                {
-                    entity.Type = FinancialTransactionType.UngLuong.ToString();
-                }
-                else
-                {
-                    entity.Type = FinancialTransactionType.ThanhToanLuong.ToString();
-                }
-
-                await _financialTransactionService.CreateAsync(entity);
-                return Ok(ApiResponse<string>.Ok("Tạo khoản thu chi thành công"));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Có lỗi xảy ra khi tạo khoản thu chi");
-                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi tạo khoản thu chi"));
-            }
-
-        }
-
         /// <summary>
         /// Lấy danh sách giao dịch tài chính với phân trang và tìm kiếm
         /// </summary>
