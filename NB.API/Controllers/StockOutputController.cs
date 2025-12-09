@@ -238,75 +238,6 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpGet("GetByTransactionId")]
-        public async Task<IActionResult> GetByTransactionId(int id)
-        {
-            try
-            {
-                var result = await _transactionService.GetByTransactionId(id);
-                if (result == null)
-                {
-                    return NotFound(ApiResponse<UserDto>.Fail("Không tìm thấy đơn hàng", 404 ));
-                }
-
-                var warehouse = await _warehouseService.GetByIdAsync(result.WarehouseId);
-                if (warehouse == null)
-                {
-                    return NotFound(ApiResponse<PagedList<WarehouseDto>>.Fail("Không tìm thấy kho", 404));
-                }
-                //gắn tên warehouse
-                result.WarehouseName = warehouse?.WarehouseName ?? "N/A";
-
-                //gắn status cho transaction
-                if (result.Status.HasValue)
-                {
-                    TransactionStatus status = (TransactionStatus)result.Status.Value;
-                    result.StatusName = status.ToString();
-                }
-
-                return Ok(ApiResponse<TransactionDto>.Ok(result));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi lấy đơn hàng với Id: {Id}", id);
-                return BadRequest(ApiResponse<TransactionDto>.Fail("Có lỗi xảy ra"));
-            }
-        }
-
-        [HttpGet("GetTransactionDetailByTransactionId")]
-        public async Task<IActionResult> GetTransactionDetailByTransactionId(int id)
-        {
-            try
-            {
-                //lay don hàng
-                var result = await _transactionDetailService.GetByTransactionId(id);
-                if (result == null)
-                {
-                    return NotFound(ApiResponse<UserDto>.Fail("Không tìm thấy đơn hàng", 404 ));
-                }
-                //lay danh sach product id
-                List<int> listProductId = result.Select(td => td.ProductId).ToList();
-                //lay ra các sản phẩm trong listProductId
-                var listProduct = await _productService.GetByIds(listProductId);
-                foreach (var t in result)
-                {
-                    var product = listProduct.FirstOrDefault(p => p.ProductId == t.ProductId);
-                    if (product is not null)
-                    {
-                        t.ProductName = product.ProductName;
-                        t.ImageUrl = product.ImageUrl;
-                    }
-                }
-
-                return Ok(ApiResponse<List<TransactionDetailDto>>.Ok(result));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi lấy đơn hàng với Id: {Id}", id);
-                return BadRequest(ApiResponse<TransactionDto>.Fail("Có lỗi xảy ra"));
-            }
-        }
-
 
         [HttpPost("CreateOrder/{userId}")]
         public async Task<IActionResult> CreateOrder(int userId, [FromBody] OrderRequest or)
@@ -733,7 +664,7 @@ namespace NB.API.Controllers
                     ?? new List<TransactionDetailDto>();
                 if (oldDetails == null || !oldDetails.Any())
                 {
-                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy chi tiết đơn hàng" ));
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy chi tiết đơn hàng", 404 ));
                 }
 
                 // Tạo dictionary để track các Inventory và StockBatch đã được update (tránh update lặp)
@@ -1287,37 +1218,6 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi cập nhật trạng thái đơn hàng");
                 return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"));
-            }
-        }
-
-
-        [HttpGet("GetTransactionStatus")]
-        public IActionResult GetTransactionStatus()
-        {
-            try
-            {
-                var listStatus = new List<TransactionStatus>
-                {
-                    TransactionStatus.draft,
-                    TransactionStatus.order,
-                    TransactionStatus.delivering,
-                    TransactionStatus.failure,
-                    TransactionStatus.cancel,
-                    TransactionStatus.paidInFull,
-                    TransactionStatus.partiallyPaid
-                };
-
-                // Tạo danh sách trả về gồm int + string
-                var result = listStatus
-                    .Select(s => new KeyValuePair<int, string>((int)s, s.GetDescription()))
-                    .ToList();
-
-                return Ok(ApiResponse<List<KeyValuePair<int, string>>>.Ok(result));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi lấy danh sách trạng thái đơn hàng");
-                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra"));
             }
         }
 
