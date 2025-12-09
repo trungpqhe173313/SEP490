@@ -31,6 +31,7 @@ using NB.Service.UserService.Dto;
 using NB.Service.UserService.ViewModels;
 using NB.Service.WarehouseService;
 using NB.Service.WarehouseService.Dto;
+using static System.DateTime;
 
 namespace NB.API.Controllers
 {
@@ -404,9 +405,9 @@ namespace NB.API.Controllers
                 var transactionEntity = _mapper.Map<TransactionCreateVM, Transaction>(tranCreate);
 
                 transactionEntity.Status = (int?)TransactionStatus.draft; // đang xử lý
-                transactionEntity.TransactionDate = DateTime.UtcNow;
+                transactionEntity.TransactionDate = Now;
                 transactionEntity.Type = "Export";
-                transactionEntity.TransactionCode = $"EXPORT-{DateTime.UtcNow:yyyyMMdd}";
+                transactionEntity.TransactionCode = $"EXPORT-{Now:yyyyMMdd}";
                 await _transactionService.CreateAsync(transactionEntity);
 
                 // 3️ Duyệt từng sản phẩm để tạo transaction detail

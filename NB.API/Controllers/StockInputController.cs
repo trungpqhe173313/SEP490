@@ -34,6 +34,7 @@ using System.Globalization;
 using System.Security.Permissions;
 using NB.Service.FinancialTransactionService.ViewModels;
 using NB.Service.FinancialTransactionService;
+using static System.DateTime;
 
 
 namespace NB.API.Controllers
@@ -189,26 +190,21 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<FullTransactionVM>.Fail("Id không hợp lệ", 400));
                 }
 
-                var productDetails = await _transactionDetailService.GetByTransactionId(Id);
-                if(productDetails.Count == 0)
+                var targetTransaction = await _transactionService.GetByTransactionId(Id);
+                var transactionDetails = await _transactionDetailService.GetByTransactionId(Id);
+                if(transactionDetails.Count == 0)
                 {
                     return NotFound(ApiResponse<FullTransactionVM>.Fail("Không có thông tin cho giao dịch này.", 400));
                 }
-                foreach (var item in productDetails)
+                foreach (var item in transactionDetails)
                 {
                     var product = await _productService.GetById(item.ProductId);
                     item.ProductName = product != null ? product.ProductName : "N/A";
                     item.Code = product != null ? product.ProductCode : "N/A";
                 }
-                var batches = await _stockBatchService.GetByTransactionId(Id);
-                if(batches.Count == 0)
-                {
-                    return NotFound(ApiResponse<FullTransactionVM>.Fail("Không có lô hàng nào cho giao dịch này.", 400));
-                }
-                var batch = batches.FirstOrDefault();
+                
 
-
-                var listResult = productDetails.Select(item => new TransactionDetailOutputVM
+                var listResult = transactionDetails.Select(item => new TransactionDetailOutputVM
                 {
                     TransactionDetailId = item.Id,
                     ProductId = item.ProductId,
@@ -217,8 +213,7 @@ namespace NB.API.Controllers
                     UnitPrice = item.UnitPrice,
                     WeightPerUnit = item.WeightPerUnit,
                     Quantity = item.Quantity,
-                    ExpireDate = batch.ExpireDate,
-                    Note = batch.Note
+                    Note = targetTransaction.Note
                 }).ToList();
 
                 transaction.list = listResult;
@@ -386,10 +381,10 @@ namespace NB.API.Controllers
                         WarehouseId = model.WarehouseId,
                         Type = "Import",
                         Status = 1, // Mặc định - Đang kiểm
-                        TransactionDate = DateTime.UtcNow,
+                        TransactionDate = Now,
                         TotalWeight = totalWeight,
                         TotalCost = totalCost,
-                        TransactionCode = $"IMPORT-{DateTime.UtcNow:yyyyMMdd}",
+                        TransactionCode = $"IMPORT-{Now:yyyyMMdd}",
                         Note = model.Note
                     };
                     await _transactionService.CreateAsync(newTransaction);
@@ -540,7 +535,7 @@ namespace NB.API.Controllers
 
                             if (!isValidDate)
                                 validationErrors.Add($"Dòng 3: ExpireDate không hợp lệ. Giá trị: '{expireDateCell.Value}'. Vui lòng nhập theo định dạng MM/DD/YYYY (ví dụ: 12/31/2025)");
-                            else if (expireDate <= DateTime.UtcNow)
+                            else if (expireDate <= Now)
                                 validationErrors.Add("Dòng 3: ExpireDate phải sau ngày hiện tại");
 
                             // Lookup Warehouse và Supplier
@@ -667,8 +662,8 @@ namespace NB.API.Controllers
                                 Status = 1, // Completed
                                 TotalWeight = totalWeight,
                                 TotalCost = totalCost,
-                                TransactionCode = $"IMPORT-{DateTime.UtcNow:yyyyMMdd}",
-                                TransactionDate = DateTime.UtcNow,
+                                TransactionCode = $"IMPORT-{Now:yyyyMMdd}",
+                                TransactionDate = Now,
                                 Note = $"Import từ Excel - NCC: {supplier.SupplierName} → Kho: {warehouse.WarehouseName}"
                             };
                             await _transactionService.CreateAsync(newTransaction);
@@ -710,12 +705,12 @@ namespace NB.API.Controllers
                                     ProductId = product.productId,
                                     TransactionId = transactionId,
                                     BatchCode = uniqueBatchCode,
-                                    ImportDate = DateTime.UtcNow,
+                                    ImportDate = Now,
                                     ExpireDate = expireDate,
                                     QuantityIn = product.quantity,
                                     Status = 1,
                                     IsActive = true,
-                                    LastUpdated = DateTime.UtcNow,
+                                    LastUpdated = Now,
                                     Note = product.note
                                 };
                                 await _stockBatchService.CreateAsync(newStockBatch);
@@ -736,7 +731,7 @@ namespace NB.API.Controllers
                                             WarehouseId = warehouse.WarehouseId,
                                             ProductId = product.productId,
                                             Quantity = product.quantity,
-                                            LastUpdated = DateTime.UtcNow
+                                            LastUpdated = Now
                                         };
                                         inventoryCache[inventoryKey] = newInventory;
                                     }
@@ -745,7 +740,7 @@ namespace NB.API.Controllers
                                         // Update với weighted average cost
                                         decimal? totalQuantity = existInventory.Quantity + product.quantity;
                                         existInventory.Quantity = totalQuantity;
-                                        existInventory.LastUpdated = DateTime.UtcNow;
+                                        existInventory.LastUpdated = Now;
                                         inventoryCache[inventoryKey] = existInventory;
                                     }
                                 }
@@ -755,7 +750,7 @@ namespace NB.API.Controllers
                                     var cachedInventory = inventoryCache[inventoryKey];
                                     decimal? totalQuantity = cachedInventory.Quantity + product.quantity;
                                     cachedInventory.Quantity = totalQuantity;
-                                    cachedInventory.LastUpdated = DateTime.UtcNow;
+                                    cachedInventory.LastUpdated = Now;
                                 }
 
                                 // Lấy thông tin Product từ database để có WeightPerUnit
@@ -1020,8 +1015,8 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail("Giao dịch không phải là loại Import", 400));
                 }
 
-                // Tự động tính ExpireDate = UtcNow + 3 tháng
-                var expireDate = DateTime.UtcNow.AddMonths(3);
+                // Tự động tính ExpireDate = Now + 3 tháng
+                var expireDate = Now.AddMonths(3);
 
                 // Lấy TransactionDetails của transaction này
                 var transactionDetails = await _transactionDetailService.GetByTransactionId(transactionId);
@@ -1061,12 +1056,12 @@ namespace NB.API.Controllers
                         ProductId = detail.ProductId,
                         TransactionId = transactionId,
                         BatchCode = uniqueBatchCode,
-                        ImportDate = DateTime.UtcNow,
+                        ImportDate = Now,
                         ExpireDate = expireDate,
                         QuantityIn = detail.Quantity,
                         Status = 1, // Đã nhập kho
                         IsActive = true,
-                        LastUpdated = DateTime.UtcNow,
+                        LastUpdated = Now,
                         Note = transaction.Note
                     };
                     await _stockBatchService.CreateAsync(newStockBatch);
@@ -1087,7 +1082,7 @@ namespace NB.API.Controllers
                                 WarehouseId = transaction.WarehouseId,
                                 ProductId = detail.ProductId,
                                 Quantity = detail.Quantity,
-                                LastUpdated = DateTime.UtcNow
+                                LastUpdated = Now
                             };
                             inventoryCache[inventoryKey] = newInventory;
                         }
@@ -1096,7 +1091,7 @@ namespace NB.API.Controllers
                             // Đã tồn tại trong DB: Update quantity
                             decimal? totalQuantity = existInventory.Quantity + detail.Quantity;
                             existInventory.Quantity = totalQuantity;
-                            existInventory.LastUpdated = DateTime.UtcNow;
+                            existInventory.LastUpdated = Now;
                             inventoryCache[inventoryKey] = existInventory;
                         }
                     }
@@ -1106,7 +1101,7 @@ namespace NB.API.Controllers
                         var cachedInventory = inventoryCache[inventoryKey];
                         decimal? totalQuantity = cachedInventory.Quantity + detail.Quantity;
                         cachedInventory.Quantity = totalQuantity;
-                        cachedInventory.LastUpdated = DateTime.UtcNow;
+                        cachedInventory.LastUpdated = Now;
                     }
 
                     batchCounter++;
