@@ -20,6 +20,7 @@ using NB.Service.StockBatchService;
 using NB.Service.StockBatchService.Dto;
 using NB.Service.StockBatchService.ViewModels;
 using NB.Service.WarehouseService;
+using static System.DateTime;
 
 namespace NB.API.Controllers
 {
@@ -419,11 +420,11 @@ namespace NB.API.Controllers
                         ProductId = productId,
                         ProductionFinishId = productionOrder.Id,
                         BatchCode = uniqueBatchCode,
-                        ImportDate = DateTime.UtcNow,
+                        ImportDate = Now,
                         QuantityIn = quantity,
                         Status = 1, // Đã nhập kho
                         IsActive = true,
-                        LastUpdated = DateTime.UtcNow,
+                        LastUpdated = Now,
                         Note = $"Sản xuất từ đơn sản xuất #{productionOrderId}"
                     };
                     var stockBatchEntity = _mapper.Map<StockBatchProductionCreateVM, StockBatch>(stockBatchCreateVM);
