@@ -430,7 +430,7 @@ namespace NB.API.Controllers
                     // Validate file
                     if (file == null || file.Length == 0)
                     {
-                        return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("File không được để trống", 400));
+                        return BadRequest(ApiResponse<List<TransactionDetailOutputVM>>.Fail("File không được để trống", 400));
                     }
 
                     // Validate file extension
@@ -438,18 +438,18 @@ namespace NB.API.Controllers
                     var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
                     if (!allowedExtensions.Contains(fileExtension))
                     {
-                        return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("Chỉ chấp nhận file Excel (.xlsx, .xls)", 400));
+                        return BadRequest(ApiResponse<List<TransactionDetailOutputVM>>.Fail("Chỉ chấp nhận file Excel (.xlsx, .xls)", 400));
                     }
 
                     // Validate file size (max 10MB)
                     if (file.Length > 10 * 1024 * 1024)
                     {
-                        return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("Kích thước file không được vượt quá 10MB", 400));
+                        return BadRequest(ApiResponse<List<TransactionDetailOutputVM>>.Fail("Kích thước file không được vượt quá 10MB", 400));
                     }
 
-                    var result = new StockBatchImportResultVM();
                     var validationErrors = new List<string>();
-                   
+                    var resultList = new List<TransactionDetailOutputVM>();
+
                     using (var stream = new MemoryStream())
                     {
                         await file.CopyToAsync(stream);
@@ -461,20 +461,20 @@ namespace NB.API.Controllers
                             var mainSheet = package.Workbook.Worksheets.FirstOrDefault(s => s.Name == "Nhập kho");
                             if (mainSheet == null)
                             {
-                                return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("Không tìm thấy sheet 'Nhập kho'", 400));
+                                return BadRequest(ApiResponse<List<TransactionDetailOutputVM>>.Fail("Không tìm thấy sheet 'Nhập kho'", 400));
                             }
 
                             // Kiểm tra có dữ liệu không
                             var rowCount = mainSheet.Dimension?.Rows ?? 0;
                             if (rowCount < 3)
                             {
-                                return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail("Sheet 'Nhập kho' không có dữ liệu", 400));
+                                return BadRequest(ApiResponse<List<TransactionDetailOutputVM>>.Fail("Sheet 'Nhập kho' không có dữ liệu", 400));
                             }
 
                             // Đọc thông tin chung từ dòng 3, cột A, B, C
                             string warehouseName = mainSheet.Cells[3, 1].Value?.ToString()?.Trim();
                             string supplierName = mainSheet.Cells[3, 2].Value?.ToString()?.Trim();
-                            var expireDateCell = mainSheet.Cells[3, 3];
+                            string transactionNote = mainSheet.Cells[3, 3].Value?.ToString()?.Trim();
 
                             // Validate thông tin chung
                             if (string.IsNullOrWhiteSpace(warehouseName))
@@ -482,61 +482,6 @@ namespace NB.API.Controllers
 
                             if (string.IsNullOrWhiteSpace(supplierName))
                                 validationErrors.Add("Dòng 3: SupplierName không được để trống");
-
-                            DateTime expireDate = DateTime.MinValue;
-                            bool isValidDate = false;
-
-                            // Thử parse từ nhiều định dạng khác nhau
-                            if (expireDateCell.Value is double doubleValue)
-                            {
-                                // Trường hợp 1: Excel lưu dưới dạng số (OADate)
-                                try
-                                {
-                                    expireDate = DateTime.FromOADate(doubleValue);
-                                    isValidDate = true;
-                                }
-                                catch { isValidDate = false; }
-                            }
-                            else if (expireDateCell.Value is string stringValue && !string.IsNullOrWhiteSpace(stringValue))
-                            {
-                                // Trường hợp 2: Người dùng nhập text (hỗ trợ nhiều format)
-                                var formats = new[]
-                                {
-                                    "MM/dd/yyyy",   // 12/31/2025
-                                    "MM-dd-yyyy",   // 12-31-2025
-                                    "dd/MM/yyyy",   // 31/12/2025
-                                    "dd-MM-yyyy",   // 31-12-2025
-                                    "yyyy-MM-dd",   // 2025-12-31
-                                    "yyyy/MM/dd",   // 2025/12/31
-                                    "M/d/yyyy",     // 12/31/2025 (không có số 0 đầu)
-                                    "d/M/yyyy"      // 31/12/2025 (không có số 0 đầu)
-                                };
-
-                                isValidDate = DateTime.TryParseExact(
-                                    stringValue.Trim(),
-                                    formats,
-                                    CultureInfo.InvariantCulture,
-                                    DateTimeStyles.None,
-                                    out expireDate
-                                );
-
-                                // Nếu TryParseExact không thành công, thử parse tự động
-                                if (!isValidDate)
-                                {
-                                    isValidDate = DateTime.TryParse(stringValue.Trim(), out expireDate);
-                                }
-                            }
-                            else if (expireDateCell.Value is DateTime dateTimeValue)
-                            {
-                                // Trường hợp 3: Đã là DateTime
-                                expireDate = dateTimeValue;
-                                isValidDate = true;
-                            }
-
-                            if (!isValidDate)
-                                validationErrors.Add($"Dòng 3: ExpireDate không hợp lệ. Giá trị: '{expireDateCell.Value}'. Vui lòng nhập theo định dạng MM/DD/YYYY (ví dụ: 12/31/2025)");
-                            else if (expireDate <= Now)
-                                validationErrors.Add("Dòng 3: ExpireDate phải sau ngày hiện tại");
 
                             // Lookup Warehouse và Supplier
                             var warehouse = !string.IsNullOrWhiteSpace(warehouseName)
@@ -554,10 +499,8 @@ namespace NB.API.Controllers
                             // Nếu có lỗi ở thông tin chung, dừng luôn
                             if (validationErrors.Any())
                             {
-                                return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail(validationErrors, 400));
+                                return BadRequest(ApiResponse<List<TransactionDetailOutputVM>>.Fail(validationErrors, 400));
                             }
-
-                            result.TotalRows = rowCount - 2; // Trừ header và description
 
                             // Class để chứa dữ liệu sản phẩm đã validate
                             var validatedProducts = new List<(
@@ -565,23 +508,21 @@ namespace NB.API.Controllers
                                 int productId,
                                 int quantity,
                                 decimal unitPrice,
-                                string note,
                                 string productName
                             )>();
 
 
-                            // VALIDATE TẤT CẢ CÁC DÒNG SẢN PHẨM (từ dòng 3, cột D, E, F, G)
+                            // Validate tất cả sản phẩm (từ dòng 3, cột D, E, F)
                             decimal totalCost = 0;
                             decimal totalWeight = 0;
                             for (int row = 3; row <= rowCount; row++)
                             {
                                 try
                                 {
-                                    // Đọc dữ liệu sản phẩm từ cột D, E, F, G (4, 5, 6, 7)
+                                    // Đọc dữ liệu sản phẩm từ cột D, E, F (4, 5, 6)
                                     var productName = mainSheet.Cells[row, 4].Value?.ToString()?.Trim();  // Cột D: ProductName
                                     var quantityStr = mainSheet.Cells[row, 5].Value?.ToString()?.Trim();  // Cột E: Quantity
                                     var unitPriceStr = mainSheet.Cells[row, 6].Value?.ToString()?.Trim(); // Cột F: UnitPrice
-                                    var note = mainSheet.Cells[row, 7].Value?.ToString()?.Trim();         // Cột G: Note
 
                                     var rowErrors = new List<string>();
 
@@ -630,7 +571,6 @@ namespace NB.API.Controllers
                                         existProduct.ProductId,
                                         quantity,
                                         unitPrice,
-                                        note,
                                         existProduct.ProductName
                                     ));
                                 }
@@ -643,12 +583,7 @@ namespace NB.API.Controllers
                             // Nếu có bất kỳ lỗi nào, return BadRequest, hủy toàn bộ quá trình import
                             if (validationErrors.Any())
                             {
-                                result.TotalRows = validatedProducts.Count;
-                                result.FailedCount = result.TotalRows;
-                                result.SuccessCount = 0;
-                                result.ErrorMessages = validationErrors;
-
-                                return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail(
+                                return BadRequest(ApiResponse<List<TransactionDetailOutputVM>>.Fail(
                                     validationErrors,
                                     400));
                             }
@@ -659,163 +594,67 @@ namespace NB.API.Controllers
                                 SupplierId = supplier.SupplierId,
                                 WarehouseId = warehouse.WarehouseId,
                                 Type = "Import",
-                                Status = 1, // Completed
+                                Status = 1, // Pending - Chờ kiểm hàng
                                 TotalWeight = totalWeight,
                                 TotalCost = totalCost,
                                 TransactionCode = $"IMPORT-{Now:yyyyMMdd}",
                                 TransactionDate = Now,
-                                Note = $"Import từ Excel - NCC: {supplier.SupplierName} → Kho: {warehouse.WarehouseName}"
+                                Note = transactionNote
                             };
                             await _transactionService.CreateAsync(newTransaction);
                             int transactionId = newTransaction.TransactionId;
 
-                            // Inventory cache
-                            Dictionary<string, InventoryDto> inventoryCache = new Dictionary<string, InventoryDto>();
+                            // Aggregate products by ProductId để cộng dồn quantity
+                            var aggregatedProducts = validatedProducts
+                                .GroupBy(p => p.productId)
+                                .Select(g => new
+                                {
+                                    ProductId = g.Key,
+                                    TotalQuantity = g.Sum(p => p.quantity),
+                                    AverageUnitPrice = g.Average(p => p.unitPrice),
+                                    ProductName = g.First().productName,
+                                    ProductCode = ""
+                                })
+                                .ToList();
 
-                            // BatchCode prefix
-                            string batchCodePrefix = "BATCH-NUMBER";
-                            int batchCounter = 1;
-
-                            // Tạo TransactionDetails, StockBatches và cập nhật Inventory
-                            foreach (var product in validatedProducts)
+                            // Tạo TransactionDetails với quantity đã được cộng dồn
+                            foreach (var product in aggregatedProducts)
                             {
-                                // Tạo TransactionDetail
                                 var transactionDetail = new TransactionDetailDto
                                 {
                                     TransactionId = transactionId,
-                                    ProductId = product.productId,
-                                    Quantity = product.quantity,
-                                    UnitPrice = product.unitPrice
-                                    //,Subtotal = product.quantity * product.unitPrice
+                                    ProductId = product.ProductId,
+                                    Quantity = product.TotalQuantity,
+                                    UnitPrice = product.AverageUnitPrice
                                 };
                                 await _transactionDetailService.CreateAsync(transactionDetail);
 
-                                // Tạo BatchCode
-                                string uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
-                                while (await _stockBatchService.GetByName(uniqueBatchCode) != null)
-                                {
-                                    batchCounter++;
-                                    uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
-                                }
-
-                                // Tạo StockBatch
-                                var newStockBatch = new StockBatchDto
-                                {
-                                    WarehouseId = warehouse.WarehouseId,
-                                    ProductId = product.productId,
-                                    TransactionId = transactionId,
-                                    BatchCode = uniqueBatchCode,
-                                    ImportDate = Now,
-                                    ExpireDate = expireDate,
-                                    QuantityIn = product.quantity,
-                                    Status = 1,
-                                    IsActive = true,
-                                    LastUpdated = Now,
-                                    Note = product.note
-                                };
-                                await _stockBatchService.CreateAsync(newStockBatch);
-
-                                // Update Inventory cache
-                                string inventoryKey = $"{warehouse.WarehouseId}_{product.productId}";
-
-                                if (!inventoryCache.ContainsKey(inventoryKey))
-                                {
-                                    // Load từ DB lần đầu
-                                    var existInventory = await _inventoryService.GetByWarehouseAndProductId(warehouse.WarehouseId, product.productId);
-
-                                    if (existInventory == null)
-                                    {
-                                        // Tạo mới Inventory
-                                        var newInventory = new InventoryDto
-                                        {
-                                            WarehouseId = warehouse.WarehouseId,
-                                            ProductId = product.productId,
-                                            Quantity = product.quantity,
-                                            LastUpdated = Now
-                                        };
-                                        inventoryCache[inventoryKey] = newInventory;
-                                    }
-                                    else
-                                    {
-                                        // Update với weighted average cost
-                                        decimal? totalQuantity = existInventory.Quantity + product.quantity;
-                                        existInventory.Quantity = totalQuantity;
-                                        existInventory.LastUpdated = Now;
-                                        inventoryCache[inventoryKey] = existInventory;
-                                    }
-                                }
-                                else
-                                {
-                                    // Cộng dồn trong cache với weighted average
-                                    var cachedInventory = inventoryCache[inventoryKey];
-                                    decimal? totalQuantity = cachedInventory.Quantity + product.quantity;
-                                    cachedInventory.Quantity = totalQuantity;
-                                    cachedInventory.LastUpdated = Now;
-                                }
-
-                                // Lấy thông tin Product từ database để có WeightPerUnit
-                                var productInfo = await _productService.GetById(product.productId);
+                                // Lấy thông tin Product từ database
+                                var productInfo = await _productService.GetById(product.ProductId);
 
                                 // Tạo kết quả trả về
-                                var resultItem = new StockOutputVM
+                                var resultItem = new TransactionDetailOutputVM
                                 {
-                                    BatchId = newStockBatch.BatchId,
-                                    WarehouseId = newStockBatch.WarehouseId,
-                                    WarehouseName = warehouse.WarehouseName,
-                                    ProductName = product.productName,
-                                    TransactionId = transactionId,
-                                    ProductionFinishId = null,
-                                    BatchCode = uniqueBatchCode,
-                                    ImportDate = newStockBatch.ImportDate,
-                                    ExpireDate = newStockBatch.ExpireDate,
-                                    QuantityIn = newStockBatch.QuantityIn,
-                                    Status = newStockBatch.Status switch
-                                    {
-                                        0 => "Đã hết hàng",
-                                        1 => "Còn hàng",
-                                        2 => "Hết hạn",
-                                        3 => "Lô hỏng",
-                                        _ => "Không xác định"
-                                    },
-                                    IsActive = newStockBatch.IsActive switch
-                                    {
-                                        false => "Đã đóng",
-                                        true => "Đang hoạt động"
-                                    },
-                                    Note = newStockBatch.Note,
-                                    UnitPrice = product.unitPrice,
-                                    WeightPerUnit = productInfo?.WeightPerUnit
+                                    TransactionDetailId = transactionDetail.Id,
+                                    ProductId = product.ProductId,
+                                    Code = productInfo?.ProductCode ?? "N/A",
+                                    ProductName = product.ProductName,
+                                    UnitPrice = product.AverageUnitPrice,
+                                    WeightPerUnit = productInfo?.WeightPerUnit,
+                                    Quantity = product.TotalQuantity,
+                                    Note = transactionNote
                                 };
-                                result.ImportedStockBatches.Add(resultItem);
-                                result.SuccessCount++;
-                                batchCounter++;
-                            }
-
-                            // Load Inventory từ cache vào DB
-                            foreach (var inv in inventoryCache)
-                            {
-                                var inventory = inv.Value;
-
-                                if (inventory.InventoryId == 0)
-                                {
-                                    await _inventoryService.CreateAsync(inventory);
-                                }
-                                else
-                                {
-                                    await _inventoryService.UpdateAsync(inventory);
-                                }
+                                resultList.Add(resultItem);
                             }
                         }
                     }
                     // Hoàn tất import và trả về kết quả
-                    result.ErrorMessages = new List<string>();
-                    result.FailedCount = 0;
-                    return Ok(ApiResponse<StockBatchImportResultVM>.Ok(result));
+                    return Ok(ApiResponse<List<TransactionDetailOutputVM>>.Ok(resultList));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Lỗi khi import file Excel");
-                    return BadRequest(ApiResponse<StockBatchImportResultVM>.Fail($"Có lỗi xảy ra: {ex.Message}", 400));
+                    return BadRequest(ApiResponse<List<TransactionDetailOutputVM>>.Fail($"Có lỗi xảy ra: {ex.Message}", 400));
                 }
             }
 
