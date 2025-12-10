@@ -15,6 +15,7 @@ using NB.Service.UserService.Dto;
 using NB.Service.UserService.ViewModels;
 using NB.Service.UserRoleService;
 using NB.Model.Entities;
+using static System.DateTime;
 
 namespace NB.API.Controllers
 {
@@ -108,7 +109,7 @@ namespace NB.API.Controllers
             try
             {
                 // Lấy giờ Việt Nam (UTC+7)
-                var vietnamTime = DateTime.UtcNow;
+                var vietnamTime = Now;
 
                 // Validate Username đã tồn tại chưa
                 var existingUsername = await _userService.GetByUsername(model.username);

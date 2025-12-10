@@ -14,6 +14,7 @@ using NB.Service.UserService.Dto;
 using NB.Service.WarehouseService;
 using OfficeOpenXml;
 using NB.Service.Core.Forms;
+using static System.DateTime;
 
 namespace NB.API.Controllers
 {
@@ -355,7 +356,7 @@ namespace NB.API.Controllers
                     WeightPerUnit = model.weightPerUnit,
                     SellingPrice = model.sellingPrice,
                     IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = Now
                 };
                 await _productService.CreateAsync(newProductEntity);
 
@@ -537,7 +538,7 @@ namespace NB.API.Controllers
                 // Update Product nếu có thay đổi
                 if (isProductChanged)
                 {
-                    productEntity.UpdatedAt = DateTime.UtcNow;
+                    productEntity.UpdatedAt = Now;
                     await _productService.UpdateAsync(productEntity);
                 }
 
@@ -868,8 +869,8 @@ namespace NB.API.Controllers
                                 Description = product.description,
                                 ImageUrl = "ImagePath",
                                 IsAvailable = true,
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow
+                                CreatedAt = Now,
+                                UpdatedAt = Now
                             };
 
                             await _productService.CreateAsync(newProduct);

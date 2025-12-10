@@ -182,11 +182,10 @@ namespace NB.Service.Core.Forms
                 {
                     "WarehouseName",
                     "SupplierName",
-                    "ExpireDate",
+                    "Note",
                     "ProductName",
                     "Quantity",
-                    "UnitPrice",
-                    "Note"
+                    "UnitPrice"
                 };
 
                 // Define header descriptions
@@ -194,11 +193,10 @@ namespace NB.Service.Core.Forms
                 {
                     "Tên kho nhập (Chỉ điền ở dòng đầu)",
                     "Tên nhà cung cấp (Chỉ điền ở dòng đầu)",
-                    "Ngày hết hạn chung (Chỉ điền ở dòng đầu)",
+                    "Ghi chú chung (Chỉ điền ở dòng đầu)",
                     "Tên sản phẩm (Bắt buộc)",
                     "Số lượng (Bắt buộc, số nguyên > 0)",
-                    "Giá nhập (Bắt buộc, số thực > 0)",
-                    "Ghi chú (Tùy chọn)"
+                    "Giá nhập (Bắt buộc, số thực > 0)"
                 };
 
                 // Tạo headers (Row 1)
@@ -214,7 +212,7 @@ namespace NB.Service.Core.Forms
                     {
                         cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(0, 112, 192));
                     }
-                    else //Cột sản phẩm (D, E, F, G)
+                    else //Cột sản phẩm (D, E, F)
                     {
                         cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(79, 129, 189));
                     }
@@ -242,11 +240,10 @@ namespace NB.Service.Core.Forms
                 {
                     "Kho Hà Nội",           // WarehouseName
                     "Nhà cung cấp ABC",     // SupplierName
-                    "12-31-2025",           // ExpireDate
+                    "Nhập hàng tháng 12",  // Note
                     "Sản phẩm A",           // ProductName
                     1000,                   // Quantity
-                    50000.50,               // UnitPrice
-                    "Lô hàng đầu tiên"      // Note
+                    50000.50                // UnitPrice
                 };
 
                 for (int i = 0; i < sampleData1.Length; i++)
@@ -263,11 +260,10 @@ namespace NB.Service.Core.Forms
                 {
                     "",                     // WarehouseName (để trống, lấy từ dòng 3)
                     "",                     // SupplierName (để trống, lấy từ dòng 3)
-                    "",                     // ExpireDate (để trống, lấy từ dòng 3)
+                    "",                     // Note (để trống, lấy từ dòng 3)
                     "Sản phẩm B",           // ProductName
                     500,                    // Quantity
-                    75000.00,               // UnitPrice
-                    "Lô hàng thứ hai"       // Note
+                    75000.00                // UnitPrice
                 };
 
                 for (int i = 0; i < sampleData2.Length; i++)
@@ -284,11 +280,10 @@ namespace NB.Service.Core.Forms
                 {
                     "",                     // WarehouseName (để trống)
                     "",                     // SupplierName (để trống)
-                    "",                     // ExpireDate (để trống)
+                    "",                     // Note (để trống)
                     "Sản phẩm C",           // ProductName
                     750,                    // Quantity
-                    60000.00,               // UnitPrice
-                    ""                      // Note (để trống)
+                    60000.00                // UnitPrice
                 };
 
                 for (int i = 0; i < sampleData3.Length; i++)
@@ -326,35 +321,36 @@ namespace NB.Service.Core.Forms
                 instructionSheet.Cells["A8"].Style.Font.Bold = true;
                 instructionSheet.Cells["A9"].Value = "   - WarehouseName (Cột A): Tên kho nhập (phải tồn tại trong hệ thống)";
                 instructionSheet.Cells["A10"].Value = "   - SupplierName (Cột B): Tên nhà cung cấp (phải tồn tại trong hệ thống)";
-                instructionSheet.Cells["A11"].Value = "   - ExpireDate (Cột C): Ngày hết hạn: chung cho toàn bộ đơn ";
+                instructionSheet.Cells["A11"].Value = "   - Note (Cột C): Ghi chú chung cho toàn bộ đơn nhập (tùy chọn)";
                 instructionSheet.Cells["A12"].Value = "   → Chỉ cần điền ở dòng 3, các dòng tiếp theo để trống (hệ thống tự lấy từ dòng đầu)";
 
-                instructionSheet.Cells["A14"].Value = "3. Thông tin sản phẩm (Cột D, E, F, G) - ĐIỀN Ở MỖI DÒNG:";
+                instructionSheet.Cells["A14"].Value = "3. Thông tin sản phẩm (Cột D, E, F) - ĐIỀN Ở MỖI DÒNG:";
                 instructionSheet.Cells["A14"].Style.Font.Bold = true;
                 instructionSheet.Cells["A15"].Value = "   - ProductName (Cột D): Tên sản phẩm (bắt buộc, phải tồn tại trong hệ thống)";
                 instructionSheet.Cells["A16"].Value = "   - Quantity (Cột E): Số lượng nhập (bắt buộc, số nguyên > 0)";
                 instructionSheet.Cells["A17"].Value = "   - UnitPrice (Cột F): Giá nhập (bắt buộc, số thực > 0, VD: 50000.50)";
-                instructionSheet.Cells["A18"].Value = "   - Note (Cột G): Ghi chú cho sản phẩm (tùy chọn)";
 
-                instructionSheet.Cells["A20"].Value = "4. Ví dụ cách điền:";
-                instructionSheet.Cells["A20"].Style.Font.Bold = true;
-                instructionSheet.Cells["A21"].Value = "   Dòng 3: Kho Hà Nội | Nhà cung cấp ABC | 12-31-2025 | Sản phẩm A | 1000 | 50000.50 | Ghi chú 1";
-                instructionSheet.Cells["A22"].Value = "   Dòng 4: [Để trống] | [Để trống] | [Để trống] | Sản phẩm B | 500 | 75000 | Ghi chú 2";
-                instructionSheet.Cells["A23"].Value = "   Dòng 5: [Để trống] | [Để trống] | [Để trống] | Sản phẩm C | 750 | 60000 | Ghi chú 3";
+                instructionSheet.Cells["A19"].Value = "4. Ví dụ cách điền:";
+                instructionSheet.Cells["A19"].Style.Font.Bold = true;
+                instructionSheet.Cells["A20"].Value = "   Dòng 3: Kho Hà Nội | Nhà cung cấp ABC | Nhập hàng tháng 12 | Sản phẩm A | 1000 | 50000.50";
+                instructionSheet.Cells["A21"].Value = "   Dòng 4: [Để trống] | [Để trống] | [Để trống] | Sản phẩm B | 500 | 75000";
+                instructionSheet.Cells["A22"].Value = "   Dòng 5: [Để trống] | [Để trống] | [Để trống] | Sản phẩm C | 750 | 60000";
 
-                instructionSheet.Cells["A25"].Value = "5. Lưu ý quan trọng:";
-                instructionSheet.Cells["A25"].Style.Font.Bold = true;
-                instructionSheet.Cells["A26"].Value = "   - Chỉ cần 1 sheet duy nhất: 'Nhập kho'";
-                instructionSheet.Cells["A27"].Value = "   - Thông tin chung (tên kho, tên nhà cung cấp, ngày hết hạn) chỉ cần điền 1 lần (dòng 3)";
-                instructionSheet.Cells["A28"].Value = "   - Các dòng tiếp theo chỉ cần điền thông tin sản phẩm (Cột D, E, F, G)";
+                instructionSheet.Cells["A24"].Value = "5. Lưu ý quan trọng:";
+                instructionSheet.Cells["A24"].Style.Font.Bold = true;
+                instructionSheet.Cells["A25"].Value = "   - Chỉ cần 1 sheet duy nhất: 'Nhập kho'";
+                instructionSheet.Cells["A26"].Value = "   - Thông tin chung (tên kho, tên nhà cung cấp, ghi chú) chỉ cần điền 1 lần (dòng 3)";
+                instructionSheet.Cells["A27"].Value = "   - Các dòng tiếp theo chỉ cần điền thông tin sản phẩm (Cột D, E, F)";
+                instructionSheet.Cells["A28"].Value = "   - Ghi chú (Note) sẽ áp dụng cho toàn bộ đơn nhập, không phải từng sản phẩm";
                 instructionSheet.Cells["A29"].Value = "   - Các dòng màu vàng là dữ liệu mẫu, có thể xóa và thay bằng dữ liệu thực";
                 instructionSheet.Cells["A30"].Value = "   - File chỉ chấp nhận định dạng .xlsx hoặc .xls";
                 instructionSheet.Cells["A31"].Value = "   - Kích thước file tối đa: 10MB";
-                instructionSheet.Cells["A32"].Value = "   - Tên phải chính xác (tên kho, tên nhà cung cấp, ngày hết hạn)";
-                instructionSheet.Cells["A33"].Value = "   - ExpireDate sẽ áp dụng cho toàn bộ sản phẩm trong đơn nhập";
+                instructionSheet.Cells["A32"].Value = "   - Tên phải chính xác (tên kho, tên nhà cung cấp)";
+                instructionSheet.Cells["A33"].Value = "   - Giao dịch sẽ ở trạng thái chờ kiểm hàng sau khi import";
+                instructionSheet.Cells["A34"].Value = "   - StockBatch và Inventory sẽ được tạo khi cập nhật trạng thái đã kiểm";
 
                 instructionSheet.Column(1).Width = 90;
-                instructionSheet.Cells["A1:A33"].Style.WrapText = true;
+                instructionSheet.Cells["A1:A34"].Style.WrapText = true;
 
                 package.Save();
             }

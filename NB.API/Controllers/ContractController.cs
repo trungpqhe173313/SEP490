@@ -17,6 +17,7 @@ using NB.Service.UserRoleService;
 using NB.Service.UserService;
 using NB.Service.UserService.Dto;
 using NB.Service.UserService.ViewModels;
+using static System.DateTime;
 
 namespace NB.API.Controllers
 {
@@ -64,7 +65,7 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<object>.Fail("Mã khách hàng không hợp lệ", 400));
             if (search.SupplierId <= 0)
                 return BadRequest(ApiResponse<object>.Fail("Mã nhà cung cấp không hợp lệ", 400));
-            if (search.FromDate > DateTime.UtcNow)
+            if (search.FromDate > Now)
                 return BadRequest(ApiResponse<object>.Fail("Ngày tạo phải là ngày quá khứ", 400));
             try
             {
@@ -245,8 +246,8 @@ namespace NB.API.Controllers
                     UserId = request.UserId,
                     SupplierId = request.SupplierId,
                     Image = imageUrl,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
+                    CreatedAt = Now,
+                    UpdatedAt = Now,
                     IsActive = true
                 };
 
@@ -330,7 +331,7 @@ namespace NB.API.Controllers
                     contract.IsActive = request.IsActive;
                 }
 
-                contract.UpdatedAt = DateTime.UtcNow;
+                contract.UpdatedAt = Now;
                 await _contractService.UpdateAsync(contract);
 
                 return Ok(ApiResponse<object>.Ok("Cập nhật hợp đồng thành công"));
