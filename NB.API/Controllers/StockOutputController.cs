@@ -499,6 +499,10 @@ namespace NB.API.Controllers
             {
                 return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404 ));
             }
+            if (transaction.Status != (int)TransactionStatus.draft)
+            {
+                return BadRequest(ApiResponse<string>.Fail("Đơn hàng không trong trạng thái nháp"));
+            }
             var listTransDetail = await _transactionDetailService.GetByTransactionId(transactionId);
             if (listTransDetail == null || !listTransDetail.Any())
             {
