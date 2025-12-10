@@ -691,12 +691,12 @@ namespace NB.API.Controllers
             try
             {
                 var transaction = await _transactionService.GetByIdAsync(transactionId);
+                if (!(transaction.Status == 1))
+                    return BadRequest(ApiResponse<string>.Fail("Chỉ được cập nhật đơn hàng đang kiểm.", 400));
                 if (transaction == null)
                     return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn hàng nhập kho.", 404));
-                if(transaction.Status == 6)
-                    return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn hàng đã kiểm.", 400));
-                if(transaction.Type != null && transaction.Type == "Export")
-                    return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn hàng này.", 400));
+                if (transaction.Type != null && transaction.Type == "Export")
+                    return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn hàng xuất kho.", 400));
                 var oldDetails = await _transactionDetailService.GetByTransactionId(transactionId);
                 if (oldDetails == null || !oldDetails.Any())
                 {
