@@ -23,6 +23,7 @@ using NB.Service.WarehouseService;
 using NB.Service.WarehouseService.Dto;
 using NB.Service.TransactionService.Dto;
 using NB.Service.Common;
+using static System.DateTime;
 
 namespace NB.API.Controllers
 {
@@ -273,9 +274,9 @@ namespace NB.API.Controllers
                     Note = or.Note,
                 };
                 var transactionEntity = _mapper.Map<TransactionCreateVM, Transaction>(tranCreate);
-                transactionEntity.TransactionDate = DateTime.UtcNow;
+                transactionEntity.TransactionDate = Now;
                 transactionEntity.Type = transactionType;
-                transactionEntity.TransactionCode = $"TRANSFER-{DateTime.UtcNow:yyyyMMdd}";
+                transactionEntity.TransactionCode = $"TRANSFER-{Now:yyyyMMdd}";
                 transactionEntity.Status = (int)TransactionStatus.inTransit;
                 await _transactionService.CreateAsync(transactionEntity);
 

@@ -7,6 +7,7 @@ using NB.Service.WarehouseService;
 using NB.Service.WarehouseService.Dto;
 using NB.Service.WarehouseService.ViewModels;
 using NB.Services.WarehouseService.ViewModels;
+using static System.DateTime;
 
 namespace NB.API.Controllers
 {
@@ -59,32 +60,32 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<WarehouseDto>.Fail("Có lỗi xảy ra"));
             }
         }
-        /* Disabled*/
-        //[HttpPost("CreateWarehouse")]
-        //public async Task<IActionResult> Create([FromBody] WarehouseCreateVM model)
-        //{
-        //    try
-        //    {
-        //        var warehouse = new WarehouseDto
-        //        {
-        //            WarehouseName = model.WarehouseName,
-        //            Location = model.Location,
-        //            Capacity = model.Capacity,
-        //            Status = model.Status,
-        //            Note = model.Note,
-        //            CreatedAt = DateTime.UtcNow
-        //        };
+        ///* Disabled*/
+        [HttpPost("CreateWarehouse")]
+        public async Task<IActionResult> Create([FromBody] WarehouseCreateVM model)
+        {
+          try
+            {
+               var warehouse = new WarehouseDto
+                {
+                   WarehouseName = model.WarehouseName,
+                    Location = model.Location,
+                    Capacity = model.Capacity,
+                    Status = model.Status,
+                    Note = model.Note,
+                    CreatedAt = Now
+                };
 
-        //        await _warehouseService.CreateAsync(warehouse); 
+                await _warehouseService.CreateAsync(warehouse); 
 
-        //        return Ok(ApiResponse<WarehouseDto>.Ok(warehouse));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Lỗi khi tạo kho mới");
-        //        return BadRequest(ApiResponse<WarehouseDto>.Fail("Có lỗi xảy ra khi tạo kho"));
-        //    }
-        //}
+                return Ok(ApiResponse<WarehouseDto>.Ok(warehouse));
+            }
+            catch (Exception ex)
+           {
+                _logger.LogError(ex, "Lỗi khi tạo kho mới");
+                return BadRequest(ApiResponse<WarehouseDto>.Fail("Có lỗi xảy ra khi tạo kho"));
+           }
+        }
 
         [HttpPut("UpdateWarehouse/{id}")]
         public async Task<IActionResult> Update(int id,[FromBody] WarehouseUpdateVM model)
@@ -141,57 +142,6 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi xóa kho với Id: {Id}", id);
                 return BadRequest(ApiResponse<bool>.Fail(ex.Message));
-            }
-        }
-
-        [HttpPost("ImportFromExcel")]
-        public async Task<IActionResult> ImportFromExcel(IFormFile file)
-        {
-            try
-            {
-                // Validate file
-                if (file == null || file.Length == 0)
-                {
-                    return BadRequest(ApiResponse<WarehouseImportResultVM>.Fail("File không được để trống"));
-                }
-
-                // Validate file extension
-                var allowedExtensions = new[] { ".xlsx", ".xls" };
-                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
-                if (!allowedExtensions.Contains(fileExtension))
-                {
-                    return BadRequest(ApiResponse<WarehouseImportResultVM>.Fail("Chỉ chấp nhận file Excel (.xlsx, .xls)"));
-                }
-
-                // Validate file size ( Tối đa 10MB)
-                if (file.Length > 10 * 1024 * 1024)
-                {
-                    return BadRequest(ApiResponse<WarehouseImportResultVM>.Fail("Kích thước file không được vượt quá 10MB"));
-                }
-
-                // Process Excel file
-                using (var stream = new MemoryStream())
-                {
-                    await file.CopyToAsync(stream);
-                    stream.Position = 0;
-
-                    var result = await _warehouseService.ImportFromExcelAsync(stream);
-
-                    if (result.SuccessCount == 0 && result.FailedCount > 0)
-                    {
-                        return BadRequest(ApiResponse<WarehouseImportResultVM>.Fail(
-                            result.ErrorMessages.Any()
-                            ? result.ErrorMessages
-                            : new List<string> { "Không có bản ghi nào được nhập thành công." }, 400));
-                    }
-
-                    return Ok(ApiResponse<WarehouseImportResultVM>.Ok(result));
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi import file Excel");
-                return BadRequest(ApiResponse<WarehouseImportResultVM>.Fail($"Có lỗi xảy ra: {ex.Message}"));
             }
         }
 

@@ -12,6 +12,7 @@ using NB.Service.UserService;
 using NB.Service.Core.Mapper;
 using NB.API.Utils;
 using NB.Service.Core.EmailService;
+using static System.DateTime;
 
 namespace NB.API.Controllers
 {
@@ -331,7 +332,7 @@ namespace NB.API.Controllers
             try
             {
                 // Lấy giờ Việt Nam (UTC+7)
-                var vietnamTime = DateTime.UtcNow;
+                var vietnamTime = Now;
 
                 // Validate Username đã tồn tại chưa
                 var existingUsername = await _userService.GetByUsername(model.username);
@@ -385,7 +386,9 @@ namespace NB.API.Controllers
                     AssignedDate = vietnamTime
                 };
 
+                _logger.LogInformation($"[DEBUG] Trước khi save - UserId: {userRole.UserId}, RoleId: {userRole.RoleId}");
                 await _userRoleService.CreateAsync(userRole);
+                _logger.LogInformation($"[DEBUG] Sau khi save - UserId: {userRole.UserId}, RoleId: {userRole.RoleId}");
 
                 // Gửi email thông báo cho khách hàng với mật khẩu đã gen
                 bool emailSent = await _emailService.SendNewAccountEmailAsync(model.email, model.username, generatedPassword);

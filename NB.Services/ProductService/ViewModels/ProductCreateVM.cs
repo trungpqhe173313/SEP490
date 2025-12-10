@@ -6,8 +6,7 @@ namespace NB.Service.ProductService.ViewModels
 {
     public class ProductCreateVM
     {
-        [Required(ErrorMessage = "Mã sản phẩm không được trống")]
-        public string code { get; set; }
+        public string? code { get; set; }
 
         [Required(ErrorMessage = "Danh mục là bắt buộc")]
         public int categoryId { get; set; }
