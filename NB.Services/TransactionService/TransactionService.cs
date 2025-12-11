@@ -41,7 +41,8 @@ namespace NB.Service.TransactionService
                             Status = t.Status,
                             TransactionDate = t.TransactionDate,
                             Note = t.Note,
-                            TotalCost = t.TotalCost
+                            TotalCost = t.TotalCost,
+                            ResponsibleId = t.ResponsibleId
                         };
             return await query.ToListAsync();
         }
@@ -62,7 +63,8 @@ namespace NB.Service.TransactionService
                             Status = t.Status,
                             TransactionDate = t.TransactionDate,
                             Note = t.Note,
-                            TotalCost = t.TotalCost
+                            TotalCost = t.TotalCost,
+                            ResponsibleId = t.ResponsibleId
                         };
             if (search != null)
             {
@@ -96,6 +98,10 @@ namespace NB.Service.TransactionService
                 {
                     query = query.Where(t => t.TransactionDate <= search.TransactionToDate);
                 }
+                if (search.ResponsibleId.HasValue && search.ResponsibleId.Value > 0)
+                {
+                    query = query.Where(t => t.ResponsibleId == search.ResponsibleId);
+                }
             }
 
             query = query.OrderByDescending(t => t.TransactionDate);
@@ -119,7 +125,8 @@ namespace NB.Service.TransactionService
                             TransactionDate = t.TransactionDate,
                             Note = t.Note,
                             TotalCost = t.TotalCost,
-                            PriceListId = t.PriceListId
+                            PriceListId = t.PriceListId,
+                            ResponsibleId = t.ResponsibleId
                         };
 
             return await query.FirstOrDefaultAsync();
@@ -142,7 +149,8 @@ namespace NB.Service.TransactionService
                             Status = t.Status,
                             TransactionDate = t.TransactionDate,
                             Note = t.Note,
-                            TotalCost = t.TotalCost
+                            TotalCost = t.TotalCost,
+                            ResponsibleId = t.ResponsibleId
                         };
             if (search != null)
             {
@@ -192,6 +200,10 @@ namespace NB.Service.TransactionService
                 {
                     query = query.Where(t => t.TransactionDate <= search.TransactionToDate);
                 }
+                if (search.ResponsibleId.HasValue && search.ResponsibleId.Value > 0)
+                {
+                    query = query.Where(t => t.ResponsibleId == search.ResponsibleId);
+                }
             }
 
             query = query.OrderByDescending(t => t.TransactionDate);
@@ -216,7 +228,8 @@ namespace NB.Service.TransactionService
                             TransactionDate = t.TransactionDate,
                             Note = t.Note,
                             TotalCost = t.TotalCost,
-                            PriceListId = t.PriceListId
+                            PriceListId = t.PriceListId,
+                            ResponsibleId = t.ResponsibleId
                         };
             if(search != null)
             {
@@ -249,6 +262,10 @@ namespace NB.Service.TransactionService
                 if (search.TransactionToDate.HasValue)
                 {
                     query = query.Where(t => t.TransactionDate <= search.TransactionToDate);
+                }
+                if (search.ResponsibleId.HasValue && search.ResponsibleId.Value > 0)
+                {
+                    query = query.Where(t => t.ResponsibleId == search.ResponsibleId);
                 }
             }
 
@@ -296,6 +313,14 @@ namespace NB.Service.TransactionService
                 supplierName = supplier?.SupplierName;
             }
 
+            // Lấy tên người chịu trách nhiệm (nếu có)
+            string? responsibleName = null;
+            if (transaction.ResponsibleId.HasValue)
+            {
+                var responsible = await _userRepository.GetByIdAsync(transaction.ResponsibleId.Value);
+                responsibleName = responsible?.FullName;
+            }
+
             var details = transaction.TransactionDetails.Select(td => new TransactionDetailItemDto
             {
                 ProductId = td.ProductId,
@@ -327,6 +352,8 @@ namespace NB.Service.TransactionService
                 SupplierId = transaction.SupplierId,
                 SupplierName = supplierName,
                 PriceListId = transaction.PriceListId,
+                ResponsibleId = transaction.ResponsibleId,
+                ResponsibleName = responsibleName,
                 Details = details
             };
         }

@@ -152,7 +152,7 @@ namespace NB.API.Controllers
                         ProductId = finishProduct.ProductId,
                         Quantity = finishProduct.Quantity,
                         WarehouseId = 1, // Mặc định kho thành phẩm là 1
-                        TotalWeight = (product.WeightPerUnit * finishProduct.Quantity) ?? 0
+                        TotalWeight = (product?.WeightPerUnit * finishProduct.Quantity) ?? 0
                     };
                     var entityFinishProductProduction = _mapper.Map<FinishproductCreateVM, Finishproduct>(entityFinishProductProductionCreate);
                     entityFinishProductProduction.CreatedAt = DateTime.Now;
@@ -400,7 +400,7 @@ namespace NB.API.Controllers
                     {
                         var product = await _productService.GetByIdAsync(finishProduct.ProductId);
                         finishProduct.Quantity = quantity;
-                        finishProduct.TotalWeight = (product.WeightPerUnit * quantity) ?? 0;
+                        finishProduct.TotalWeight = (product?.WeightPerUnit * quantity) ?? 0;
                         await _finishproductService.UpdateAsync(finishProduct);
                     }
 
@@ -669,6 +669,150 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi lấy dữ liệu đơn sản xuất");
                 return BadRequest(ApiResponse<FullProductionOrderVM>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
+            }
+        }
+
+        /// <summary>
+        /// Chỉnh sửa đơn sản xuất trong trạng thái Pending
+        /// Có thể chỉnh sửa nguyên liệu đầu vào, các thành phẩm đầu ra, số lượng và ghi chú
+        /// </summary>
+        [HttpPut("UpdateProductionOrder/{productionOrderId}")]
+        public async Task<IActionResult> UpdateProductionOrder(int productionOrderId, [FromBody] UpdateProductionOrderRequest request)
+        {
+            if (request == null)
+            {
+                return BadRequest(ApiResponse<ProductionOrder>.Fail("Dữ liệu request không được để trống", 400));
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<ProductionOrder>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            if (productionOrderId <= 0)
+            {
+                return BadRequest(ApiResponse<ProductionOrder>.Fail("Id đơn sản xuất không hợp lệ", 400));
+            }
+
+            try
+            {
+                // Lấy đơn sản xuất
+                var productionOrder = await _productionOrderService.GetByIdAsync(productionOrderId);
+                if (productionOrder == null)
+                {
+                    return NotFound(ApiResponse<ProductionOrder>.Fail("Không tìm thấy đơn sản xuất", 404));
+                }
+
+                // Kiểm tra trạng thái phải là Pending
+                if (productionOrder.Status != (int)ProductionOrderStatus.Pending)
+                {
+                    return BadRequest(ApiResponse<ProductionOrder>.Fail("Chỉ có thể chỉnh sửa đơn sản xuất khi đơn đang ở trạng thái Pending (Đang chờ xử lý)", 400));
+                }
+
+                // Lấy danh sách Materials và Finishproducts cũ
+                var oldMaterials = await _materialService.GetQueryable()
+                    .Where(m => m.ProductionId == productionOrderId)
+                    .ToListAsync();
+
+                var oldFinishProducts = await _finishproductService.GetQueryable()
+                    .Where(f => f.ProductionId == productionOrderId)
+                    .ToListAsync();
+
+                // --- Xử lý cập nhật nguyên liệu (Material) ---
+                if (request.MaterialProductId.HasValue && request.MaterialProductId.Value > 0 && 
+                    request.MaterialQuantity.HasValue && request.MaterialQuantity.Value > 0)
+                {
+                    // Validation: Kiểm tra sản phẩm nguyên liệu tồn tại
+                    var productMaterialCheck = await _productService.GetByIdAsync(request.MaterialProductId.Value);
+                    if (productMaterialCheck == null)
+                    {
+                        return BadRequest(ApiResponse<ProductionOrder>.Fail("Sản phẩm nguyên liệu không tồn tại", 404));
+                    }
+
+                    // Xóa Materials cũ
+                    if (oldMaterials.Any())
+                    {
+                        await _materialService.DeleteRange(oldMaterials);
+                    }
+
+                    // Tạo Material mới
+                    var entityMaterialUsage = new MaterialCreateVM
+                    {
+                        ProductionId = productionOrderId,
+                        ProductId = request.MaterialProductId.Value,
+                        Quantity = request.MaterialQuantity.Value,
+                        WarehouseId = RawMaterialWarehouseId, // Mặc định kho nguyên liệu là 2
+                        TotalWeight = (productMaterialCheck.WeightPerUnit * request.MaterialQuantity.Value) ?? 0
+                    };
+                    var entityMaterial = _mapper.Map<MaterialCreateVM, Material>(entityMaterialUsage);
+                    entityMaterial.CreatedAt = DateTime.Now;
+                    entityMaterial.LastUpdated = DateTime.Now;
+                    await _materialService.CreateAsync(entityMaterial);
+                }
+
+                // --- Xử lý cập nhật thành phẩm (Finishproducts) ---
+                if (request.ListFinishProduct != null && request.ListFinishProduct.Any())
+                {
+                    // Validation: Kiểm tra danh sách thành phẩm
+                    var listFinishProductId = request.ListFinishProduct.Select(fp => fp.ProductId).ToList();
+                    var listFinishProduct = await _productService.GetByIds(listFinishProductId);
+                    
+                    foreach (var finishProduct in request.ListFinishProduct)
+                    {
+                        if (finishProduct.ProductId <= 0)
+                        {
+                            return BadRequest(ApiResponse<ProductionOrder>.Fail("ID sản phẩm thành phẩm không hợp lệ", 400));
+                        }
+                        if (finishProduct.Quantity <= 0)
+                        {
+                            return BadRequest(ApiResponse<ProductionOrder>.Fail($"Số lượng thành phẩm với ID {finishProduct.ProductId} phải lớn hơn 0", 400));
+                        }
+
+                        var productFinishCheck = listFinishProduct.FirstOrDefault(p => p?.ProductId == finishProduct.ProductId);
+                        if (productFinishCheck == null)
+                        {
+                            return BadRequest(ApiResponse<ProductionOrder>.Fail($"Sản phẩm hoàn thiện với ID {finishProduct.ProductId} không tồn tại", 404));
+                        }
+                    }
+
+                    // Xóa Finishproducts cũ
+                    if (oldFinishProducts.Any())
+                    {
+                        await _finishproductService.DeleteRange(oldFinishProducts);
+                    }
+
+                    // Tạo lại Finishproducts mới
+                    foreach (var finishProduct in request.ListFinishProduct)
+                    {
+                        var product = listFinishProduct.FirstOrDefault(p => p?.ProductId == finishProduct.ProductId);
+                        var entityFinishProductProductionCreate = new FinishproductCreateVM
+                        {
+                            ProductionId = productionOrderId,
+                            ProductId = finishProduct.ProductId,
+                            Quantity = finishProduct.Quantity,
+                            WarehouseId = 1, // Mặc định kho thành phẩm là 1
+                            TotalWeight = (product?.WeightPerUnit * finishProduct.Quantity) ?? 0
+                        };
+                        var entityFinishProductProduction = _mapper.Map<FinishproductCreateVM, Finishproduct>(entityFinishProductProductionCreate);
+                        entityFinishProductProduction.CreatedAt = DateTime.Now;
+                        await _finishproductService.CreateAsync(entityFinishProductProduction);
+                    }
+                }
+
+                // --- Cập nhật Note của ProductionOrder nếu có ---
+                if (request.Note != null)
+                {
+                    productionOrder.Note = request.Note;
+                }
+
+                await _productionOrderService.UpdateAsync(productionOrder);
+
+                return Ok(ApiResponse<string>.Ok("Cập nhật đơn sản xuất thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật đơn sản xuất. Chi tiết: {Message}", ex.Message);
+                return StatusCode(500, ApiResponse<ProductionOrder>.Fail($"Có lỗi xảy ra khi cập nhật đơn sản xuất: {ex.Message}", 500));
             }
         }
 
