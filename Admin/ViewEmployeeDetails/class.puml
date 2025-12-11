@@ -1,0 +1,73 @@
+@startuml
+class EmployeeController {
+  - _employeeService : IEmployeeService
+  + GetById(id: int) : ApiResponse<EmployeeDto>
+}
+
+interface IEmployeeService {
+  + GetById(id: int)
+  + Create(dto: EmployeeDto)
+  + Update(dto: EmployeeDto)
+  + Delete(id: int)
+}
+
+class EmployeeService {
+  - _repo : IRepository_Employee
+  - _mapper : IMapper
+  + GetById(id: int)
+}
+
+interface IRepository_Employee {
+  + GetById(id: int) : Employee
+  + Add(e: Employee)
+  + Update(e: Employee)
+  + Delete(e: Employee)
+}
+
+class Repository_Employee {
+  - _context : NutriBarnContext
+  + GetById(id: int) : Employee
+}
+
+class NutriBarnContext {
+  + Employees : DbSet_Employee
+}
+
+class DbSet_Employee {
+  + Find(id: int) : Employee
+}
+
+class Employee {
+  + Id : int
+  + FirstName : string
+  + LastName : string
+  + Email : string
+  + Mobile : string
+  + Position : string
+  + Department : string
+  + IsActive : bool
+}
+
+class EmployeeDto {
+  + Id : int
+  + FullName : string
+  + Email : string
+  + Mobile : string
+  + Position : string
+}
+
+class IMapper {
+  + Map<TSource,TDest>(src) : TDest
+}
+
+' relationships (Detail view)
+EmployeeController --> IEmployeeService : uses
+IEmployeeService <|.. EmployeeService
+EmployeeService "1" --> "1" IRepository_Employee : uses
+IRepository_Employee <|.. Repository_Employee
+Repository_Employee "1" --> "1" NutriBarnContext : accesses
+NutriBarnContext *-- "1..*" DbSet_Employee : contains
+DbSet_Employee *-- "0..*" Employee : stores
+EmployeeService ..> IMapper : maps
+EmployeeService ..> EmployeeDto : returns
+@enduml

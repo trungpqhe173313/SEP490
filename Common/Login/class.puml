@@ -1,0 +1,100 @@
+@startuml
+' Core API / Service / Repository classes
+class AccountController {
+  +Login(LoginDto) : IActionResult
+  +RefreshToken(string) : IActionResult
+}
+interface IAccountService {
+  +Login(LoginDto) : LoginResponse
+  +RefreshToken(string) : RefreshTokenResponse
+}
+class AccountService {
+  -IUserRepository _userRepo
+  -IJwtService _jwt
+  -IMapper _mapper
+  +Login(LoginDto) : LoginResponse
+  +RefreshToken(string) : RefreshTokenResponse
+}
+
+interface IUserRepository {
+  +GetByUsername(string) : User
+  +Update(User) : void
+}
+class UserRepository {
+  -NutriBarnContext _db
+  +GetByUsername(string) : User
+  +Update(User) : void
+}
+
+interface IJwtService {
+  +GenerateAccessToken(User) : string
+  +GenerateRefreshToken() : string
+  +ValidateToken(string) : ClaimsPrincipal
+}
+class JwtService {
+  +GenerateAccessToken(User) : string
+  +GenerateRefreshToken() : string
+}
+
+' Domain / DTOs
+class User {
+  +Id : int
+  +Username : string
+  +PasswordHash : string
+  +RefreshToken : string
+  +RefreshTokenExpiry : DateTime?
+}
+class UserRole {
+  +Id : int
+  +UserId : int
+  +RoleId : int
+}
+class Role {
+  +Id : int
+  +Name : string
+}
+
+class LoginDto {
+  +Username : string
+  +Password : string
+}
+class LoginResponse {
+  +AccessToken : string
+  +RefreshToken : string
+  +UserInfo : UserInfo
+}
+class UserInfo {
+  +Id : int
+  +Username : string
+  +Roles : List<string>
+}
+
+class NutriBarnContext {
+  +Users : DbSet<User>
+  +UserRoles : DbSet<UserRole>
+  +Roles : DbSet<Role>
+}
+
+' Relationships
+AccountController ..> IAccountService : depends on
+AccountService ..|> IAccountService : implements
+AccountService --> IUserRepository : uses
+AccountService --> IJwtService : uses
+AccountService --> User : maps to/from (via IMapper)
+UserRepository ..|> IUserRepository : implements
+UserRepository --> NutriBarnContext : uses (composition)
+
+
+' Domain associations
+User "1" -- "0..*" UserRole : has >
+UserRole "*" -- "1" Role : maps to >
+NutriBarnContext o-- "0..*" User : contains >
+NutriBarnContext o-- "0..*" UserRole : contains >
+NutriBarnContext o-- "0..*" Role : contains >
+
+' DTO relations
+LoginDto --> AccountService : input
+LoginResponse --> AccountController : output
+UserInfo --> LoginResponse : part of
+
+@enduml

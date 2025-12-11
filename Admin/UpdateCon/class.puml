@@ -1,0 +1,23 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+
+class ContractController {
+    +Update(id: int, dto: ContractDto)
+}
+interface IContractService {
+    +GetByIdAsync(id)
+    +UpdateAsync(entity)
+}
+class Contract {
+    +Id: int
+    +ContractCode: string
+    +StartDate: DateTime
+    +EndDate: DateTime
+    +Status: int
+    +Price: decimal
+}
+
+ContractController ..> IContractService : uses
+IContractService ..> Contract : manages
+@enduml

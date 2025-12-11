@@ -1,0 +1,124 @@
+@startuml
+title Sequence Diagram - Create Return Stock Input
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":StockInputController" as Controller
+participant ":TransactionService" as TranService
+participant ":TransactionDetailService" as DetailService
+participant ":StockBatchService" as BatchService
+participant ":InventoryService" as InvService
+participant ":ReturnTransactionService" as ReturnService
+participant ":ReturnTransactionDetailService" as ReturnDetailService
+participant "Database" as DB
+
+' Step 1: User Request
+Manager -> Controller: POST /api/stockinput/ReturnOrder/{transactionId}
+activate Controller
+
+' Step 2: Validate Transaction
+Controller -> TranService: GetByIdAsync(transactionId)
+activate TranService
+TranService --> Controller: transaction
+deactivate TranService
+
+alt Invalid Transaction (Not Found or Not Import)
+autonumber 3.1
+    Controller --> Manager: BadRequest/NotFound
+end
+
+' Step 3: Validate Return Quantities
+autonumber 4
+Controller -> DetailService: GetByTransactionId(transactionId)
+activate DetailService
+DetailService --> Controller: currentDetails
+deactivate DetailService
+
+loop For each item in return request
+    Controller -> Controller: Check if item exists in currentDetails
+    Controller -> Controller: Check if returnQuantity <= currentQuantity
+    alt Invalid Quantity
+    autonumber 7.1
+        Controller --> Manager: BadRequest("Invalid quantity")
+    end
+end
+autonumber 8
+' Step 4: Process Stock Return (LIFO)
+Controller -> BatchService: GetByTransactionId(transactionId)
+activate BatchService
+BatchService --> Controller: allStockBatches
+deactivate BatchService
+
+loop For each item in return request
+    ' Filter batches for this product (LIFO)
+    Controller -> Controller: Filter batches (ProductId) & Sort Descending (ImportDate)
+    
+    loop For each batch (until return quantity filled)
+        Controller -> Controller: Calculate 'takeBack' amount
+        
+        ' Update Stock Batch (Decrease QuantityIn)
+        Controller -> BatchService: GetByIdAsync(batchId)
+        activate BatchService
+        BatchService --> Controller: batchEntity
+        deactivate BatchService
+        
+        Controller -> Controller: batchEntity.QuantityIn -= takeBack
+        
+        Controller -> BatchService: UpdateNoTracking(batchEntity)
+        activate BatchService
+        BatchService -> DB: Update Batch
+        activate DB
+        DB --> BatchService: Success
+        deactivate BatchService
+    end
+    
+    ' Update Inventory (Decrease Quantity)
+    Controller -> InvService: GetEntityByProductIdAsync(productId)
+    activate InvService
+    InvService --> Controller: inventoryEntity
+    deactivate InvService
+    
+    Controller -> Controller: inventoryEntity.Quantity -= returnQuantity
+    
+    Controller -> InvService: UpdateNoTracking(inventoryEntity)
+    activate InvService
+    InvService -> DB: Update Inventory
+    activate DB
+    DB --> InvService: Success
+    deactivate InvService
+end
+
+' Step 5: Create Return Transaction Record
+Controller -> ReturnService: CreateAsync(returnTranEntity)
+activate ReturnService
+ReturnService -> DB: Insert ReturnTransaction
+activate DB
+DB --> ReturnService: Success
+deactivate ReturnService
+
+' Step 6: Update Transaction Details & Create Return Details
+loop For each item in return request
+    ' Create Return Detail
+    Controller -> ReturnDetailService: CreateAsync(returnDetailEntity)
+    
+    ' Update Original Detail
+    Controller -> DetailService: GetByIdAsync(detailId)
+    Controller -> Controller: detail.Quantity -= returnQuantity
+    
+    alt Quantity > 0
+        Controller -> DetailService: UpdateAsync(detail)
+    else Quantity == 0
+    autonumber 30.1
+        Controller -> DetailService: DeleteAsync(detail)
+    end
+end
+autonumber 31
+' Step 7: Update Transaction Header (Cost, Note, Status)
+Controller -> Controller: Update TotalCost, Note
+Controller -> TranService: UpdateAsync(transaction)
+
+' Step 8: Response
+Controller --> Manager: Ok("Trả hàng nhập thành công")
+deactivate Controller
+
+@enduml

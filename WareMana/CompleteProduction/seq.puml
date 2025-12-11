@@ -1,0 +1,123 @@
+@startuml
+title Sequence Diagram - Complete Production Order (Happy Path)
+autonumber
+
+actor "Production Manager" as User
+participant "UI Service" as UI
+participant "ProductionController" as Ctrl
+participant "ProductionOrderService" as POSvc
+participant "FinishproductService" as FPSvc
+participant "ProductService" as ProdSvc
+participant "StockBatchService" as SBSvc
+participant "InventoryService" as InvSvc
+database "Database" as DB
+
+User -> UI : Nhấn "Hoàn thành đơn sản xuất"
+UI -> Ctrl : PUT /api/production/ChangeToFinished/{id}\n(FinishProductionRequest)
+activate Ctrl
+
+Ctrl -> POSvc : GetByIdAsync(id)
+activate POSvc
+POSvc -> DB : Query ProductionOrder
+activate DB
+DB --> POSvc : ProductionOrder
+deactivate DB
+POSvc --> Ctrl : ProductionOrder
+deactivate POSvc
+
+Ctrl -> FPSvc : GetQueryable().Where(ProductionId == id)
+activate FPSvc
+FPSvc -> DB : Query FinishProducts
+activate DB
+DB --> FPSvc : List<Finishproduct>
+deactivate DB
+FPSvc --> Ctrl : finishProducts
+deactivate FPSvc
+
+loop For each finishProduct
+    Ctrl -> Ctrl : Determine Quantity (Request vs Default)
+    
+    alt Quantity Updated
+        Ctrl -> ProdSvc : GetByIdAsync(ProductId)
+        activate ProdSvc
+        ProdSvc --> Ctrl : Product
+        deactivate ProdSvc
+        
+        Ctrl -> Ctrl : Update finishProduct.Quantity & TotalWeight
+        Ctrl -> FPSvc : UpdateAsync(finishProduct)
+        activate FPSvc
+        FPSvc -> DB : Update Finishproduct
+        activate DB
+        DB --> FPSvc : Success
+        deactivate DB
+        FPSvc --> Ctrl : Success
+        deactivate FPSvc
+    end
+
+    Ctrl -> SBSvc : GetByName(uniqueBatchCode) (Check Duplicate)
+    activate SBSvc
+    SBSvc --> Ctrl : null (Unique)
+    deactivate SBSvc
+
+    Ctrl -> Ctrl : Create StockBatch Entity (Map from VM)
+    Ctrl -> SBSvc : CreateAsync(stockBatchEntity)
+    activate SBSvc
+    SBSvc -> DB : Insert StockBatch
+    activate DB
+    DB --> SBSvc : Success
+    deactivate DB
+    SBSvc --> Ctrl : Success
+    deactivate SBSvc
+
+    Ctrl -> InvSvc : GetEntityByWarehouseAndProductIdAsync(WarehouseId, ProductId)
+    activate InvSvc
+    InvSvc -> DB : Query Inventory
+    activate DB
+    DB --> InvSvc : Inventory Entity
+    deactivate DB
+    InvSvc --> Ctrl : Inventory
+    deactivate InvSvc
+
+    alt Inventory Exists
+        Ctrl -> Ctrl : Update Inventory Quantity
+        Ctrl -> Ctrl : Add to inventoryUpdates Dictionary
+    else Inventory Not Found
+        Ctrl -> Ctrl : Create New Inventory Entity
+        Ctrl -> InvSvc : CreateAsync(newInventory)
+        activate InvSvc
+        InvSvc -> DB : Insert Inventory
+        activate DB
+        DB --> InvSvc : Success
+        deactivate DB
+        InvSvc --> Ctrl : Success
+        deactivate InvSvc
+    end
+end
+
+loop For each inventory in inventoryUpdates
+    Ctrl -> InvSvc : UpdateNoTracking(inventory)
+    activate InvSvc
+    InvSvc -> DB : Update Inventory
+    activate DB
+    DB --> InvSvc : Success
+    deactivate DB
+    InvSvc --> Ctrl : Success
+    deactivate InvSvc
+end
+
+Ctrl -> Ctrl : Update ProductionOrder Status = Finished
+Ctrl -> POSvc : UpdateAsync(productionOrder)
+activate POSvc
+POSvc -> DB : Update ProductionOrder
+activate DB
+DB --> POSvc : Success
+deactivate DB
+POSvc --> Ctrl : Success
+deactivate POSvc
+
+Ctrl --> UI : Ok(ApiResponse.Ok("Đơn sản xuất đã hoàn thành"))
+deactivate Ctrl
+
+UI --> User : Hiển thị thông báo thành công
+
+@enduml

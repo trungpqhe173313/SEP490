@@ -1,0 +1,57 @@
+@startuml
+
+class WarehouseController {
+  - IWarehouseService _warehouseService
+  + GetData(WarehouseSearch search): Task<ApiResponse<PagedList<Warehouse>>>
+}
+
+class WarehouseService {
+  - IRepository<Warehouse> _repository
+  + GetData(WarehouseSearch search): Task<ApiResponse<PagedList<Warehouse>>>
+}
+
+interface IWarehouseService {
+  + GetData(WarehouseSearch search): Task<ApiResponse<PagedList<Warehouse>>>
+}
+
+class Repository {
+  # NutriBarnContext _context
+  + GetQueryable(): IQueryable<T>
+}
+
+class WarehouseSearch {
+  + Keyword: string
+  + Page: int
+  + Size: int
+}
+
+class PagedList {
+  + Items: List<T>
+  + TotalCount: int
+  + Page: int
+  + Size: int
+  + {static} CreateAsync(IQueryable<T> source, int page, int size): Task<PagedList<T>>
+}
+
+class ApiResponse {
+    + Success: bool
+    + Message: string
+    + Data: T
+}
+
+class Warehouse {
+  + Id: int
+  + Name: string
+  + Address: string
+  + IsActive: bool
+}
+
+WarehouseController ..> IWarehouseService
+WarehouseService .up.|> IWarehouseService
+WarehouseService ..> "Repository<Warehouse>"
+WarehouseController ..> WarehouseSearch
+WarehouseController ..> "ApiResponse<PagedList<Warehouse>>"
+WarehouseService ..> "PagedList<Warehouse>"
+WarehouseService ..> Warehouse
+"Repository<Warehouse>" ..> Warehouse
+@enduml

@@ -1,0 +1,46 @@
+@startuml
+title Sequence Diagram - Download Product Template
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":ProductController" as Controller
+participant ":ExcelTemplateGenerator" as Generator
+
+' Step 1
+Manager -> Controller: GET /api/Product/template
+activate Controller
+
+' Step 2
+Controller -> Generator: GenerateProductImportTemplate()
+activate Generator
+
+' Step 3
+Generator -> Generator: Create new MemoryStream
+
+' Step 4
+Generator -> Generator: Initialize ExcelPackage
+
+' Step 5
+Generator -> Generator: Add Worksheet "Nhập sản phẩm"
+
+' Step 6
+Generator -> Generator: Set Headers & Styles
+
+' Step 7
+Generator -> Generator: Add Sample Data
+
+' Step 8
+Generator -> Generator: Add Worksheet "Hướng Dẫn"
+
+' Step 9
+Generator -> Generator: Save ExcelPackage to Stream
+
+' Step 10
+Generator --> Controller: Return MemoryStream
+deactivate Generator
+
+' Step 11
+Controller --> Manager: Return File (product_import_template.xlsx)
+deactivate Controller
+
+@enduml

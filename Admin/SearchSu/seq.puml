@@ -1,0 +1,30 @@
+@startuml
+
+actor "Admin" as Admin
+boundary "UI (Web/App)" as UI
+participant "SupplierController" as Ctrl
+participant "SupplierService" as Svc
+participant "PagedList" as Paged
+database "DB (NutriBarnContext)" as DB
+
+Admin -> UI : 1. Nhập "Nha cung cap A" vào ô tìm kiếm\nvà nhấn "Tìm"
+UI -> Ctrl : 2.1 POST /api/suppliers/GetData\n(Body: { "supplierName": "Nha cung cap A", ... })
+
+Ctrl -> Svc : 2.2 GetData(search)
+
+Svc -> Svc : 2.3 Xây dựng IQueryable<SupplierDto>\nvới .Where(s => s.SupplierName.Contains(...))
+
+Svc -> Paged : 2.4 CreateAsync(query, search)
+
+Paged -> DB : 2.5 Execute COUNT query (với điều kiện WHERE)
+DB --> Paged : 2.6 Trả về totalCount
+Paged -> DB : 2.7 Execute SELECT...SKIP...TAKE query (với WHERE)
+DB --> Paged : 2.8 Trả về List<SupplierDto> (chỉ dữ liệu trang hiện tại)
+
+Paged --> Svc : 2.9 Trả về PagedList<SupplierDto>
+Svc --> Ctrl : 2.10 Trả về PagedList<SupplierDto>
+
+Ctrl --> UI : 3.1 200 OK (ApiResponse chứa kết quả đã lọc và phân trang)
+UI --> Admin : 3.2 Hiển thị danh sách nhà cung cấp khớp với tìm kiếm
+
+@enduml

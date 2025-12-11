@@ -1,0 +1,102 @@
+@startuml
+title Sequence Diagram - Edit Stock Input
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":StockInputController" as Controller
+participant ":TransactionService" as TranService
+participant ":TransactionDetailService" as DetailService
+participant ":ProductService" as ProductService
+participant ":InventoryService" as InvService
+participant ":IMapper" as Mapper
+participant "Database" as DB
+
+' Step 1: User Request
+Manager -> Controller: PUT /api/stockinput/UpdateImportTransaction/{id}
+activate Controller
+
+' Step 2: Get Transaction
+Controller -> TranService: GetByIdAsync(transactionId)
+activate TranService
+TranService -> DB: Query Transaction
+activate DB
+DB --> TranService: Transaction Entity
+deactivate DB
+TranService --> Controller: transaction
+deactivate TranService
+
+' Step 3: Validate Transaction (Status, Type)
+alt Transaction Invalid (Not Found, Wrong Type, or Already Checked)
+    Controller --> Manager: BadRequest/NotFound
+end
+
+' Step 4: Get Old Details
+Controller -> DetailService: GetByTransactionId(transactionId)
+activate DetailService
+DetailService -> DB: Query Details
+activate DB
+DB --> DetailService: List<TransactionDetail>
+deactivate DB
+DetailService --> Controller: oldDetails
+deactivate DetailService
+
+' Step 5: Delete Old Details
+Controller -> DetailService: DeleteRange(oldDetails)
+activate DetailService
+DetailService -> DB: Delete Rows
+activate DB
+DB --> DetailService: Success
+deactivate DB
+DetailService --> Controller: Task Complete
+deactivate DetailService
+
+' Step 6: Process New Product List
+loop For each product in request
+    ' Validate Product
+    Controller -> ProductService: GetById(productId)
+    activate ProductService
+    ProductService -> DB: Query Product
+    activate DB
+    DB --> ProductService: Product Entity
+    deactivate DB
+    ProductService --> Controller: product
+    deactivate ProductService
+
+    ' Get Inventory (Logic in code)
+    Controller -> InvService: GetByProductIdRetriveOneObject(productId)
+    activate InvService
+    InvService --> Controller: Inventory Entity
+    deactivate InvService
+
+    ' Map to Entity
+    Controller -> Mapper: Map(TransactionDetailCreateVM -> TransactionDetail)
+    activate Mapper
+    Mapper --> Controller: detailEntity
+    deactivate Mapper
+
+    ' Create New Detail
+    Controller -> DetailService: CreateAsync(detailEntity)
+    activate DetailService
+    DetailService -> DB: Insert Row
+    activate DB
+    DB --> DetailService: Success
+    deactivate DB
+    DetailService --> Controller: Task Complete
+    deactivate DetailService
+end
+
+' Step 7: Update Transaction Header (TotalCost, TotalWeight, Note)
+Controller -> TranService: UpdateAsync(transaction)
+activate TranService
+TranService -> DB: Update Transaction
+activate DB
+DB --> TranService: Success
+deactivate DB
+TranService --> Controller: Task Complete
+deactivate TranService
+
+' Step 8: Response
+Controller --> Manager: Ok("Cập nhật đơn hàng thành công")
+deactivate Controller
+
+@enduml

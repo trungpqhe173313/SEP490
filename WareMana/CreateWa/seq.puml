@@ -1,0 +1,46 @@
+@startuml
+
+actor "Warehouse Manager" as Manager
+participant "WarehouseUI" as UI
+participant "WarehouseController" as Controller
+participant "IWarehouseService" as Service
+participant "IRepository<Warehouse>" as Repo
+
+activate Manager
+Manager -> UI: 1. Nhấn nút "Tạo mới"
+activate UI
+UI -> Manager: 2. Hiển thị form tạo kho hàng
+Manager -> UI: 3. Nhập thông tin (Tên, Địa chỉ) và nhấn "Lưu"
+UI -> Controller: 4.1 Gửi yêu cầu (POST /api/Warehouse/create)
+activate Controller
+
+alt 
+    Controller -> Service: 4.2 CreateWarehouse(vm)
+    activate Service
+    Service -> Repo: 5.1 Add(warehouse)
+    activate Repo
+    Repo --> Service: 
+    deactivate Repo
+    Service -> Repo: 5.2 SaveAsync()
+    activate Repo
+    Repo --> Service: 
+    deactivate Repo
+    Service --> Controller: 5.3 ApiResponse.Success
+    deactivate Service
+    Controller --> UI: 5.4 200 OK
+    deactivate Controller
+    UI -> Manager: 6 Hiển thị thông báo thành công
+    deactivate UI
+else 
+    Controller -> Service: 4.2b CreateWarehouse(vm)
+    activate Service
+    Service --> Controller: 4.3b Trả về lỗi (Validation, Tên trùng,...)
+    deactivate Service
+    Controller --> UI: 4.4b Phản hồi lỗi
+    deactivate Controller
+    UI -> Manager: 6b Hiển thị thông báo lỗi
+    deactivate UI
+end
+
+deactivate Manager
+@enduml

@@ -1,0 +1,59 @@
+@startuml
+title Class Diagram - Edit Stock Output
+
+class StockOutputController {
+    - _transactionService : ITransactionService
+    - _transactionDetailService : ITransactionDetailService
+    - _productService : IProductService
+    - _inventoryService : IInventoryService
+    - _warehouseService : IWarehouseService
+    - _mapper : IMapper
+    + UpdateTransactionInDraftStatus(transactionId: int, or: OrderRequest) : Task<IActionResult>
+}
+
+interface ITransactionService {
+    + GetByTransactionId(id: int) : Task<TransactionDto>
+    + UpdateAsync(entity: Transaction) : Task
+}
+
+interface ITransactionDetailService {
+    + GetByTransactionId(id: int) : Task<List<TransactionDetailDto>>
+    + DeleteRange(details: List<TransactionDetailDto>) : Task
+    + CreateAsync(entity: TransactionDetail) : Task
+}
+
+interface IProductService {
+    + GetByIds(ids: List<int>) : Task<List<ProductDto>>
+    + GetByIdAsync(id: int) : Task<ProductDto>
+}
+
+interface IInventoryService {
+    + GetByWarehouseAndProductIds(warehouseId: int, productIds: List<int>) : Task<List<InventoryDto>>
+}
+
+interface IWarehouseService {
+    + GetByIdAsync(id: int) : Task<WarehouseDto>
+}
+
+class OrderRequest {
+    + ListProductOrder : List<ProductOrder>
+    + Note : string
+    + TotalCost : decimal?
+    + PriceListId : int?
+}
+
+class ProductOrder {
+    + ProductId : int
+    + Quantity : int?
+    + UnitPrice : decimal?
+}
+
+' Relationships
+StockOutputController --> ITransactionService
+StockOutputController --> ITransactionDetailService
+StockOutputController --> IProductService
+StockOutputController --> IInventoryService
+StockOutputController --> IWarehouseService
+StockOutputController ..> OrderRequest : uses
+
+@enduml

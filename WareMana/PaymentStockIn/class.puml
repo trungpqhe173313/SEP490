@@ -1,0 +1,53 @@
+@startuml
+title Class Diagram - Payment Stock Input
+
+class StockInputController {
+    - _transactionService : ITransactionService
+    - _financialTransactionService : IFinancialTransactionService
+    - _mapper : IMapper
+    + CreatePartialPayment(transactionId: int, model: FinancialTransactionCreateVM) : Task<IActionResult>
+}
+
+class FinancialTransactionCreateVM {
+    + Type : int?
+    + Amount : decimal?
+    + Description : string?
+    + PaymentMethod : string
+    + CreatedBy : int?
+}
+
+class Transaction {
+    + TransactionId : int
+    + TotalCost : decimal?
+    + Status : int?
+    + Type : string
+    + FinancialTransactions : ICollection<FinancialTransaction>
+}
+
+class FinancialTransaction {
+    + FinancialTransactionId : int
+    + Amount : decimal
+    + RelatedTransactionId : int?
+    + TransactionDate : DateTime?
+    + Type : string
+    + PaymentMethod : string
+    + Description : string
+}
+
+interface ITransactionService {
+    + GetByTransactionId(id: int) : Task<Transaction>
+    + UpdateAsync(transaction: Transaction) : Task
+}
+
+interface IFinancialTransactionService {
+    + GetByRelatedTransactionID(id: int) : Task<List<FinancialTransaction>>
+    + CreateAsync(entity: FinancialTransaction) : Task
+}
+
+StockInputController ..> FinancialTransactionCreateVM : uses
+StockInputController --> ITransactionService : injects
+StockInputController --> IFinancialTransactionService : injects
+ITransactionService ..> Transaction : returns
+IFinancialTransactionService ..> FinancialTransaction : manages
+Transaction "1" -- "*" FinancialTransaction : has
+@enduml

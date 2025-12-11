@@ -1,0 +1,85 @@
+@startuml
+title Edit Financial Transaction Sequence Diagram (Happy Path)
+autonumber
+actor "Admin" as User
+participant "UI (Web)" as UI
+participant ":FinancialTransactionController" as Controller
+participant ":IFinancialTransactionService" as Service
+participant ":Database" as DB
+
+User -> UI : Click "Edit" on Transaction
+UI -> UI : Fill Update Form
+User -> UI : Click "Save"
+
+activate UI
+UI -> Controller : PUT /api/FinancialTransaction/UpdateFinancialTransaction/{Id} (model)
+activate Controller
+
+Controller -> Service : GetByIdAsync(Id)
+activate Service
+Service -> DB : Find(Id)
+activate DB
+DB --> Service : FinancialTransaction Entity
+deactivate DB
+Service --> Controller : FinancialTransaction Entity
+deactivate Service
+
+
+Controller -> Service : UpdateAsync(entity)
+activate Service
+Service -> DB : Update(entity)
+activate DB
+DB --> Service : Success
+deactivate DB
+Service --> Controller : Task Completed
+deactivate Service
+
+Controller --> UI : Ok(ApiResponse.Ok("Cập nhật giao dịch tài chính thành công"))
+deactivate Controller
+
+UI --> User : Show Success Message
+deactivate UI
+
+@endum@startuml
+title Edit Financial Transaction Sequence Diagram (Happy Path)
+
+actor "User (Accountant)" as User
+participant "UI (Web App)" as UI
+participant "FinancialTransactionController" as Controller
+participant "IFinancialTransactionService" as Service
+participant "Database" as DB
+
+User -> UI : Click "Edit" on Transaction
+UI -> UI : Fill Update Form
+User -> UI : Click "Save"
+
+activate UI
+UI -> Controller : PUT /api/FinancialTransaction/UpdateFinancialTransaction/{Id} (model)
+activate Controller
+
+Controller -> Service : GetByIdAsync(Id)
+activate Service
+Service -> DB : Find(Id)
+activate DB
+DB --> Service : FinancialTransaction Entity
+deactivate DB
+Service --> Controller : FinancialTransaction Entity
+deactivate Service
+
+
+Controller -> Service : UpdateAsync(entity)
+activate Service
+Service -> DB : Update(entity)
+activate DB
+DB --> Service : Success
+deactivate DB
+Service --> Controller : Task Completed
+deactivate Service
+
+Controller --> UI : Ok(ApiResponse.Ok("Cập nhật giao dịch tài chính thành công"))
+deactivate Controller
+
+UI --> User : Show Success Message
+deactivate UI
+
+@endum

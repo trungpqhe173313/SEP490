@@ -1,0 +1,89 @@
+@startuml
+
+actor "Warehouse Manager" as WM
+participant "Screen" as UI
+participant ":StockInputController" as SIC
+participant ":IWarehouseService" as WS
+participant ":ISupplierService" as SS
+participant ":IProductService" as PS
+participant ":ITransactionService" as TS
+participant ":ITransactionDetailService" as TDS
+participant ":IStockBatchService" as SBS
+participant ":IInventoryService" as IS
+
+' --- Workflow ---
+
+WM -> UI : 1. Clicks "Download Template" button
+activate UI
+UI -> SIC : 2. Request Excel template
+activate SIC
+SIC -> SIC : 3. Generate Excel template file
+SIC --> UI : 4. Return file stream
+deactivate SIC
+UI --> WM : 5. Prompt to save the template file
+deactivate UI
+
+WM -> UI : 6. Selects file and clicks "Upload"
+activate UI
+UI -> SIC : 7. Upload completed Excel file
+activate SIC
+
+' --- Validation Phase ---
+SIC -> WS : 8. GetByWarehouseName(name)
+activate WS
+WS --> SIC : 9. Return Warehouse
+deactivate WS
+
+SIC -> SS : 10. GetByName(name)
+activate SS
+SS --> SIC : 11. Return Supplier
+deactivate SS
+
+SIC -> PS : 12. GetByProductName(name)
+activate PS
+PS --> SIC : 13. Return Product
+deactivate PS
+
+' --- Processing Phase ---
+alt All data is valid
+autonumber 14
+    ' Create main transaction
+    SIC -> TS : CreateAsync(Transaction)
+    activate TS
+    TS --> SIC : Return new Transaction with ID
+    deactivate TS
+
+    ' Create details, batch, and update inventory
+    SIC -> TDS : CreateAsync(TransactionDetail)
+    activate TDS
+    TDS --> SIC
+    deactivate TDS
+
+    SIC -> SBS : CreateAsync(StockBatch)
+    activate SBS
+    SBS --> SIC
+    deactivate SBS
+
+    SIC -> IS : GetByWarehouseAndProductId(...)
+    activate IS
+    IS --> SIC : Return existing Inventory (or null)
+    
+    alt Inventory exists
+        SIC -> IS : UpdateAsync(Inventory)
+    else Inventory does not exist
+        SIC -> IS : CreateAsync(Inventory)
+    end
+    deactivate IS
+    
+    SIC --> UI : Return success result (Ok)
+    UI --> WM : Display "Import successful" message
+else Data is invalid
+autonumber 14.1
+    SIC --> UI : Return validation errors (BadRequest)
+    UI --> WM : Display error messages
+end
+
+deactivate SIC
+deactivate UI
+
+@enduml

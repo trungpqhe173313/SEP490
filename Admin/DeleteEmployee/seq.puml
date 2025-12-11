@@ -1,0 +1,42 @@
+@startuml
+title Delete Employee Sequence Diagram (Happy Path)
+autonumber
+actor "Admin" as User
+participant "UI (Web App)" as UI
+participant "EmployeeController" as Controller
+participant "IUserService" as Service
+participant "Database" as DB
+
+User -> UI : Click "Delete" on Employee
+activate UI
+UI -> UI : Confirm Deletion Dialog
+User -> UI : Click "Confirm"
+
+UI -> Controller : DELETE /api/employees/DeleteEmployee/{id}
+activate Controller
+
+Controller -> Service : GetByIdAsync(id)
+activate Service
+Service -> DB : Find(id)
+activate DB
+DB --> Service : User Entity
+deactivate DB
+Service --> Controller : User Entity
+deactivate Service
+
+Controller -> Service : UpdateAsync(entity)
+activate Service
+Service -> DB : Update(entity)
+activate DB
+DB --> Service : Success
+deactivate DB
+Service --> Controller : Task Completed
+deactivate Service
+
+Controller --> UI : Ok(ApiResponse.Ok(true))
+deactivate Controller
+
+UI --> User : Show Success Message & Update List
+deactivate UI
+
+@enduml

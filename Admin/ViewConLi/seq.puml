@@ -1,0 +1,22 @@
+@startuml
+
+actor "Admin"
+participant "Screen" as UI
+participant ":ContractController" as SIC
+participant ":IContractService" as CS
+
+Admin -> UI : 1. Views Contract page
+activate UI
+UI -> SIC : 2.1 POST /api/contract/GetData(search)
+activate SIC
+
+SIC -> CS : 2.2 GetAllAsync(search)
+activate CS
+CS --> SIC : 2.3 Return PagedList<Contract>
+deactivate CS
+
+SIC --> UI : 2.4 Return PagedList
+deactivate SIC
+UI --> Admin : 2.5 Display list of contracts
+deactivate UI
+@enduml

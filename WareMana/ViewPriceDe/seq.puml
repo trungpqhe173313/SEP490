@@ -1,0 +1,23 @@
+@startuml
+
+
+actor "Warehouse Manager" as WM
+participant "Screen" as UI
+participant "PriceListController" as PLC
+participant "IPriceListService" as PLS
+
+WM -> UI : 1. Clicks on a price list to see details
+activate UI
+UI -> PLC : 2.1 GET /api/pricelist/GetById/{id}
+activate PLC
+
+PLC -> PLS : 2.2 GetByIdAsync(id)
+activate PLS
+PLS --> PLC : 2.3 Return PriceList object
+deactivate PLS
+
+PLC --> UI : 2.4 Return price list data
+deactivate PLC
+UI --> WM : 2.5 Display price list details
+deactivate UI
+@enduml

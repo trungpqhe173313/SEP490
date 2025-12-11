@@ -1,0 +1,36 @@
+@startuml
+
+actor "Warehouse Manager" as WM
+boundary "UI (Web/App)" as UI
+participant "CategoryController" as Ctrl
+participant "CategoryService" as CatSvc
+participant "Service<Category> (base)" as BaseSvc
+participant "Repository<Category>" as Repo
+database "DB (NutriBarnContext)" as DB
+participant "PagedList" as Paged
+
+WM -> UI : 1. Nhập thông tin cần kiếm vào ô tìm kiếm Category\nvà nhấn nút "Tìm kiếm"
+UI -> Ctrl : 2.1 POST /api/categories/GetData\n(Body: { "categoryName": "abc", ... })
+
+Ctrl -> CatSvc : 2.2 GetData()
+CatSvc -> BaseSvc : 2.3 GetQueryable()
+BaseSvc -> Repo : 2.4 GetQueryable()
+Repo -> DB : 2.5 Tạo IQueryable<Category>
+DB --> Repo : 3.1 Trả về IQueryable<Category>
+Repo --> BaseSvc : 3.2 Trả về IQueryable<Category>
+BaseSvc --> CatSvc : 3.3 Trả về IQueryable<Category>
+
+CatSvc -> DB : 3.4 Execute query (ToListAsync)
+DB --> CatSvc : 3.5 Trả về List<CategoryDto> (tất cả)
+
+CatSvc --> Ctrl : 3.6 Trả về List<CategoryDto>
+
+Ctrl -> Ctrl : 3.7 Lọc danh sách với điều kiện\n`c.CategoryName.Contains("abc")`
+
+Ctrl -> Paged : 3.8 CreateFromList(filteredList, search)\n(Phân trang in-memory)
+Paged --> Ctrl : 3.9 Trả về PagedList<CategoryDto>
+
+Ctrl --> UI : 3.10 200 OK (ApiResponse chứa kết quả đã lọc và phân trang)
+UI --> WM : 3.11 Hiển thị danh sách Category khớp với thông tin tìm kiếm
+
+@enduml

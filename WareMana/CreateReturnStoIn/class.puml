@@ -1,0 +1,59 @@
+@startuml
+title Class Diagram - Create Return Stock Input
+
+class StockInputController {
+    - _transactionService : ITransactionService
+    - _transactionDetailService : ITransactionDetailService
+    - _stockBatchService : IStockBatchService
+    - _inventoryService : IInventoryService
+    - _returnTransactionService : IReturnTransactionService
+    - _returnTransactionDetailService : IReturnTransactionDetailService
+    + ReturnOrder(transactionId: int, or: OrderRequest) : Task<IActionResult>
+}
+
+interface ITransactionService {
+    + GetByIdAsync(id: int) : Task<Transaction>
+    + UpdateAsync(entity: Transaction) : Task
+}
+
+interface ITransactionDetailService {
+    + GetByTransactionId(id: int) : Task<List<TransactionDetailDto>>
+    + UpdateAsync(entity: TransactionDetail) : Task
+    + DeleteAsync(entity: TransactionDetail) : Task
+}
+
+interface IStockBatchService {
+    + GetByTransactionId(id: int) : Task<List<StockBatchDto>>
+    + UpdateNoTracking(entity: StockBatch) : Task
+}
+
+interface IInventoryService {
+    + GetEntityByProductIdAsync(id: int) : Task<Inventory>
+    + UpdateNoTracking(entity: Inventory) : Task
+}
+
+interface IReturnTransactionService {
+    + CreateAsync(entity: ReturnTransaction) : Task
+}
+
+interface IReturnTransactionDetailService {
+    + CreateAsync(entity: ReturnTransactionDetail) : Task
+}
+
+class OrderRequest {
+    + ListProductOrder : List<ProductOrder>
+    + Reason : string
+    + Note : string
+    + TotalCost : decimal?
+}
+
+' Relationships
+StockInputController --> ITransactionService
+StockInputController --> ITransactionDetailService
+StockInputController --> IStockBatchService
+StockInputController --> IInventoryService
+StockInputController --> IReturnTransactionService
+StockInputController --> IReturnTransactionDetailService
+StockInputController ..> OrderRequest : uses
+
+@enduml

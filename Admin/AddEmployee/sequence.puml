@@ -1,0 +1,73 @@
+@startuml
+actor Admin
+
+participant "EmployeeController (UI/API)" as Controller
+participant "Model Binder / Validator" as Validator
+participant "Mapper" as Mapper
+participant "EmployeeService" as Service
+participant "IEmployeeRepository" as RepoInterface
+participant "EmployeeRepository" as Repo
+participant "DbContext (EF Core)" as Db
+database "Database" as DB
+
+== Admin submits Add Employee form ==
+Admin -> Controller : POST /employees { EmployeeCreateVM }
+activate Controller
+
+Controller -> Validator : Validate ModelState (DataAnnotations)
+activate Validator
+Validator --> Controller : valid / invalid
+deactivate Validator
+
+alt Model invalid
+    Controller --> Admin : 400 Bad Request (validation errors)
+    deactivate Controller
+else Model valid
+    Controller -> Mapper : Map EmployeeCreateVM -> Employee entity
+    activate Mapper
+    Mapper --> Controller : Employee entity
+    deactivate Mapper
+
+    Controller -> Service : CreateAsync(Employee)
+    activate Service
+
+    Service -> RepoInterface : Add(Employee)
+    activate RepoInterface
+
+    RepoInterface -> Repo : Add(Employee)  // concrete implementation
+    activate Repo
+    Repo -> Db : DbSet<Employee>.Add(entity)  // EF tracking
+    activate Db
+    Db --> Repo : entity tracked
+    deactivate Db
+    Repo --> RepoInterface : return
+    deactivate Repo
+
+    RepoInterface -> Service : return
+    deactivate RepoInterface
+
+    Service -> RepoInterface : SaveAsync()
+    activate RepoInterface
+    RepoInterface -> Repo : SaveAsync()
+    activate Repo
+
+    Repo -> Db : DbContext.SaveChangesAsync()
+    activate Db
+    Db -> DB : INSERT INTO Employee ...
+    DB --> Db : result / rowcount / generated keys
+    deactivate DB
+    Db --> Repo : SaveChangesAsync result
+    deactivate Db
+
+    Repo --> RepoInterface : SaveAsync result
+    deactivate Repo
+    RepoInterface --> Service : SaveAsync result
+    deactivate RepoInterface
+
+    Service --> Controller : Task completed / created entity
+    deactivate Service
+
+    Controller --> Admin : 201 Created (or 200) / ApiResponse
+    deactivate Controller
+end
+@enduml

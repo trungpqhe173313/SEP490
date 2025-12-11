@@ -1,0 +1,89 @@
+@startuml
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class ProductionController {
+    - _productionOrderService : IProductionOrderService
+    - _materialService : IMaterialService
+    - _finishproductService : IFinishproductService
+    - _productService : IProductService
+    - _mapper : IMapper
+    + CreateProductionOrder(po : ProductionRequest) : Task_IActionResult
+}
+
+class ProductionRequest {
+    + MaterialProductId : int
+    + MaterialQuantity : int
+    + Note : string
+    + ListFinishProduct : List<FinishProductRequest>
+}
+
+class FinishProductRequest {
+    + ProductId : int
+    + Quantity : int
+}
+
+interface IProductionOrderService {
+    + CreateAsync(entity : ProductionOrder) : Task
+}
+
+interface IFinishproductService {
+    + CreateAsync(entity : Finishproduct) : Task
+}
+
+interface IMaterialService {
+    + CreateAsync(entity : Material) : Task
+}
+
+interface IProductService {
+    + GetByIdAsync(id : int) : Task_Product
+    + GetByIds(ids : List<int>) : Task_List_Product
+}
+
+class ProductionOrder {
+    + Id : int
+    + Status : int
+    + CreatedAt : DateTime
+    + Note : string
+}
+
+class Finishproduct {
+    + Id : int
+    + ProductionId : int
+    + ProductId : int
+    + Quantity : int
+    + WarehouseId : int
+    + TotalWeight : decimal?
+}
+
+class Material {
+    + Id : int
+    + ProductionId : int
+    + ProductId : int
+    + Quantity : int
+    + WarehouseId : int
+    + TotalWeight : decimal?
+}
+
+class ApiResponse {
+    + Data : T
+    + IsSuccess : bool
+    + Message : string
+}
+
+' Relationships
+UIService ..> ProductionController : calls API
+UIService ..> ProductionRequest : sends
+
+ProductionController --> IProductionOrderService
+ProductionController --> IFinishproductService
+ProductionController --> IMaterialService
+ProductionController --> IProductService
+ProductionController..> ProductionRequest : Uses
+ProductionRequest *-- FinishProductRequest
+ProductionController ..> ApiResponse : Returns
+IProductionOrderService ..> ProductionOrder : Manages
+IFinishproductService ..> Finishproduct : Manages
+IMaterialService ..> Material : Manages
+@enduml

@@ -1,0 +1,85 @@
+@startuml
+title Class Diagram - Search Supplier
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class SupplierController <<Controller>> {
+  - _supplierService: ISupplierService
+  - _logger: ILogger<Supplier>
+  + GetData(search: SupplierSearch): Task<IActionResult>
+}
+
+interface ISupplierService {
+  + GetData(search: SupplierSearch): Task<PagedList<SupplierDto>>
+}
+
+class SupplierService <<Service>> {
+  + GetData(search: SupplierSearch): Task<PagedList<SupplierDto>>
+}
+
+class "Service<Supplier>" as BaseService {
+  - _repository: IRepository<Supplier>
+  + GetQueryable(): IQueryable<Supplier>
+}
+
+interface "IRepository<T>" as IRepository {
+  + GetQueryable(): IQueryable<T>
+}
+
+class SupplierSearch {
+  + SupplierName: string?
+  + Email: string?
+  + Phone: string?
+  + IsActive: boolean?
+  + PageIndex: int
+  + PageSize: int
+}
+
+class SupplierDto {
+  + SupplierId: int
+  + SupplierName: string
+  + Phone: string
+  + Email: string
+  + IsActive: boolean
+  + CreatedAt: DateTime
+}
+
+class Supplier {
+  + SupplierId: int
+  + SupplierName: string
+  + Phone: string
+  + Email: string
+  + IsActive: boolean
+  + CreatedAt: DateTime
+}
+
+class "PagedList<T>" as PagedList {
+  + Items: List<T>
+  + PageIndex: int
+  + PageSize: int
+  + TotalCount: int
+  + TotalPages: int
+}
+
+' Relationships
+UIService ..> SupplierController : calls API
+UIService ..> SupplierSearch : sends
+SupplierController ..> ApiResponse : returns
+SupplierController --> ISupplierService : uses
+SupplierController ..> SupplierSearch : receives
+ISupplierService <|.. SupplierService
+SupplierService --|> BaseService
+BaseService --> IRepository : uses (Supplier)
+SupplierService ..> Supplier : reads
+SupplierService ..> SupplierDto : returns
+SupplierService ..> PagedList : returns
+
+@enduml
