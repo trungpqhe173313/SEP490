@@ -1,0 +1,56 @@
+@startuml
+
+' Controller
+class SupplierController <<controller>> {
+  - _supplierService: ISupplierService
+  .. Methods ..
+  + GetById(id: int): Task<IActionResult>
+}
+
+' Services
+interface ISupplierService {
+  + GetById(id: int): Task<SupplierDto>
+}
+class SupplierService <<service>> {
+  .. Methods ..
+  + GetById(id: int): Task<SupplierDto>
+}
+class "Service" as ServiceSupplier <<base>> {
+  - _repository: IRepositorySupplier
+  .. Methods ..
+  + GetByIdAsync(id: int?): Task<Supplier>
+}
+
+' Repositories
+interface "IRepository" as IRepositorySupplier {
+  + GetByIdAsync(id: int?): Task<Supplier>
+}
+class "Repository" as RepositorySupplier {
+  .. Methods ..
+  + GetByIdAsync(id: int?): Task<Supplier>
+}
+
+' DTO / Entity
+class Supplier {
+  + SupplierId: int
+  + SupplierName: string
+  + ContactPerson: string
+  + Email: string
+  + Phone: string
+}
+class SupplierDto {
+  + SupplierId: int
+  + SupplierName: string
+  + ContactPerson: string
+  + Email: string
+  + Phone: string
+}
+
+' Relationships
+SupplierController --> ISupplierService : uses
+SupplierService ..|> ISupplierService
+SupplierService --|> ServiceSupplier
+ServiceSupplier --> IRepositorySupplier : uses
+RepositorySupplier ..|> IRepositorySupplier
+
+@enduml

@@ -1,0 +1,44 @@
+@startuml
+title Sequence Diagram - View Category Details
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":CategoryController" as Controller
+participant ":CategoryService" as Service
+participant "Database" as DB
+
+' Step 1: User Request
+Manager -> Controller: GET /api/categories/GetById/{Id}
+activate Controller
+
+' Step 2: Validate ID
+alt Id <= 0
+    Controller --> Manager: BadRequest("ID không hợp lệ")
+end
+
+' Step 3: Get Category Details
+Controller -> Service: GetByIdWithProducts(Id)
+activate Service
+Service -> DB: Query Category (Where CategoryId = Id)
+activate DB
+DB --> Service: Category Entity
+deactivate DB
+
+' Step 4: Map to DTO
+Service -> Service: Map to CategoryDetailDto
+Service --> Controller: categoryDetailDto
+deactivate Service
+
+' Step 5: Handle Not Found
+alt Category Not Found
+autonumber 8.1
+    Controller --> Manager: NotFound("Không tìm thấy danh mục")
+else Category Found
+autonumber 8
+    ' Step 6: Return Response
+    Controller --> Manager: Ok(CategoryDetailDto)
+end
+
+deactivate Controller
+
+@enduml

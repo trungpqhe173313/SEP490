@@ -1,0 +1,35 @@
+@startuml
+title Delete Employee Class Diagram
+
+class EmployeeController {
+    - _userService : IUserService
+    + DeleteEmployee(id: int) : Task<IActionResult>
+}
+
+interface IUserService {
+    + GetByIdAsync(id: int) : Task<User>
+    + UpdateAsync(entity: User) : Task
+}
+
+class UserService {
+    + GetByIdAsync(id: int) : Task<User>
+    + UpdateAsync(entity: User) : Task
+}
+
+class User {
+    + UserId : int
+    + FullName : string
+    + IsActive : bool
+}
+
+class ApiResponse {
+    + {static} Ok(data: object) : ApiResponse
+    + {static} Fail(message: string) : ApiResponse
+}
+
+EmployeeController --> IUserService
+IUserService <|.. UserService
+EmployeeController ..> ApiResponse : returns
+UserService ..> User : manages
+
+@enduml

@@ -1,0 +1,43 @@
+@startuml
+
+actor "Admin" as Admin
+boundary "UI (Web/App)" as UI
+participant "SupplierController" as Ctrl
+participant "SupplierService" as Svc
+participant "Service<Supplier> (base)" as BaseSvc
+participant "Repository<Supplier>" as Repo
+database "DB (NutriBarnContext)" as DB
+
+Admin -> UI : 1. Nhấn nút "Tạo mới Nhà cung cấp"
+UI --> Admin : 2. Hiển thị form tạo mới
+
+Admin -> UI : 3. Điền thông tin và nhấn "Lưu"
+UI -> Ctrl : 4.1 POST /api/suppliers/CreateSupplier\n(Body chứa: SupplierCreateVM)
+Ctrl -> Svc : 4.2 GetByEmail(model.Email)
+Svc -> DB : 4.3 Query Supplier by Email
+DB --> Svc : 4.4 Trả về Supplier? (null nếu chưa có)
+Svc --> Ctrl : 4.5 Trả về Supplier?
+
+alt Email đã tồn tại
+    Ctrl --> UI : 6.1b 400 BadRequest: "Email nhà cung cấp đã tồn tại"
+    UI --> Admin : 6.2b Hiển thị lỗi
+else Email chưa tồn tại
+
+    Ctrl -> Ctrl : 5.1 Tạo mới entity `Supplier` từ `SupplierCreateVM`
+    
+    Ctrl -> Svc : 5.2 CreateAsync(newSupplier)
+    Svc -> BaseSvc : 5.3 CreateAsync(newSupplier)
+    BaseSvc -> Repo : 5.4 Add(newSupplier)
+    Repo -> DB : 5.5 Thêm entity vào DbSet (chưa commit)
+    BaseSvc -> Repo : 5.6 SaveAsync()
+    Repo -> DB : 5.7 Execute INSERT & SaveChanges
+    DB --> Repo : 5.8 OK
+    Repo --> BaseSvc : 5.9 OK
+    BaseSvc --> Svc : 5.10 OK
+    Svc --> Ctrl : 5.11 OK
+    
+    Ctrl --> UI : 6.1 200 OK (ApiResponse chứa dữ liệu Supplier)
+    UI --> Admin : 6.2 Hiển thị thông báo "Tạo thành công"
+end
+
+@enduml

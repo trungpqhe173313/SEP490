@@ -1,0 +1,30 @@
+@startuml
+autonumber
+actor User
+participant "Web UI" as UI
+participant "AccountController" as Controller
+participant "AccountService : IAccountService" as Service
+participant "JwtService : IJwtService" as Jwt
+participant "UserRepository : IUserRepository" as Repo
+participant "NutriBarnContext (EF)" as Db
+
+User -> UI : Click "Logout"
+UI -> Controller : POST /api/account/logout (Authorization header or refreshToken)
+Controller -> Service : Logout(token or userId)
+Service -> Jwt : ValidateToken(token) / Extract claims
+Jwt -> Jwt : Check signature, expiry, claims
+Jwt --> Service : Claims (userId) or invalid
+alt token valid / claims ok
+  Service -> Repo : RevokeRefreshToken(userId) / Clear stored refresh token
+  Repo -> Db : UPDATE Users SET RefreshToken = NULL, RefreshTokenExpiry = NULL WHERE Id = ...
+  Db --> Repo : DB update OK
+  Repo --> Service : success
+  Service --> Controller : 200 OK (logout success)
+  Controller --> UI : 200 OK
+  UI --> User : Clear local tokens, redirect to login
+else token invalid
+  Service --> Controller : 401/400 (invalid token)
+  Controller --> UI : 401/400
+  UI --> User : Show error / force local token clear
+end
+@enduml

@@ -1,0 +1,40 @@
+@startuml
+title Edit Task Sequence Diagram (Happy Path)
+autonumber
+actor "Admin" as User
+participant "UI (Web App)" as UI
+participant "JobController" as Controller
+participant "IJobService" as Service
+participant "Database" as DB
+
+User -> UI : Click "Edit" on Task
+UI -> UI : Fill Update Form
+User -> UI : Click "Save"
+
+activate UI
+UI -> Controller : PUT /api/jobs (dto)
+activate Controller
+
+Controller -> Service : UpdateJobAsync(dto)
+activate Service
+
+Service -> DB : Find(dto.Id)
+activate DB
+DB --> Service : Job Entity
+deactivate DB
+
+Service -> Service : Map DTO to Entity
+Service -> DB : Update(job)
+activate DB
+DB --> Service : Success
+deactivate DB
+Service --> Controller : JobDto
+deactivate Service
+
+Controller --> UI : Ok(ApiResponse.Ok(job))
+deactivate Controller
+
+UI --> User : Show Success Message & Update List
+deactivate UI
+
+@enduml

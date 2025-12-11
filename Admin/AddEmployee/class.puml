@@ -1,0 +1,67 @@
+@startuml
+' Class diagram for "Add Employee" use case (only relevant types)
+
+' Repository interface for Employee (no generics token to avoid PlantUML parse issues)
+interface IRepository_Employee {
+  +Add(employee)
+  +SaveAsync()
+  +GetQueryable()
+}
+
+' Base service (simplified)
+abstract class Service_T {
+  -_repository
+  +Service(repository)
+  +CreateAsync(entity)
+  +CreateAsync(entities)
+}
+
+' Concrete service for employee
+class EmployeeService {
+  +EmployeeService(repository)
+  +CreateAsync(employee)
+}
+
+' Employee repository implementation
+class EmployeeRepository {
+  +EmployeeRepository(context)
+}
+
+' Domain entity
+class Employee {
+  +EmployeeId : int
+  +UserId : int
+  +FullName : string
+  +Phone : string
+  +HireDate : DateTime?
+  +Status : string
+}
+
+' View model used by UI/controller
+class EmployeeCreateVM {
+  +UserId : int
+  +FullName : string
+  +Phone : string
+  +HireDate : DateTime?
+  +Status : string
+}
+
+' EF core DbContext
+class DbContext
+
+' Controller boundary (maps VM -> entity and calls service)
+class EmployeeController {
+  +Create(EmployeeCreateVM vm) : IActionResult
+}
+
+' Relationships (dependencies / realizations)
+EmployeeRepository ..|> IRepository_Employee
+Service_T --|> EmployeeService
+EmployeeService --> IRepository_Employee : depends on
+EmployeeRepository --> DbContext : uses
+EmployeeController --> EmployeeService : uses
+EmployeeCreateVM ..> Employee : maps to / builds
+EmployeeService --> Employee : creates / persists
+
+
+@enduml

@@ -1,0 +1,54 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+left to right direction
+
+' Controller
+class StockInputController {
+    +GetStockBatch(search: StockBatchSearch)
+}
+
+' Service Interfaces
+interface IStockBatchService
+interface ITransactionDetailService
+interface IProductService
+
+' Entity/DTO Classes
+class StockBatch {
+    +BatchId: int
+    +WarehouseId: int
+    +ProductId: int
+    +TransactionId: int
+    +BatchCode: string
+    +ImportDate: DateTime
+    +ExpireDate: DateTime
+    +QuantityIn: int
+    +Status: int
+}
+class TransactionDetail {
+    +ProductId: int
+    +UnitPrice: decimal
+}
+class Product {
+    +ProductId: int
+    +ProductName: string
+    +WeightPerUnit: decimal
+}
+
+' --- Relations ---
+
+' Controller uses Services
+StockInputController ..> IStockBatchService : uses
+StockInputController ..> ITransactionDetailService : uses
+StockInputController ..> IProductService : uses
+
+' Services manage Entities
+IStockBatchService ..> StockBatch : manages
+ITransactionDetailService ..> TransactionDetail : manages
+IProductService ..> Product : manages
+
+' Relationships between Entities
+StockBatch -- Product : is a batch of
+TransactionDetail -- Product : specifies price for
+
+@enduml

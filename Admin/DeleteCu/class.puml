@@ -1,0 +1,50 @@
+@startuml
+
+' Controller
+class CustomerController <<controller>> {
+  - _customerService: ICustomerService
+  .. Methods ..
+  + DeleteCustomer(id: int): Task<IActionResult>
+}
+
+' Services
+interface ICustomerService {
+  + GetById(id: int): Task<CustomerDto>
+  + UpdateAsync(entity: Customer): Task
+}
+class CustomerService <<service>> {
+  .. Methods ..
+  + GetById(id: int): Task<CustomerDto>
+}
+class "Service" as ServiceCustomer <<base>> {
+  - _repository: IRepositoryCustomer
+  .. Methods ..
+  + UpdateAsync(entity: Customer): Task
+}
+
+' Repositories
+interface "IRepository" as IRepositoryCustomer {
+  + Update(entity: Customer): void
+  + SaveAsync(): Task
+}
+class "Repository" as RepositoryCustomer {
+  .. Methods ..
+  + Update(entity: Customer): void
+  + SaveAsync(): Task
+}
+
+' Entity
+class Customer {
+  + CustomerId: int
+  + CustomerName: string
+  + IsActive: bool
+}
+
+' Relationships
+CustomerController --> ICustomerService : uses
+CustomerService ..|> ICustomerService
+CustomerService --|> ServiceCustomer
+ServiceCustomer --> IRepositoryCustomer : uses
+RepositoryCustomer ..|> IRepositoryCustomer
+
+@enduml

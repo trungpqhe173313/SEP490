@@ -1,0 +1,25 @@
+@startuml
+
+actor "Admin" as Admin
+boundary "UI (Web/App)" as UI
+participant ":CustomerController" as Ctrl
+participant ":CustomerService" as Svc
+database "DB (NutriBarnContext)" as DB
+
+Admin -> UI : 1. Nhấn vào một khách hàng trong danh sách
+
+UI -> Ctrl : 2. GET /api/customers/GetById/{id}
+
+Ctrl -> Svc : 2.1 GetById(id)
+
+Svc -> DB : 2.2 Execute SELECT...WHERE CustomerId = id query
+
+DB --> Svc : 2.3 Trả về dữ liệu CustomerDto
+
+Svc --> Ctrl : 2.4 Trả về CustomerDto
+
+Ctrl --> UI : 3.1 200 OK (ApiResponse chứa chi tiết khách hàng)
+
+UI --> Admin : 3.2 Hiển thị trang chi tiết của khách hàng đã chọn
+
+@enduml

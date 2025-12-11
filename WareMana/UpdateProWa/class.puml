@@ -1,0 +1,41 @@
+@startuml
+
+
+class ProductController <<controller>> {
+  - _productService: IProductService
+  + UpdateProduct(id: int, model: ProductUpdateVM): Task<IActionResult>
+}
+
+interface IProductService {
+  + GetById(id: int): Task<ProductDto>
+  + UpdateAsync(entity: Product): Task
+}
+class ProductService <<service>> {
+  + GetById(id: int): Task<ProductDto>
+}
+class "Service" as ServiceProduct <<base>> {
+  - _repository: IRepositoryProduct
+  + UpdateAsync(entity: Product): Task
+}
+interface "IRepository" as IRepositoryProduct {
+  + Update(entity: Product): void
+  + SaveAsync(): Task
+}
+
+class Product {
+  + ProductId: int
+  + ProductName: string
+  + IsActive: bool
+}
+class ProductUpdateVM {
+  + ProductName: string
+  + Description: string
+  + IsActive: bool
+}
+
+ProductController --> IProductService : uses
+ProductService ..|> IProductService
+ProductService --|> ServiceProduct
+ServiceProduct --> IRepositoryProduct : uses
+
+@enduml

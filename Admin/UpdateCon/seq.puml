@@ -1,0 +1,50 @@
+@startuml
+
+
+actor "Admin"
+participant "Screen" as UI
+participant "ContractController" as SIC
+participant "IContractService" as CS
+
+' --- Step 1: Load data for editing ---
+Admin -> UI : 1. Clicks "Edit" on a contract
+activate UI
+UI -> SIC : 2.1 GET /api/contract/GetById/{id}
+activate SIC
+
+SIC -> CS : 2.2 GetByIdAsync(id)
+activate CS
+CS --> SIC : 2.3 Return existing Contract data
+deactivate CS
+
+SIC --> UI : 2.4 Return contract data
+deactivate SIC
+UI -> UI : 2.5 Display form populated with the contract data
+deactivate UI
+
+' --- Step 2: User edits and submits ---
+
+Admin -> UI : 3. User changes contract details and clicks "Save Changes" button
+activate UI
+UI -> SIC : 4.1 PUT /api/contract/Update/{id}(dto)
+activate SIC
+
+' --- Step 3: Backend processing ---
+SIC -> CS : 4.2 GetByIdAsync(id) ' Re-fetch to ensure it exists
+activate CS
+CS --> SIC : 4.3 Return existing Contract
+deactivate CS
+
+SIC -> SIC : 4.4 Map updated fields from DTO to entity
+
+SIC -> CS : 4.5 UpdateAsync(entity)
+activate CS
+CS --> SIC : 4.6 Confirmation
+deactivate CS
+
+SIC --> UI : 4.7 Return success result
+deactivate SIC
+UI --> Admin : 5 Display "Update successful" message
+deactivate UI
+
+@enduml

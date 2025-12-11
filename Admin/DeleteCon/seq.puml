@@ -1,0 +1,28 @@
+@startuml
+
+
+actor "Admin"
+participant "Screen" as UI
+participant ":ContractController" as SIC
+participant ":IContractService" as CS
+
+Admin -> UI : 1. Clicks "Delete" on a contract
+activate UI
+UI -> SIC : 2.1 DELETE /api/contract/Delete/{id}
+activate SIC
+
+SIC -> CS : 2.2 GetByIdAsync(id)
+activate CS
+CS --> SIC : 2.3 Return existing Contract
+deactivate CS
+
+SIC -> CS : 2.4 DeleteAsync(entity)
+activate CS
+CS --> SIC : 2.5 Confirmation
+deactivate CS
+
+SIC --> UI : 2.6 Return success result
+deactivate SIC
+UI --> Admin : 3. Display "Delete successful" message
+deactivate UI
+@enduml

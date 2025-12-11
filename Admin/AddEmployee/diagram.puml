@@ -1,0 +1,50 @@
+@startuml
+title Dependency Injection - Hệ thống quản lý kho thức ăn chăn nuôi
+
+interface IProductRepository
+interface IProductService
+
+class ProductRepository {
+    +GetAllProducts(): List<Product>
+    +AddProduct(Product p)
+}
+
+class ProductService {
+    -IProductRepository _productRepo
+    +ProductService(IProductRepository repo)
+    +ListAllProducts()
+}
+
+class ProductController {
+    -IProductService _productService
+    +ProductController(IProductService service)
+    +ShowAllProducts()
+}
+
+class AppDbContext {
+    +DbSet<Product> Products
+}
+
+class Product {
+    +Id: int
+    +Name: string
+    +Quantity: int
+    +Unit: string
+}
+
+' Relationships
+IProductRepository <|.. ProductRepository
+IProductService <|.. ProductService
+
+ProductRepository --> AppDbContext : uses
+ProductService --> IProductRepository : injects
+ProductController --> IProductService : injects
+ProductRepository --> Product : manages
+
+note top of ProductController
+DI Container (Startup/Program.cs):
+  builder.Services.AddScoped<IProductRepository, ProductRepository>();
+  builder.Services.AddScoped<IProductService, ProductService>();
+end note
+
+@enduml

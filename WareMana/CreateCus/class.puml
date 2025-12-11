@@ -1,0 +1,100 @@
+@startuml
+title Class Diagram - Create Customer
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class CustomerController <<Controller>> {
+  - _userService: IUserService
+  - _userRoleService: IUserRoleService
+  - _roleService: IRoleService
+  - _cloudinaryService: ICloudinaryService
+  - _mapper: IMapper
+  - _logger: ILogger<EmployeeController>
+  + CreateCustomer(model: UserCreateVM): Task<IActionResult>
+}
+
+interface IUserService {
+  + GetByEmail(email: string): Task<UserDto?>
+  + GetByUsername(username: string): Task<UserDto?>
+  + CreateAsync(entity: User): Task
+}
+
+interface IUserRoleService {
+  + CreateAsync(entity: UserRole): Task
+}
+
+interface IRoleService {
+  + GetByRoleName(roleName: string): Task<RoleDto?>
+}
+
+interface ICloudinaryService {
+  + UploadImageAsync(file: IFormFile): Task<string?>
+}
+
+class UserService <<Service>> {
+  + CreateAsync(entity: User): Task
+}
+
+class "Service<User>" as BaseService {
+  - _repository: IRepository<User>
+  + CreateAsync(entity: User): Task
+}
+
+interface "IRepository<T>" as IRepository {
+  + Add(entity: T): T
+  + SaveAsync(): Task
+}
+
+class UserCreateVM {
+  + Username: string
+  + Email: string?
+  + FullName: string
+  + Phone: string?
+  + Image: IFormFile?
+}
+
+class User {
+  + UserId: int
+  + Username: string
+  + Email: string
+  + FullName: string
+  + Password: string
+  + Image: string
+  + IsActive: boolean
+  + CreatedAt: DateTime
+}
+
+class UserRole {
+  + UserId: int
+  + RoleId: int
+  + AssignedDate: DateTime
+}
+
+class RoleDto {
+  + RoleId: int
+  + RoleName: string
+}
+
+' Relationships
+UIService ..> CustomerController : calls API
+UIService ..> UserCreateVM : sends
+CustomerController ..> ApiResponse : returns
+CustomerController --> IUserService : uses
+CustomerController --> IUserRoleService : uses
+CustomerController --> IRoleService : uses
+CustomerController --> ICloudinaryService : uses
+CustomerController ..> UserCreateVM : receives
+IUserService <|.. UserService
+UserService --|> BaseService
+BaseService --> IRepository : uses (User)
+UserService ..> User : creates
+
+@enduml

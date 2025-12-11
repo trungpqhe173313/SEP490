@@ -1,0 +1,30 @@
+@startuml
+actor Admin
+participant "EmployeeController" as Controller
+participant "EmployeeService" as Service
+participant "Repository<Employee>" as Repo
+participant "NutriBarnContext" as Db
+participant "IMapper" as Mapper
+
+
+Admin -> Controller : GET /api/Employee/{id}
+activate Controller
+Controller -> Service : GetById(id)
+activate Service
+Service -> Repo : GetById(id)
+activate Repo
+Repo -> Db : Employees.Find(id)
+activate Db
+Db --> Repo : Employee
+deactivate Db
+Repo --> Service : Employee
+deactivate Repo
+Service -> Mapper : Map<Employee, EmployeeDto>
+activate Mapper
+Mapper --> Service : EmployeeDto
+deactivate Mapper
+Service --> Controller : ApiResponse<EmployeeDto>
+deactivate Service
+Controller --> Admin : 200 OK (employee)
+deactivate Controller
+@enduml

@@ -1,0 +1,107 @@
+@startuml
+title Sequence Diagram - Change Status Stock Output (Draft -> Order)
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":StockOutputController" as Controller
+participant ":TransactionService" as TranService
+participant ":TransactionDetailService" as DetailService
+participant ":StockBatchService" as BatchService
+participant ":InventoryService" as InvService
+participant ":WarehouseService" as WarehouseService
+participant "Database" as DB
+
+' Step 1: User Request
+Manager -> Controller: PUT /api/stockoutput/UpdateToOrderStatus/{id}
+activate Controller
+
+' Step 2: Get Transaction & Details
+Controller -> TranService: GetByTransactionId(id)
+activate TranService
+TranService --> Controller: transaction
+deactivate TranService
+
+Controller -> DetailService: GetByTransactionId(id)
+activate DetailService
+DetailService --> Controller: listTransDetail
+deactivate DetailService
+
+' Step 3: Validate Inventory (Pre-check)
+Controller -> WarehouseService: GetByIdAsync(warehouseId)
+activate WarehouseService
+WarehouseService --> Controller: warehouse
+deactivate WarehouseService
+
+Controller -> InvService: GetByWarehouseAndProductIds(warehouseId, productIds)
+activate InvService
+InvService --> Controller: listInventory
+deactivate InvService
+
+loop For each product
+    Controller -> Controller: Check Quantity <= Inventory.Quantity
+    alt Not Enough Stock
+        Controller --> Manager: BadRequest("Not enough stock")
+    end
+end
+
+' Step 4: Allocate Stock Batches (FIFO)
+Controller -> BatchService: GetByProductIdForOrder(productIds)
+activate BatchService
+BatchService -> DB: Query Batches
+activate DB
+DB --> BatchService: listStockBatch
+deactivate BatchService
+
+loop For each product in order
+    ' Filter batches for this product in this warehouse
+    Controller -> Controller: Filter & Sort Batches (FIFO)
+    
+    loop For each batch (until quantity filled)
+        Controller -> Controller: Calculate 'take' amount
+        
+        ' Update Stock Batch (Increase QuantityOut)
+        Controller -> BatchService: GetByIdAsync(batchId)
+        activate BatchService
+        BatchService --> Controller: batchEntity
+        deactivate BatchService
+        
+        Controller -> Controller: batchEntity.QuantityOut += take
+        
+        Controller -> BatchService: UpdateAsync(batchEntity)
+        activate BatchService
+        BatchService -> DB: Update Batch
+        activate DB
+        DB --> BatchService: Success
+        deactivate BatchService
+    end
+    
+    ' Update Inventory (Decrease Quantity)
+    Controller -> InvService: GetEntityByWarehouseAndProductIdAsync(warehouseId, productId)
+    activate InvService
+    InvService --> Controller: inventoryEntity
+    deactivate InvService
+    
+    Controller -> Controller: inventoryEntity.Quantity -= quantity
+    
+    Controller -> InvService: UpdateNoTracking(inventoryEntity)
+    activate InvService
+    InvService -> DB: Update Inventory
+    activate DB
+    DB --> InvService: Success
+    deactivate InvService
+end
+
+' Step 5: Update Transaction Status
+Controller -> Controller: transaction.Status = Order
+Controller -> TranService: UpdateAsync(transaction)
+activate TranService
+TranService -> DB: Update Transaction
+activate DB
+DB --> TranService: Success
+deactivate TranService
+
+' Step 6: Response
+Controller --> Manager: Ok("Cập nhật đơn hàng thành công")
+deactivate Controller
+
+@enduml

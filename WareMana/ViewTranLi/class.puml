@@ -1,0 +1,118 @@
+@startuml
+title Class Diagram - View Transaction Slip List
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class StockInputController <<Controller>> {
+  - _transactionService: ITransactionService
+  - _warehouseService: IWarehouseService
+  - _supplierService: ISupplierService
+  - _logger: ILogger<StockInputController>
+  + GetData(search: TransactionSearch): Task<IActionResult>
+}
+
+interface ITransactionService {
+  + GetData(search: TransactionSearch): Task<PagedList<TransactionDto>>
+}
+
+interface IWarehouseService {
+  + GetById(id: int): Task<WarehouseDto?>
+}
+
+interface ISupplierService {
+  + GetBySupplierId(id: int): Task<SupplierDto?>
+}
+
+class TransactionService <<Service>> {
+  + GetData(search: TransactionSearch): Task<PagedList<TransactionDto>>
+}
+
+class "Service<Transaction>" as BaseService {
+  - _repository: IRepository<Transaction>
+  + GetQueryable(): IQueryable<Transaction>
+}
+
+interface "IRepository<T>" as IRepository {
+  + GetQueryable(): IQueryable<T>
+}
+
+class TransactionSearch {
+  + CustomerId: int?
+  + SupplierId: int?
+  + WarehouseId: int?
+  + Status: int?
+  + Type: string?
+  + TransactionFromDate: DateTime?
+  + TransactionToDate: DateTime?
+  + PageIndex: int
+  + PageSize: int
+}
+
+class TransactionOutputVM {
+  + TransactionId: int?
+  + CustomerId: int?
+  + WarehouseName: string?
+  + SupplierName: string?
+  + Status: int?
+  + Type: string
+  + TransactionDate: DateTime
+  + Note: string?
+  + TotalCost: decimal?
+}
+
+class TransactionDto {
+  + TransactionId: int
+  + WarehouseId: int
+  + SupplierId: int?
+  + CustomerId: int?
+  + Type: string
+  + Status: int?
+  + TransactionDate: DateTime?
+  + Note: string?
+  + TotalCost: decimal?
+}
+
+class Transaction {
+  + TransactionId: int
+  + WarehouseId: int
+  + SupplierId: int?
+  + CustomerId: int?
+  + Type: string
+  + Status: int?
+  + TransactionDate: DateTime?
+  + Note: string?
+  + TotalCost: decimal?
+}
+
+class "PagedList<T>" as PagedList {
+  + Items: List<T>
+  + PageIndex: int
+  + PageSize: int
+  + TotalCount: int
+}
+
+' Relationships
+UIService ..> StockInputController : calls API
+UIService ..> TransactionSearch : sends
+StockInputController ..> ApiResponse : returns
+StockInputController --> ITransactionService : uses
+StockInputController --> IWarehouseService : uses
+StockInputController --> ISupplierService : uses
+StockInputController ..> TransactionSearch : receives
+ITransactionService <|.. TransactionService
+TransactionService --|> BaseService
+BaseService --> IRepository : uses (Transaction)
+TransactionService ..> Transaction : reads
+TransactionService ..> TransactionDto : returns
+StockInputController ..> TransactionOutputVM : returns
+StockInputController ..> PagedList : returns
+
+@enduml

@@ -1,0 +1,32 @@
+@startuml
+autonumber
+actor "Warehouse Manager" as User
+boundary "UI" as UI
+participant ":ProductController" as Ctrl
+participant ":ProductService" as Svc
+database "DB" as DB
+
+User -> UI : Nhấn nút "Xóa" trên một sản phẩm
+UI -> Ctrl : DELETE /api/products/DeleteProduct/{id}
+
+Ctrl -> Svc : GetById(id)
+Svc -> DB : Query Product by Id
+DB --> Svc : Trả về Product?
+alt Sản phẩm không tồn tại 
+    Svc --> Ctrl : Trả về null
+    Ctrl --> UI : 404 NotFound: "Không tìm thấy sản phẩm với ID: {id}"
+    UI --> User : Hiển thị thông báo lỗi
+else Sản phẩm tồn tại
+    
+    Ctrl -> Ctrl : Cập nhật: product.IsActive = false
+
+    Ctrl -> Svc : UpdateAsync(product)
+    Svc -> DB : Execute UPDATE command
+    DB --> Svc : OK
+    Svc --> Ctrl : OK
+
+    Ctrl --> UI : 200 OK (ApiResponse: "Xóa sản phẩm thành công")
+    UI --> User : Hiển thị thông báo thành công
+end
+
+@enduml

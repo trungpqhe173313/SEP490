@@ -1,0 +1,59 @@
+@startuml
+
+' Controller
+class CustomerController <<controller>> {
+  - _customerService: ICustomerService
+  .. Methods ..
+  + GetData(search: CustomerSearch): Task<IActionResult>
+}
+
+' Services
+interface ICustomerService {
+  + GetData(search: CustomerSearch): Task<PagedList<CustomerDto>>
+}
+class CustomerService <<service>> {
+  .. Methods ..
+  + GetData(search: CustomerSearch): Task<PagedList<CustomerDto>>
+}
+class "Service" as ServiceCustomer <<base>> {
+  - _repository: IRepositoryCustomer
+  .. Methods ..
+  + GetQueryable(): IQueryable<Customer>
+}
+
+' Repositories
+interface "IRepository" as IRepositoryCustomer
+class "Repository" as RepositoryCustomer
+
+' DTO / Entity / Search
+class Customer {
+  + CustomerId: int
+  + CustomerName: string
+  + Email: string
+  + Phone: string
+}
+class CustomerDto {
+  + CustomerId: int
+  + CustomerName: string
+  + Email: string
+  + Phone: string
+}
+class SearchBase {
+  + PageIndex: int
+  + PageSize: int
+}
+class CustomerSearch {
+  + CustomerName: string
+  + Email: string
+  + Phone: string
+}
+CustomerSearch --|> SearchBase
+
+' Relationships
+CustomerController --> ICustomerService : uses
+CustomerService ..|> ICustomerService
+CustomerService --|> ServiceCustomer
+ServiceCustomer --> IRepositoryCustomer : uses
+RepositoryCustomer ..|> IRepositoryCustomer
+
+@enduml

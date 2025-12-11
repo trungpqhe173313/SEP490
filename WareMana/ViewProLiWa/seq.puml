@@ -1,0 +1,30 @@
+@startuml
+autonumber
+actor "User" as User
+boundary "UI" as UI
+participant ":ProductController" as Ctrl
+participant ":ProductService" as Svc
+participant ":PagedList" as Paged
+database "DB" as DB
+
+User -> UI : Mở màn hình danh sách Sản phẩm trong kho
+
+UI -> Ctrl : POST /api/products/GetData\n(Body: { pageIndex: 1, pageSize: 20 })
+
+Ctrl -> Svc : GetData(search)
+Svc -> Svc : Xây dựng IQueryable<ProductDto> (không có .Where())
+
+Svc -> Paged : CreateAsync(query, search)
+
+Paged -> DB : Execute COUNT query (không có WHERE)
+DB --> Paged : Trả về totalCount
+Paged -> DB : Execute SELECT...SKIP 0...TAKE 20 query
+DB --> Paged : Trả về List<ProductDto> (trang 1)
+
+Paged --> Svc : Trả về PagedList<ProductDto>
+Svc --> Ctrl : Trả về PagedList<ProductDto>
+
+Ctrl --> UI : 200 OK (ApiResponse chứa trang đầu tiên)
+UI --> User : Hiển thị trang đầu tiên của danh sách sản phẩm
+
+@enduml
