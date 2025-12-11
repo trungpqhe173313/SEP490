@@ -22,6 +22,7 @@ using NB.Service.TransactionDetailService.ViewModels;
 using NB.Service.TransactionService;
 using NB.Service.TransactionService.Dto;
 using NB.Service.TransactionService.ViewModels;
+using NB.Service.UserService;
 using NB.Service.UserService.Dto;
 using NB.Service.WarehouseService;
 using NB.Services.StockBatchService.ViewModels;
@@ -52,6 +53,7 @@ namespace NB.API.Controllers
         private readonly IReturnTransactionService _returnTransactionService;
         private readonly IReturnTransactionDetailService _returnTransactionDetailService;
         private readonly IFinancialTransactionService _financialTransactionService;
+        private readonly IUserService _userService;
         private readonly ILogger<StockInputController> _logger;
         private readonly IMapper _mapper;
         private readonly string transactionType = "Import";
@@ -66,6 +68,7 @@ namespace NB.API.Controllers
                                     IReturnTransactionService returnTransactionService,
                                     IReturnTransactionDetailService returnTransactionDetailService,
                                     IFinancialTransactionService financialTransactionService,
+                                    IUserService userService,
                                     ILogger<StockInputController> logger,
                                     IMapper mapper)
         {
@@ -79,6 +82,7 @@ namespace NB.API.Controllers
             _returnTransactionService = returnTransactionService;
             _returnTransactionDetailService = returnTransactionDetailService;
             _financialTransactionService = financialTransactionService;
+            _userService = userService;
             _logger = logger;
             _mapper = mapper;
         }
@@ -95,6 +99,27 @@ namespace NB.API.Controllers
             {
 
                 var result = await _transactionService.GetData(search);
+                
+                // Lấy danh sách ResponsibleId để query user một lần (tối ưu performance)
+                var listResponsibleId = result.Items
+                    .Where(item => item.ResponsibleId.HasValue && item.ResponsibleId.Value > 0)
+                    .Select(item => item.ResponsibleId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var responsibleDict = new Dictionary<int, string>();
+                if (listResponsibleId.Any())
+                {
+                    var responsibleUsers = _userService.GetQueryable()
+                        .Where(u => listResponsibleId.Contains(u.UserId))
+                        .ToList();
+                    
+                    foreach (var user in responsibleUsers)
+                    {
+                        responsibleDict[user.UserId] = user.FullName ?? user.Username ?? "N/A";
+                    }
+                }
+
                 List<TransactionOutputVM> list = new List<TransactionOutputVM>();
                 foreach (var item in result.Items)
                 {
@@ -108,7 +133,11 @@ namespace NB.API.Controllers
                         Type = item.Type,
                         Status = item.Status,
                         Note = item.Note,
-                        TotalCost = item.TotalCost
+                        TotalCost = item.TotalCost,
+                        ResponsibleId = item.ResponsibleId,
+                        ResponsibleName = item.ResponsibleId.HasValue && responsibleDict.ContainsKey(item.ResponsibleId.Value)
+                            ? responsibleDict[item.ResponsibleId.Value]
+                            : null
                     });
                 }
 
@@ -148,6 +177,15 @@ namespace NB.API.Controllers
                         transaction.Status = detail.Status;
                         transaction.Note = detail.Note;
                         transaction.TotalCost = detail.TotalCost;
+                        transaction.ResponsibleId = detail.ResponsibleId;
+                        
+                        // Lấy tên người chịu trách nhiệm
+                        if (detail.ResponsibleId.HasValue)
+                        {
+                            var responsible = await _userService.GetByUserId(detail.ResponsibleId.Value);
+                            transaction.ResponsibleName = responsible?.FullName ?? responsible?.Username ?? "N/A";
+                        }
+                        
                         int id = detail.SupplierId ?? 0;
                         var supplier = await _supplierService.GetBySupplierId(id);
                         if(supplier != null)

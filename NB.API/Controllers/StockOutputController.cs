@@ -114,6 +114,16 @@ namespace NB.API.Controllers
                         t.FullName = user.FullName;
                     }
 
+                    //gắn tên người chịu trách nhiệm
+                    if (t.ResponsibleId.HasValue)
+                    {
+                        var responsible = listUser.FirstOrDefault(u => u.UserId == t.ResponsibleId.Value);
+                        if (responsible != null)
+                        {
+                            t.ResponsibleName = responsible.FullName ?? responsible.Username ?? "N/A";
+                        }
+                    }
+
                     //lay tên kho
                     var warehouse = listWareHouse?.FirstOrDefault(w => w != null && w.WarehouseId == t.WarehouseId);
                     if (warehouse != null)
@@ -164,6 +174,15 @@ namespace NB.API.Controllers
                         transaction.WarehouseName = (await _warehouseService.GetById(detail.WarehouseId))?.WarehouseName ?? "N/A";
                         transaction.TotalCost = detail.TotalCost ?? 0;
                         transaction.PriceListId = detail.PriceListId;
+                        transaction.ResponsibleId = detail.ResponsibleId;
+                        
+                        // Lấy tên người chịu trách nhiệm
+                        if (detail.ResponsibleId.HasValue)
+                        {
+                            var responsible = await _userService.GetByUserId(detail.ResponsibleId.Value);
+                            transaction.ResponsibleName = responsible?.FullName ?? responsible?.Username ?? "N/A";
+                        }
+                        
                         int id = detail.SupplierId ?? 0;
                         var customer = await _userService.GetByIdAsync(detail.CustomerId);
                         if (customer != null)
@@ -1015,15 +1034,32 @@ namespace NB.API.Controllers
         }
 
         [HttpPut("UpdateToDoneStatus/{transactionId}")]
-        public async Task<IActionResult> UpdateToDoneStatus(int transactionId)
+        public async Task<IActionResult> UpdateToDoneStatus(int transactionId, [FromBody] int responsibleId)
         {
             var transaction = await _transactionService.GetByTransactionId(transactionId);
             if (transaction == null)
             {
                 return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404 ));
             }
+
+            // Kiểm tra userId có được truyền từ frontend
+            if (responsibleId <= 0)
+            {
+                return BadRequest(ApiResponse<TransactionDto>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
+            }
+
+            // Kiểm tra user có tồn tại không
+            var responsibleUser = await _userService.GetByUserId(responsibleId);
+            if (responsibleUser == null)
+            {
+                return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy người chịu trách nhiệm với ID này", 404));
+            }
+
             try
             {
+                // Gán người chịu trách nhiệm cho đơn hàng từ frontend
+                transaction.ResponsibleId = responsibleId;
+
                 //cap nhat trang thai cho don hang
                 transaction.Status = (int)TransactionStatus.done;
                 await _transactionService.UpdateAsync(transaction);

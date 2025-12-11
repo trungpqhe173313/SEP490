@@ -33,6 +33,8 @@ public partial class Transaction
 
     public int? PriceListId { get; set; }
 
+    public int? ResponsibleId { get; set; }
+
     public virtual ICollection<FinancialTransaction> FinancialTransactions { get; set; } = new List<FinancialTransaction>();
 
     public virtual ICollection<ReturnTransaction> ReturnTransactions { get; set; } = new List<ReturnTransaction>();

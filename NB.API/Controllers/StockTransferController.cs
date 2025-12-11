@@ -82,7 +82,7 @@ namespace NB.API.Controllers
                     return Ok(ApiResponse<PagedList<TransactionDto>>.Ok(result));
                 }
                 var listWarehouseId = result.Items.Select(t => t.WarehouseId).ToList();
-                var listWarehouseInId = result.Items.Where(t => t.WarehouseInId.HasValue).Select(t => t.WarehouseInId.Value).ToList();
+                var listWarehouseInId = result.Items.Where(t => t.WarehouseInId.HasValue).Select(t => t.WarehouseInId!.Value).ToList();
                 var allWarehouseIds = listWarehouseId.Concat(listWarehouseInId).Distinct().ToList();
                 
                 var listWareHouse = await _warehouseService.GetByListWarehouseId(allWarehouseIds);
@@ -92,6 +92,26 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<PagedList<WarehouseDto>>.Fail("Không tìm thấy kho"));
                 }
                 
+                // Lấy danh sách ResponsibleId để query user một lần
+                var listResponsibleId = result.Items
+                    .Where(t => t.ResponsibleId.HasValue && t.ResponsibleId.Value > 0)
+                    .Select(t => t.ResponsibleId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var responsibleDict = new Dictionary<int, string>();
+                if (listResponsibleId.Any())
+                {
+                    var responsibleUsers = _userService.GetQueryable()
+                        .Where(u => listResponsibleId.Contains(u.UserId))
+                        .ToList();
+                    
+                    foreach (var user in responsibleUsers)
+                    {
+                        responsibleDict[user.UserId] = user.FullName ?? user.Username ?? "N/A";
+                    }
+                }
+
                 foreach (var t in result.Items)
                 {
                     //lấy tên kho nguồn
@@ -109,6 +129,12 @@ namespace NB.API.Controllers
                         {
                             t.WarehouseInName = destWarehouse.WarehouseName;
                         }
+                    }
+                    
+                    //gắn tên người chịu trách nhiệm
+                    if (t.ResponsibleId.HasValue && responsibleDict.ContainsKey(t.ResponsibleId.Value))
+                    {
+                        t.ResponsibleName = responsibleDict[t.ResponsibleId.Value];
                     }
                     
                     //gắn statusName cho transaction
@@ -153,6 +179,14 @@ namespace NB.API.Controllers
                         transaction.TransactionDate = detail.TransactionDate ?? DateTime.MinValue;
                         transaction.TotalWeight = detail.TotalWeight;
                         transaction.Note = detail.Note;
+                        transaction.ResponsibleId = detail.ResponsibleId;
+                        
+                        // Lấy tên người chịu trách nhiệm
+                        if (detail.ResponsibleId.HasValue)
+                        {
+                            var responsible = await _userService.GetByUserId(detail.ResponsibleId.Value);
+                            transaction.ResponsibleName = responsible?.FullName ?? responsible?.Username ?? "N/A";
+                        }
                         
                         // Lấy thông tin kho nguồn
                         var sourceWarehouse = await _warehouseService.GetById(detail.WarehouseId);

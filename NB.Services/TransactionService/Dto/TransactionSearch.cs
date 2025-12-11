@@ -15,6 +15,7 @@ namespace NB.Service.TransactionService.Dto
         public int? Status { get; set; }
         public string? Type { get; set; }
         public DateTime? TransactionFromDate { get; set; }
-        public DateTime? TransactionToDate { get; set; } 
+        public DateTime? TransactionToDate { get; set; }
+        public int? ResponsibleId { get; set; }
     }
 }

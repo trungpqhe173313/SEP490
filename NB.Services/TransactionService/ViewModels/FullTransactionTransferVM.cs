@@ -16,6 +16,8 @@ namespace NB.Service.TransactionService.ViewModels
         public string DestinationWarehouseName { get; set; }
         public decimal? TotalWeight { get; set; }
         public string? Note { get; set; }
+        public int? ResponsibleId { get; set; }
+        public string? ResponsibleName { get; set; }
         public List<TransactionDetailOutputVM?> list { get; set; }
     }
 }

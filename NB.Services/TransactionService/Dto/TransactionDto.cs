@@ -15,6 +15,7 @@ namespace NB.Service.TransactionService.Dto
         public string? StatusName { get; set; }
 
         public string? FullName { get; set; }
+        public string? ResponsibleName { get; set; }
     }
 
     public class TransactionDetailResponseDto
@@ -36,6 +37,8 @@ namespace NB.Service.TransactionService.Dto
         public int? SupplierId { get; set; }
         public string? SupplierName { get; set; }
         public int? PriceListId { get; set; }
+        public int? ResponsibleId { get; set; }
+        public string? ResponsibleName { get; set; }
         public List<TransactionDetailItemDto> Details { get; set; } = new List<TransactionDetailItemDto>();
     }
 

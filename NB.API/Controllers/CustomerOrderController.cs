@@ -146,11 +146,13 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<PagedList<UserDto>>.Fail("Không tìm thấy người dùng"));
                 }
-                //tạo danh sách các trạng thái của view order history bao gồm: hoàn thành, hủy
+                //tạo danh sách các trạng thái của view order history bao gồm: hoàn thành, hủy, da thanh toan, thanh toan mot phan
                 List<int> listStatus = new List<int>
                 {
                     (int)TransactionStatus.done,
-                    (int)TransactionStatus.cancel
+                    (int)TransactionStatus.cancel,
+                    (int)TransactionStatus.paidInFull,
+                    (int)TransactionStatus.partiallyPaid
                 };
                 //Danh sách các transaction
                 var result = await _transactionService.GetByListStatus(search, listStatus);
@@ -227,6 +229,14 @@ namespace NB.API.Controllers
                 transaction.TransactionId = detail.TransactionId;
                 transaction.TransactionDate = detail.TransactionDate ?? DateTime.MinValue;
                 transaction.WarehouseName = (await _warehouseService.GetById(detail.WarehouseId))?.WarehouseName ?? "N/A";
+                transaction.ResponsibleId = detail.ResponsibleId;
+                
+                // Lấy tên người chịu trách nhiệm
+                if (detail.ResponsibleId.HasValue)
+                {
+                    var responsible = await _userService.GetByUserId(detail.ResponsibleId.Value);
+                    transaction.ResponsibleName = responsible?.FullName ?? responsible?.Username ?? "N/A";
+                }
                 
                 var customer = await _userService.GetByIdAsync(detail.CustomerId);
                 if (customer != null)
