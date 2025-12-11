@@ -1,0 +1,69 @@
+@startuml
+autonumber
+actor "Warehouse Manager" as User
+participant ":Production List" as View
+participant ":ProductionController" as Controller
+participant ":ProductionOrderService" as POService
+participant ":MaterialService" as MatService
+participant ":InventoryService" as InvService
+participant ":StockBatchService" as BatchService
+database "Database" as DB
+
+activate User
+User -> View : Click "Start Production" (Change to Processing)
+activate View
+
+View -> Controller : PUT /api/production/ChangeToProcessing/{id}
+activate Controller
+
+Controller -> POService : GetByIdAsync(id)
+activate POService
+POService --> Controller : ProductionOrder (Status: Pending)
+deactivate POService
+
+Controller -> Controller : Validate Status (Must be Pending)
+
+Controller -> MatService : GetQueryable(ProductionId)
+activate MatService
+MatService --> Controller : List<Material>
+deactivate MatService
+
+loop For Each Material
+    Controller -> InvService : GetByWarehouseAndProductId(Warehouse=2, ProductId)
+    activate InvService
+    InvService --> Controller : Inventory (Check Quantity)
+    deactivate InvService
+    
+    Controller -> Controller : Validate Sufficient Inventory
+
+    Controller -> BatchService : GetByProductIdForOrder(ProductId)
+    activate BatchService
+    BatchService --> Controller : List<StockBatch>
+    deactivate BatchService
+
+    Controller -> Controller : Apply FIFO Logic\n(Select Batches to Deduct)
+
+    Controller -> BatchService : UpdateNoTracking(StockBatch)
+    activate BatchService
+    BatchService -> DB : Update QuantityOut
+    deactivate BatchService
+
+    Controller -> InvService : UpdateNoTracking(Inventory)
+    activate InvService
+    InvService -> DB : Deduct Quantity
+    deactivate InvService
+end
+
+Controller -> POService : UpdateAsync(ProductionOrder)
+activate POService
+
+POService -> DB : Update Status
+deactivate POService
+
+Controller --> View : ApiResponse (Success)
+deactivate Controller
+
+View --> User : Update Status to "Processing"
+deactivate View
+deactivate User
+@enduml

@@ -1,0 +1,65 @@
+@startuml
+title Class Diagram - Return Stock Output Details
+
+class ReturnOrderController {
+    - _returnTransactionService : IReturnTransactionService
+    - _transactionService : ITransactionService
+    - _returnTransactionDetailService : IReturnTransactionDetailService
+    - _userService : IUserService
+    - _productService : IProductService
+    + GetDetail(returnTransactionId: int) : Task<IActionResult>
+}
+
+interface IReturnTransactionService {
+    + GetByIdAsync(id: int) : Task<ReturnTransaction>
+}
+
+interface ITransactionService {
+    + GetByTransactionId(id: int) : Task<TransactionDto>
+}
+
+interface IReturnTransactionDetailService {
+    + GetByReturnTransactionId(id: int) : Task<List<ReturnTransactionDetail>>
+}
+
+interface IUserService {
+    + GetByIdAsync(id: int) : Task<UserDto>
+}
+
+interface IProductService {
+    + GetById(id: int) : Task<ProductDto>
+}
+
+class ReturnOrderDetailDto {
+    + ReturnTransactionId : int
+    + TransactionId : int
+    + TransactionType : string
+    + Reason : string
+    + CreatedAt : DateTime
+    + Customer : CustomerOutputVM
+    + Items : List<ReturnOrderDetailItemDto>
+}
+
+class CustomerOutputVM {
+    + UserId : int
+    + FullName : string
+    + Phone : string
+    + Email : string
+}
+
+class ReturnOrderDetailItemDto {
+    + ProductId : int
+    + ProductName : string
+    + Quantity : int
+    + UnitPrice : decimal
+}
+
+' Relationships
+ReturnOrderController --> IReturnTransactionService
+ReturnOrderController --> ITransactionService
+ReturnOrderController --> IReturnTransactionDetailService
+ReturnOrderController --> IUserService
+ReturnOrderController --> IProductService
+ReturnOrderController ..> ReturnOrderDetailDto : returns
+
+@enduml

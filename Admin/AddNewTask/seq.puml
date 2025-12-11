@@ -1,0 +1,36 @@
+@startuml
+title Add New Task Sequence Diagram (Happy Path)
+autonumber
+actor "Admin" as User
+participant "UI (Web App)" as UI
+participant "JobController" as Controller
+participant "IJobService" as Service
+participant "Database" as DB
+
+User -> UI : Click "Add New Task"
+activate UI
+UI -> UI : Fill Task Form (Name, PayType, Rate)
+User -> UI : Click "Save"
+
+UI -> Controller : POST /api/jobs (dto)
+activate Controller
+
+
+Controller -> Service : CreateJobAsync(dto)
+activate Service
+
+Service -> Service : Map DTO to Entity
+Service -> DB : Add(job)
+activate DB
+DB --> Service : Success (Job with ID)
+deactivate DB
+Service --> Controller : JobDto
+deactivate Service
+
+Controller --> UI : Ok(ApiResponse.Ok(job))
+deactivate Controller
+
+UI --> User : Show Success Message & Add to List
+deactivate UI
+
+@enduml

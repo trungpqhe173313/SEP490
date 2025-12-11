@@ -1,0 +1,31 @@
+@startuml
+title Class Diagram - View Category Details
+
+class CategoryController {
+    - _categoryService : ICategoryService
+    + GetById(Id: int) : Task<IActionResult>
+}
+
+interface ICategoryService {
+    + GetByIdWithProducts(id: int) : Task<CategoryDetailDto?>
+}
+
+class CategoryService {
+    + GetByIdWithProducts(id: int) : Task<CategoryDetailDto?>
+}
+
+class CategoryDetailDto {
+    + CategoryId : int
+    + CategoryName : string
+    + Description : string
+    + IsActive : bool?
+    + CreatedAt : DateTime?
+    + UpdateAt : DateTime?
+}
+
+' Relationships
+CategoryController --> ICategoryService
+CategoryService ..|> ICategoryService
+CategoryController ..> CategoryDetailDto : returns
+
+@enduml

@@ -1,0 +1,33 @@
+@startuml
+
+actor "Admin" as Admin
+boundary "UI (Web/App)" as UI
+participant "CustomerController" as Ctrl
+participant "CustomerService" as Svc
+participant "Service<Customer> (base)" as BaseSvc
+participant "Repository<Customer>" as Repo
+database "DB (NutriBarnContext)" as DB
+
+Admin -> UI : 1. Nhấn nút "Xóa" trên một khách hàng
+UI -> Ctrl : 2.1 DELETE /api/customers/DeleteCustomer/{id}
+
+Ctrl -> Svc : 2.2 GetById(id)
+Svc -> DB : 2.3 Query Customer by Id
+DB --> Svc : 2.4 Trả về Customer object
+
+Ctrl -> Ctrl : 2.5 Cập nhật: customer.IsActive = false
+
+Ctrl -> Svc : 2.6 UpdateAsync(customer)
+Svc -> BaseSvc : 2.7 UpdateAsync(customer)
+BaseSvc -> Repo : 2.8 Update(customer) (Đánh dấu entity là Modified)
+BaseSvc -> Repo : 2.9 SaveAsync()
+Repo -> DB : 2.10 Execute UPDATE & SaveChanges
+DB --> Repo : 2.11 OK
+Repo --> BaseSvc : 2.12 OK
+BaseSvc -> Svc : 2.13 OK
+Svc --> Ctrl : 2.14 OK
+
+Ctrl --> UI : 3.1 200 OK (ApiResponse: "Xóa khách hàng thành công")
+UI --> Admin : 3.2 Hiển thị thông báo thành công
+
+@enduml

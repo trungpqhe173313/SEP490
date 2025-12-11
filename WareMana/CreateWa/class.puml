@@ -1,0 +1,29 @@
+@startuml
+
+class WarehouseController <<controller>> {
+  - _warehouseService: IWarehouseService
+  + CreateWarehouse(model: WarehouseCreateVM): Task<IActionResult>
+}
+
+interface IWarehouseService {
+  + CreateAsync(entity: Warehouse): Task
+}
+class "Service" as ServiceWarehouse <<base>> {
+  - _repository: IRepositoryWarehouse
+  + CreateAsync(entity: Warehouse): Task
+}
+
+class Warehouse {
+  + WarehouseId: int
+  + WarehouseName: string
+  + Address: string
+}
+class WarehouseCreateVM {
+  + WarehouseName: string
+  + Address: string
+}
+
+WarehouseController --> IWarehouseService : uses
+IWarehouseService <|.. ServiceWarehouse
+
+@enduml

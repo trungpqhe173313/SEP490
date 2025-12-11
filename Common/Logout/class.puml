@@ -1,0 +1,70 @@
+@startuml
+' Controller / Service / Repository / Domain
+class AccountController {
+  +Login(LoginDto) : IActionResult
+  +RefreshToken(string) : IActionResult
+  +Logout(string) : IActionResult
+}
+
+interface IAccountService {
+  +Login(LoginDto) : LoginResponse
+  +RefreshToken(string) : RefreshTokenResponse
+  +Logout(string or int) : void
+}
+
+class AccountService {
+  -IUserRepository _userRepo
+  -IJwtService _jwt
+  +Login(LoginDto) : LoginResponse
+  +RefreshToken(string) : RefreshTokenResponse
+  +Logout(string or int) : void
+}
+
+interface IUserRepository {
+  +GetByUsername(string) : User
+  +Update(User) : void
+  +RevokeRefreshToken(int userId) : void
+}
+
+class UserRepository {
+  -NutriBarnContext _db
+  +GetByUsername(string) : User
+  +Update(User) : void
+  +RevokeRefreshToken(int userId) : void
+}
+
+interface IJwtService {
+  +GenerateAccessToken(User) : string
+  +GenerateRefreshToken() : string
+  +ValidateToken(string) : ClaimsPrincipal
+}
+
+class JwtService {
+  +ValidateToken(string) : ClaimsPrincipal
+  +GenerateAccessToken(User) : string
+  +GenerateRefreshToken() : string
+}
+
+class User {
+  +Id : int
+  +Username : string
+  +PasswordHash : string
+  +RefreshToken : string
+  +RefreshTokenExpiry : DateTime?
+}
+
+class NutriBarnContext {
+  +Users : DbSet<User>
+}
+
+' Relationships
+AccountController ..> IAccountService : depends on
+AccountService ..|> IAccountService : implements
+AccountService --> IUserRepository : uses
+AccountService --> IJwtService : uses
+UserRepository ..|> IUserRepository : implements
+UserRepository --> NutriBarnContext : uses (composition)
+NutriBarnContext o-- "0..*" User : contains
+
+
+@enduml

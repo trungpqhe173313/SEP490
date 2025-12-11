@@ -1,0 +1,20 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+
+class PriceListController {
+    +GetData(search: BaseSearch)
+}
+interface IPriceListService {
+    +GetAllAsync(search)
+}
+class PriceList {
+    +Id: int
+    +Name: string
+    +Description: string
+    +IsActive: bool
+}
+
+PriceListController ..> IPriceListService : uses
+IPriceListService ..> PriceList : manages
+@enduml

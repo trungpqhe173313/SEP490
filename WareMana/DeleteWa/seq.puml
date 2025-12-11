@@ -1,0 +1,55 @@
+@startuml
+
+actor "Warehouse Manager" as Manager
+participant ":WarehouseUI" as UI
+participant ":WarehouseController" as Controller
+participant ":IWarehouseService" as Service
+participant ":IRepository<Warehouse>" as Repo
+
+activate Manager
+Manager -> UI: 1. Nhấn nút "Xóa" trên một kho hàng
+activate UI
+UI -> Controller: 2.1 Gửi yêu cầu (DELETE /api/Warehouse/delete/{id})
+activate Controller
+
+alt 
+    Controller -> Service: 2.2 DeleteWarehouse(id)
+    activate Service
+    Service -> Repo: 2.3 GetByIdAsync(id)
+    activate Repo
+    Repo --> Service: 2.4 Trả về Warehouse entity
+    deactivate Repo
+    
+    Service -> Service: 2.5 entity.IsActive = false
+    Service -> Repo: 2.6 Update(entity)
+    activate Repo
+    Repo --> Service: 2.7   
+    deactivate Repo
+    Service -> Repo: 2.8 SaveAsync()
+    activate Repo
+    Repo --> Service: 2.9 Trả về 1  (1 bản ghi đã được cập nhật)    
+    deactivate Repo
+
+    Service --> Controller: 2.10 ApiResponse.Success("Xóa thành công")
+    deactivate Service
+    Controller --> UI: 2.11 200 OK
+    deactivate Controller
+    UI -> Manager: 3 Hiển thị thông báo thành công 
+    deactivate UI
+else 
+    Controller -> Service: 2.2b DeleteWarehouse(id)
+    activate Service
+    Service -> Repo: 2.3b GetByIdAsync(id)
+    activate Repo
+    Repo --> Service: 2.4b Trả về null
+    deactivate Repo
+    Service --> Controller: 2.5b ApiResponse.Fail("Không tìm thấy kho hàng")
+    deactivate Service
+    Controller --> UI: 2.6b Phản hồi lỗi (200 OK, Success=false)
+    deactivate Controller
+    UI -> Manager: 3b Hiển thị thông báo lỗi
+    deactivate UI
+end
+
+deactivate Manager
+@enduml

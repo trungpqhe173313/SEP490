@@ -1,0 +1,81 @@
+
+@startuml
+title Sequence Diagram - Create Employee Activity Day 
+autonumber
+
+actor "Warehouse Manager" as User
+participant "UI Service" as UI
+participant "WorklogController" as Ctrl
+participant "WorklogService" as Svc
+participant "UserRepository" as UserRepo
+participant "UserRoleRepository" as RoleRepo
+participant "JobRepository" as JobRepo
+participant "WorklogRepository" as WorklogRepo
+database "Database" as DB
+
+User -> UI : Nhập thông tin chấm công và nhấn "Lưu"
+UI -> Ctrl : POST /api/worklogs/create\n(CreateWorklogBatchDto)
+activate Ctrl
+
+Ctrl -> Svc : CreateWorklogBatchAsync(dto)
+activate Svc
+
+' --- Step 1: Validate Employee (Success) ---
+Svc -> UserRepo : GetQueryable().FirstOrDefault(u => u.UserId == dto.EmployeeId)
+activate UserRepo
+UserRepo -> DB : Query User
+activate DB
+DB --> UserRepo : User Entity
+deactivate DB
+UserRepo --> Svc : User
+deactivate UserRepo
+
+' --- Step 2: Validate Role (Success) ---
+Svc -> RoleRepo : GetQueryable().Any(ur => ur.UserId == dto.EmployeeId && RoleId == 3)
+activate RoleRepo
+RoleRepo -> DB : Check Role
+activate DB
+DB --> RoleRepo : true
+deactivate DB
+RoleRepo --> Svc : true
+deactivate RoleRepo
+
+' --- Step 3: Validate Jobs & Create Worklogs (Loop) ---
+loop For each jobItem in dto.Jobs
+    Svc -> JobRepo : GetQueryable().FirstOrDefault(j => j.Id == jobItem.JobId)
+    activate JobRepo
+    JobRepo -> DB : Query Job
+    activate DB
+    DB --> JobRepo : Job Entity
+    deactivate DB
+    JobRepo --> Svc : Job
+    deactivate JobRepo
+
+    Svc -> Svc : Calculate Quantity & Rate
+    Svc -> Svc : Create new Worklog Entity
+    
+    Svc -> WorklogRepo : Add(worklog)
+    activate WorklogRepo
+    WorklogRepo --> Svc : worklog
+    deactivate WorklogRepo
+end
+
+' --- Step 4: Save Changes ---
+Svc -> WorklogRepo : SaveAsync()
+activate WorklogRepo
+WorklogRepo -> DB : COMMIT Transaction
+activate DB
+DB --> WorklogRepo : Success
+deactivate DB
+WorklogRepo --> Svc : Task Completed
+deactivate WorklogRepo
+
+Svc --> Ctrl : CreateWorklogBatchResponseVM
+deactivate Svc
+
+Ctrl --> UI : Ok(ApiResponse<CreateWorklogBatchResponseVM>)
+deactivate Ctrl
+
+UI --> User : Hiển thị thông báo "Tạo chấm công thành công"
+
+@enduml

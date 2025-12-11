@@ -1,0 +1,71 @@
+@startuml
+' Class diagram for "Update Employee" (no packages)
+
+class EmployeeController {
+  +Update(vm: EmployeeEditVM) : IActionResult
+}
+
+class EmployeeEditVM {
+  +EmployeeId : int
+  +UserId : int?
+  +FullName : string?
+  +Phone : string?
+  +HireDate : DateTime?
+  +Status : string?
+  <<Required on properties>>
+}
+
+class Employee {
+  +EmployeeId : int
+  +UserId : int
+  +FullName : string
+  +Phone : string
+  +HireDate : DateTime?
+  +Status : string
+}
+
+class EmployeeService {
+  +GetByIdOrThrowAsync(id: int) : Task<Employee>
+  +UpdateAsync(emp: Employee) : Task
+}
+
+interface IEmployeeRepository {
+  +GetByIdAsync(id: int) : Task<Employee?>
+  +Update(emp: Employee) : void
+  +SaveAsync() : Task
+  +Add(emp: Employee) : void
+}
+
+class EmployeeRepository {
+  -_context : DbContext
+  +EmployeeRepository(context: DbContext)
+  +GetByIdAsync(id: int) : Task<Employee?>
+  +Update(emp: Employee) : void
+  +SaveAsync() : Task
+}
+
+class Repository_T {
+  -_context : DbContext
+  +SaveAsync() : Task
+  +Add(entity) : void
+  +Update(entity) : void
+}
+
+class DbContext {
+  +DbSet<Employee> Employees
+}
+
+' Inheritance / realization
+EmployeeService --|> Repository_T : inherits/uses base service (conceptual)
+EmployeeRepository ..|> IEmployeeRepository
+EmployeeRepository --|> Repository_T
+
+' Associations / dependencies
+EmployeeController --> EmployeeService : calls
+EmployeeController ..> EmployeeEditVM : receives (bound)
+EmployeeEditVM ..> Employee : maps to / updates fields on
+EmployeeService --> IEmployeeRepository : calls GetByIdAsync, Update, SaveAsync
+Repository_T --> DbContext : uses / holds _context
+EmployeeRepository --> DbContext : _context (holds)
+DbContext "1" o-- "*" Employee : DbSet
+@enduml

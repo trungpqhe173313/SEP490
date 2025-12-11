@@ -1,0 +1,56 @@
+@startuml
+
+' Controller
+class SupplierController <<controller>> {
+  - _supplierService: ISupplierService
+  .. Methods ..
+  + CreateSupplier(model: SupplierCreateVM): Task<IActionResult>
+}
+
+' Services
+interface ISupplierService {
+  + GetByEmail(email: string): Task<SupplierDto>
+  + CreateAsync(entity: Supplier): Task
+}
+class SupplierService <<service>> {
+  .. Methods ..
+  + GetByEmail(email: string): Task<SupplierDto>
+}
+class "Service" as ServiceSupplier <<base>> {
+  - _repository: IRepositorySupplier
+  .. Methods ..
+  + CreateAsync(entity: Supplier): Task
+}
+
+' Repositories
+interface "IRepository" as IRepositorySupplier {
+  + Add(entity: Supplier): Supplier
+  + SaveAsync(): Task
+}
+class "Repository" as RepositorySupplier {
+  .. Methods ..
+  + Add(entity: Supplier): Supplier
+  + SaveAsync(): Task
+}
+
+' DTO / Entity / ViewModel
+class Supplier {
+  + SupplierId: int
+  + SupplierName: string
+  + Email: string
+}
+class SupplierCreateVM {
+  + SupplierName: string
+  + ContactPerson: string
+  + Email: string
+  + Phone: string
+}
+
+' Relationships
+SupplierController --> ISupplierService : uses
+SupplierService ..|> ISupplierService
+SupplierService --|> ServiceSupplier
+ServiceSupplier --> IRepositorySupplier : uses
+RepositorySupplier ..|> IRepositorySupplier
+
+@enduml

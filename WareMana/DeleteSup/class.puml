@@ -1,0 +1,56 @@
+@startuml
+title Class Diagram - Delete Supplier
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class SupplierController <<Controller>> {
+  - _supplierService: ISupplierService
+  - _logger: ILogger<Supplier>
+  + DeleteSupplier(id: int): Task<IActionResult>
+}
+
+interface ISupplierService {
+  + GetByIdAsync(id: int): Task<Supplier>
+  + UpdateAsync(entity: Supplier): Task
+}
+
+class SupplierService <<Service>> {
+  ' Inherits GetByIdAsync and UpdateAsync from BaseService
+}
+
+class "Service<Supplier>" as BaseService {
+  - _repository: IRepository<Supplier>
+  + GetByIdAsync(id: int): Task<Supplier>
+  + UpdateAsync(entity: Supplier): Task
+}
+
+interface "IRepository<T>" as IRepository {
+  + GetByIdAsync(id: int): Task<T>
+  + Update(entity: T): void
+  + SaveAsync(): Task
+}
+
+class Supplier {
+  + SupplierId: int
+  + SupplierName: string
+  + IsActive: boolean
+}
+
+' Relationships
+UIService ..> SupplierController : calls API
+SupplierController ..> ApiResponse : returns
+SupplierController --> ISupplierService : uses
+ISupplierService <|.. SupplierService
+SupplierService --|> BaseService
+BaseService --> IRepository : uses (Supplier)
+SupplierService ..> Supplier : updates
+
+@enduml

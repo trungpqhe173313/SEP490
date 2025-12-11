@@ -1,0 +1,34 @@
+@startuml
+
+class ProductController <<controller>> {
+  - _productService: IProductService
+  + DeleteProduct(id: int): Task<IActionResult>
+}
+
+interface IProductService {
+  + GetById(id: int): Task<ProductDto>
+  + UpdateAsync(entity: Product): Task
+}
+class ProductService <<service>> {
+  + GetById(id: int): Task<ProductDto>
+}
+class "service" as ServiceProduct <<base>> {
+  - _repository: IRepositoryProduct
+  + UpdateAsync(entity: Product): Task
+}
+interface "IRepository" as IRepositoryProduct {
+  + Update(entity: Product): void
+  + SaveAsync(): Task
+}
+
+class Product {
+  + ProductId: int
+  + IsActive: bool
+}
+
+ProductController --> IProductService : uses
+ProductService ..|> IProductService
+ProductService --|> ServiceProduct
+ServiceProduct --> IRepositoryProduct : uses
+
+@enduml

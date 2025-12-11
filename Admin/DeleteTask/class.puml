@@ -1,0 +1,33 @@
+@startuml
+title Delete Task Class Diagram
+
+class JobController {
+    - _jobService : IJobService
+    + DeleteJob(id: int) : Task<IActionResult>
+}
+
+interface IJobService {
+    + DeleteJobAsync(id: int) : Task<bool>
+}
+
+class JobService {
+    + DeleteJobAsync(id: int) : Task<bool>
+}
+
+class Job {
+    + Id : int
+    + JobName : string
+    + IsActive : bool
+}
+
+class ApiResponse {
+    + {static} Ok(data: object) : ApiResponse
+    + {static} Fail(message: string) : ApiResponse
+}
+
+JobController --> IJobService
+IJobService <|.. JobService
+JobController ..> ApiResponse : returns
+JobService ..> Job : manages
+
+@enduml

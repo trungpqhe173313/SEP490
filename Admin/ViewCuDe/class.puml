@@ -1,0 +1,49 @@
+@startuml
+
+' Controller
+class CustomerController <<controller>> {
+  - _customerService: ICustomerService
+  .. Methods ..
+  + GetById(id: int): Task<IActionResult>
+}
+
+' Services
+interface ICustomerService {
+  + GetById(id: int): Task<CustomerDto>
+}
+class CustomerService <<service>> {
+  .. Methods ..
+  + GetById(id: int): Task<CustomerDto>
+}
+class "Service" as ServiceCustomer <<base>> {
+  - _repository: IRepositoryCustomer
+  .. Methods ..
+  + GetQueryable(): IQueryable<Customer>
+}
+
+' Repositories
+interface "IRepository" as IRepositoryCustomer
+class "Repository" as RepositoryCustomer
+
+' DTO / Entity
+class Customer {
+  + CustomerId: int
+  + CustomerName: string
+  + Email: string
+  + Phone: string
+}
+class CustomerDto {
+  + CustomerId: int
+  + CustomerName: string
+  + Email: string
+  + Phone: string
+}
+
+' Relationships
+CustomerController --> ICustomerService : uses
+CustomerService ..|> ICustomerService
+CustomerService --|> ServiceCustomer
+ServiceCustomer --> IRepositoryCustomer : uses
+RepositoryCustomer ..|> IRepositoryCustomer
+
+@enduml

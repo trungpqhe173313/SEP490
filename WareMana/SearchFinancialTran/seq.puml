@@ -1,0 +1,51 @@
+@startuml
+title Search Financial Transaction Sequence Diagram
+autonumber
+actor "Warehouse Manager" as User
+participant "UI Component" as UI
+participant "UIService" as UIService
+participant "FinancialTransactionController" as Controller
+participant "IFinancialTransactionService" as Service
+participant "IUserService" as UserService
+participant "Database" as DB
+
+User -> UI : Enter Search Criteria (Date, Type, etc.)
+activate UI
+UI -> UIService : searchFinancialTransactions(searchParams)
+activate UIService
+
+UIService -> Controller : POST /api/financialtransaction/GetData
+activate Controller
+
+Controller -> Service : GetData(search)
+activate Service
+Service -> DB : Query (Filter & Paging)
+activate DB
+DB --> Service : List<FinancialTransactionDto>
+deactivate DB
+Service --> Controller : PagedList<FinancialTransactionDto>
+deactivate Service
+
+
+opt Enrich User Names
+    Controller -> UserService : GetQueryable()
+    activate UserService
+    UserService -> DB : Query Users by IDs
+    activate DB
+    DB --> UserService : List<User>
+    deactivate DB
+    UserService --> Controller : List<User>
+    deactivate UserService
+end
+
+Controller --> UIService : Ok(ApiResponse.Ok(result))
+deactivate Controller
+
+UIService --> UI : Return Data
+deactivate UIService
+
+UI -> UI : Display Transaction List
+UI --> User : Show Results
+deactivate UI
+
+@enduml

@@ -1,0 +1,39 @@
+@startuml
+
+
+class WarehouseController {
+  - IWarehouseService _warehouseService
+  + DeleteWarehouse(int id): Task<ApiResponse<string>>
+}
+
+interface IWarehouseService {
+  + DeleteWarehouse(int id): Task<ApiResponse<string>>
+}
+
+class WarehouseService {
+  - IRepository<Warehouse> _repository
+  + DeleteWarehouse(int id): Task<ApiResponse<string>>
+}
+
+class "Repository" as WarehouseRepository {
+  + GetByIdAsync(int id): Task<Warehouse>
+  + Update(Warehouse entity): void
+  + SaveAsync(): Task<int>
+}
+
+class Warehouse {
+  + Id: int
+  + Name: string
+  + Address: string
+  + IsActive: bool
+}
+
+class "ApiResponse" as ApiResponse
+
+WarehouseController ..> IWarehouseService
+WarehouseService .up.|> IWarehouseService
+WarehouseService ..> WarehouseRepository
+
+IWarehouseService ..> ApiResponse : returns >
+WarehouseRepository ..> Warehouse : uses >
+@enduml

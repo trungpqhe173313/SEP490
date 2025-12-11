@@ -1,0 +1,67 @@
+@startuml
+autonumber
+actor "Warehouse Manager" as Client
+participant ":ProductController" as Controller
+participant ":ExcelTemplateGenerator" as Generator
+participant ":MemoryStream" as Stream
+participant ":ExcelPackage" as Excel
+participant ":ExcelWorksheet" as Sheet
+
+Client -> Controller: GET /api/Product/template
+activate Controller
+
+' Controller calls the static helper method
+Controller -> Generator: GenerateProductImportTemplate()
+activate Generator
+
+' 1. Initialize Stream
+Generator -> Stream: new MemoryStream()
+activate Stream
+Stream --> Generator: stream
+deactivate Stream
+
+' 2. Initialize Excel Package
+create Excel
+Generator -> Excel: new ExcelPackage(stream)
+activate Excel
+
+' 3. Create Main Data Sheet
+Generator -> Excel: Workbook.Worksheets.Add("Nhập sản phẩm")
+Excel --> Generator: mainSheet
+
+' 4. Build Main Sheet Content
+Generator -> Sheet: Set Headers (Row 1)
+activate Sheet
+Generator -> Sheet: Set Descriptions (Row 2)
+Generator -> Sheet: Set Sample Data (Row 3, 4)
+Generator -> Sheet: Apply Styles
+deactivate Sheet
+
+' 5. Create Instruction Sheet
+Generator -> Excel: Workbook.Worksheets.Add("Hướng Dẫn")
+Excel --> Generator: instructionSheet
+
+' 6. Build Instruction Content
+Generator -> Sheet: Set Title "HƯỚNG DẪN IMPORT SẢN PHẨM"
+activate Sheet
+Generator -> Sheet: Set Detailed Instructions
+deactivate Sheet
+
+' 7. Finalize File
+Generator -> Excel: Save()
+Generator -> Excel: Dispose()
+destroy Excel
+
+' 8. Prepare Stream for Return
+Generator -> Stream: Position = 0
+activate Stream
+Stream --> Generator: stream
+deactivate Stream
+
+' 9. Return File to User
+Generator --> Controller: stream
+deactivate Generator
+
+Controller --> Client: File(stream, "application/vnd.openxmlformats...", "product_import_template.xlsx")
+deactivate Controller
+@enduml

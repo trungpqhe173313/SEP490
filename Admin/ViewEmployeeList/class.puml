@@ -1,0 +1,112 @@
+@startuml
+class EmployeeController {
+  -service: IEmployeeService
+  -logger: ILogger
+  +GetData(search: EmployeeSearch): ApiResponse_PagedList_EmployeeDto
+  +GetById(id: int): ApiResponse_EmployeeDto
+  +Create(vm: EmployeeCreateVM): ApiResponse_EmployeeDto
+  +Update(vm: EmployeeEditVM): ApiResponse_EmployeeDto
+}
+
+interface IEmployeeService {
+  +GetData(search: EmployeeSearch)
+  +GetById(id: int)
+  +Create(dto: EmployeeDto)
+  +Update(dto: EmployeeDto)
+  +Delete(id: int)
+}
+
+class EmployeeService {
+  -repo: IRepository_Employee
+  -mapper: IMapper
+  +GetData(search: EmployeeSearch)
+  +GetById(id: int)
+  +Create(dto: EmployeeDto)
+  +Update(dto: EmployeeDto)
+  +Delete(id: int)
+}
+
+interface IRepository_Employee {
+  +GetById(id: int)
+  +Query(search: EmployeeSearch)
+  +Add(entity: Employee)
+  +Update(entity: Employee)
+  +Delete(entity: Employee)
+  +SaveChanges()
+}
+
+class Repository_Employee {
+  -context: NutriBarnContext
+  +GetById(id: int)
+  +Query(search: EmployeeSearch)
+  +Add(entity: Employee)
+  +Update(entity: Employee)
+  +Delete(entity: Employee)
+  +SaveChanges()
+}
+
+class NutriBarnContext {
+  +Employees: DbSet_Employee
+}
+
+class DbSet_Employee {
+  +Find(id: int): Employee
+  +Where(...)
+  +Add(emp: Employee)
+  +Remove(emp: Employee)
+}
+
+class Employee {
+  +Id: int
+  +FirstName: string
+  +LastName: string
+  +Email: string
+  +Phone: string
+  +Position: string
+  +Department: string
+  +IsActive: bool
+  +CreatedAt: DateTime
+  +UpdatedAt: DateTime
+}
+
+class EmployeeDto {
+  +Id: int
+  +FullName: string
+  +Email: string
+  +Phone: string
+  +Position: string
+  +Department: string
+}
+
+class EmployeeSearch {
+  +Keyword: string
+  +PageIndex: int
+  +PageSize: int
+  +SortBy: string
+  +SortDir: string
+}
+
+class PagedList_EmployeeDto {
+  +Items: List_EmployeeDto
+  +TotalCount: int
+  +PageIndex: int
+  +PageSize: int
+  +TotalPages: int
+}
+
+class IMapper {
+  +Map(source, targetType)
+}
+
+' relationships
+EmployeeController --> IEmployeeService
+IEmployeeService <|.. EmployeeService
+EmployeeService --> IRepository_Employee
+Repository_Employee --> NutriBarnContext
+NutriBarnContext --> DbSet_Employee
+DbSet_Employee --> Employee
+EmployeeService ..> IMapper
+EmployeeService ..> EmployeeDto
+Employee --> EmployeeDto
+EmployeeService --> PagedList_EmployeeDto
+@enduml

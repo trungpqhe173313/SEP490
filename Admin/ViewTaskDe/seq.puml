@@ -1,0 +1,30 @@
+@startuml
+title View Task Detail Sequence Diagram (Happy Path)
+autonumber
+actor "Admin" as User
+participant "UI (Web)" as UI
+participant "JobController" as Controller
+participant "IJobService" as Service
+participant "Database" as DB
+
+User -> UI : Click on a Task
+activate UI
+UI -> Controller : GET /api/jobs/{id}
+activate Controller
+
+Controller -> Service : GetJobByIdAsync(id)
+activate Service
+Service -> DB : Find(id)
+activate DB
+DB --> Service : Job Entity
+deactivate DB
+Service --> Controller : JobDto
+deactivate Service
+
+Controller --> UI : Ok(ApiResponse.Ok(job))
+deactivate Controller
+
+UI --> User : Show Task Details
+deactivate UI
+
+@enduml

@@ -1,0 +1,48 @@
+@startuml
+title Class Diagram - View Stock Batch
+
+class StockInputController {
+    - _stockBatchService : IStockBatchService
+    - _transactionDetailService : ITransactionDetailService
+    - _productService : IProductService
+    + GetStockBatch(search: StockBatchSearch) : Task<IActionResult>
+}
+
+interface IStockBatchService {
+    + GetData(search: StockBatchSearch) : Task<PagedList<StockBatchDto>>
+}
+
+interface ITransactionDetailService {
+    + GetByTransactionId(id: int) : Task<List<TransactionDetailDto>>
+}
+
+interface IProductService {
+    + GetById(id: int) : Task<ProductDto>
+}
+
+class StockBatchSearch {
+    + TransactionId : int
+    + WarehouseId : int?
+    + ProductId : int?
+    + BatchCode : string
+}
+
+class StockOutputVM {
+    + BatchId : int
+    + BatchCode : string
+    + ProductName : string
+    + QuantityIn : decimal?
+    + UnitPrice : decimal?
+    + WeightPerUnit : decimal?
+    + Status : string
+    + IsActive : string
+}
+
+' Relationships
+StockInputController --> IStockBatchService
+StockInputController --> ITransactionDetailService
+StockInputController --> IProductService
+StockInputController ..> StockBatchSearch : uses
+StockInputController ..> StockOutputVM : returns
+
+@enduml

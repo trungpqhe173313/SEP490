@@ -1,0 +1,56 @@
+@startuml
+
+' Controller
+class CustomerController <<controller>> {
+  - _customerService: ICustomerService
+  .. Methods ..
+  + CreateCustomer(model: CustomerCreateVM): Task<IActionResult>
+}
+
+' Services
+interface ICustomerService {
+  + GetByEmail(email: string): Task<CustomerDto>
+  + CreateAsync(entity: Customer): Task
+}
+class CustomerService <<service>> {
+  .. Methods ..
+  + GetByEmail(email: string): Task<CustomerDto>
+}
+class "Service" as ServiceCustomer <<base>> {
+  - _repository: IRepositoryCustomer
+  .. Methods ..
+  + CreateAsync(entity: Customer): Task
+}
+
+' Repositories
+interface "IRepository" as IRepositoryCustomer {
+  + Add(entity: Customer): Customer
+  + SaveAsync(): Task
+}
+class "Repository" as RepositoryCustomer {
+  .. Methods ..
+  + Add(entity: Customer): Customer
+  + SaveAsync(): Task
+}
+
+' DTO / Entity / ViewModel
+class Customer {
+  + CustomerId: int
+  + CustomerName: string
+  + Email: string
+}
+class CustomerCreateVM {
+  + CustomerName: string
+  + Email: string
+  + Phone: string
+  + Address: string
+}
+
+' Relationships
+CustomerController --> ICustomerService : uses
+CustomerService ..|> ICustomerService
+CustomerService --|> ServiceCustomer
+ServiceCustomer --> IRepositoryCustomer : uses
+RepositoryCustomer ..|> IRepositoryCustomer
+
+@enduml

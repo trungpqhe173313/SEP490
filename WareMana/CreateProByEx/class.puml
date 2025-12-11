@@ -1,0 +1,88 @@
+@startuml
+class ProductController {
+    - _productService : IProductService
+    - _supplierService : ISupplierService
+    - _categoryService : ICategoryService
+    - _inventoryService : IInventoryService
+    - _warehouseService : IWarehouseService
+    - _cloudinaryService : ICloudinaryService
+    - _logger : ILogger<ProductController>
+    + ImportProductsFromExcel(file : IFormFile) : Task<IActionResult>
+    + DownloadProductTemplate() : IActionResult
+}
+
+interface IProductService {
+    + GetByCode(code : string) : Task<ProductDto?>
+    + GetByProductName(productName : string) : Task<ProductDto?>
+    + CreateAsync(entity : ProductDto) : Task<ProductDto>
+}
+
+class ProductService {
+    - _supplierRepository : IRepository<Supplier>
+    - _categoryRepository : IRepository<Category>
+    + GetByCode(code : string) : Task<ProductDto?>
+    + GetByProductName(productName : string) : Task<ProductDto?>
+    + CreateAsync(entity : ProductDto) : Task<ProductDto>
+}
+
+interface ISupplierService {
+    + GetByName(name : string) : Task<SupplierDto?>
+}
+
+class SupplierService {
+    + GetByName(name : string) : Task<SupplierDto?>
+}
+
+interface ICategoryService {
+    + GetByName(name : string) : Task<CategoryDto?>
+}
+
+class CategoryService {
+    + GetByName(name : string) : Task<CategoryDto?>
+}
+
+class ProductImportResultVM {
+    + TotalRows : int
+    + SuccessCount : int
+    + FailedCount : int
+    + ErrorMessages : List<string>
+    + ImportedProducts : List<ProductImportedItemVM>
+}
+
+class ProductImportedItemVM {
+    + ProductId : int
+    + ProductCode : string
+    + ProductName : string
+    + SupplierName : string
+    + CategoryName : string
+    + WeightPerUnit : decimal?
+    + SellingPrice : decimal?
+    + Description : string?
+}
+
+class ProductDto {
+    + ProductId : int
+    + SupplierId : int
+    + CategoryId : int
+    + ProductCode : string
+    + ProductName : string
+    + WeightPerUnit : decimal?
+    + SellingPrice : decimal?
+    + Description : string
+    + ImageUrl : string
+    + IsAvailable : bool
+    + CreatedAt : DateTime
+    + UpdatedAt : DateTime
+}
+
+ProductController --> IProductService
+ProductController --> ISupplierService
+ProductController --> ICategoryService
+ProductController ..> ProductImportResultVM : returns
+ProductImportResultVM *-- ProductImportedItemVM
+ProductService ..|> IProductService
+SupplierService ..|> ISupplierService
+CategoryService ..|> ICategoryService
+ProductService ..> ProductDto : uses
+
+@enduml

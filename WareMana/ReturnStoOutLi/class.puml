@@ -1,0 +1,48 @@
+@startuml
+title Class Diagram - Return Stock Output List
+
+class ReturnOrderController {
+    - _returnTransactionService : IReturnTransactionService
+    - _warehouseService : IWarehouseService
+    - _userService : IUserService
+    + GetData(search: ReturnOrderSearch) : Task<IActionResult>
+}
+
+interface IReturnTransactionService {
+    + GetData(search: ReturnOrderSearch) : Task<PagedList<ReturnOrderDto>>
+}
+
+interface IWarehouseService {
+    + GetByListWarehouseId(ids: List<int>) : Task<List<WarehouseDto>>
+}
+
+interface IUserService {
+    + GetAll() : List<UserDto>
+}
+
+class ReturnOrderSearch {
+    + TransactionType : string
+    + TransactionId : int?
+    + WarehouseId : int?
+    + FromDate : DateTime?
+    + ToDate : DateTime?
+}
+
+class ReturnOrderDto {
+    + ReturnTransactionId : int
+    + TransactionId : int
+    + TransactionType : string
+    + WarehouseName : string
+    + CustomerName : string
+    + Reason : string
+    + CreatedAt : DateTime
+}
+
+' Relationships
+ReturnOrderController --> IReturnTransactionService
+ReturnOrderController --> IWarehouseService
+ReturnOrderController --> IUserService
+ReturnOrderController ..> ReturnOrderSearch : uses
+ReturnOrderController ..> ReturnOrderDto : returns
+
+@enduml

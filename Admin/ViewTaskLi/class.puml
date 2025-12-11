@@ -1,0 +1,50 @@
+@startuml
+title View Task List Class Diagram
+
+class UIService {
+    + getTasks() : Promise<ApiResponse<List<JobDto>>>
+}
+
+class JobController {
+    - _jobService : IJobService
+    + GetAllJobs() : Task<IActionResult>
+}
+
+interface IJobService {
+    + GetAllJobsAsync() : Task<List<JobDto>>
+}
+
+class JobService {
+    + GetAllJobsAsync() : Task<List<JobDto>>
+}
+
+class JobDto {
+    + Id : int
+    + JobName : string
+    + PayType : string
+    + Rate : decimal
+    + IsActive : bool?
+    + CreatedAt : DateTime?
+}
+
+class Job {
+    + Id : int
+    + JobName : string
+    + PayType : string
+    + Rate : decimal
+    + IsActive : bool
+}
+
+class ApiResponse {
+    + {static} Ok(data: object) : ApiResponse
+    + {static} Fail(message: string) : ApiResponse
+}
+
+UIService ..> JobController : calls API
+JobController --> IJobService
+IJobService <|.. JobService
+JobController ..> JobDto : returns
+JobService ..> Job : manages
+JobController ..> ApiResponse : returns
+
+@enduml

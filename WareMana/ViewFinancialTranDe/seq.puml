@@ -1,0 +1,49 @@
+@startuml
+title Sequence Diagram - View Financial Transaction Details (Happy Path)
+autonumber
+
+actor "Accountant/Manager" as User
+participant "UI Service" as UI
+participant "FinancialTransactionController" as Ctrl
+participant "FinancialTransactionService" as Svc
+participant "UserService" as UserSvc
+participant "FinancialTransactionRepository" as Repo
+database "Database" as DB
+
+User -> UI : Chọn phiếu thu/chi và nhấn "Xem chi tiết"
+UI -> Ctrl : GET /api/financialtransaction/GetDetail/{Id}
+activate Ctrl
+
+Ctrl -> Svc : GetByIdAsync(Id)
+activate Svc
+Svc -> Repo : GetQueryable()
+activate Repo
+Repo --> Svc : IQueryable<FinancialTransaction>
+deactivate Repo
+Svc -> DB : Execute Query (FirstOrDefaultAsync)
+activate DB
+DB --> Svc : FinancialTransactionDto
+deactivate DB
+Svc --> Ctrl : result (Dto)
+deactivate Svc
+
+Ctrl -> Ctrl : Enrich TypeName & TypeInt (Enum)
+
+alt CreatedBy > 0
+    Ctrl -> UserSvc : GetByUserId(result.CreatedBy)
+    activate UserSvc
+    UserSvc -> DB : Query User
+    activate DB
+    DB --> UserSvc : UserDto
+    deactivate DB
+    UserSvc --> Ctrl : UserDto
+    deactivate UserSvc
+    Ctrl -> Ctrl : Set CreatedByName = UserDto.FullName
+end
+
+Ctrl --> UI : Ok(ApiResponse<FinancialTransactionDto>)
+deactivate Ctrl
+
+UI --> User : Hiển thị thông tin chi tiết phiếu thu/chi
+
+@enduml

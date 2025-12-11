@@ -1,0 +1,63 @@
+@startuml
+autonumber
+
+actor "Warehouse Manager" as Actor
+participant "Screen" as UI
+participant ":StockOutputController" as SIC
+participant ":IUserService" as US
+participant ":IProductService" as PS
+participant ":IInventoryService" as IS
+participant ":ITransactionService" as TS
+participant ":ITransactionDetailService" as TDS
+
+' --- Workflow ---
+
+Actor -> UI : Clicks "Create New Order" button
+activate UI
+UI -> UI : Displays the order creation form
+deactivate UI
+
+Actor -> UI : Clicks "Submit Order" button
+activate UI
+UI -> SIC : POST /api/stockoutput/CreateOrder/{userId}
+activate SIC
+
+' --- Validation Phase ---
+SIC -> US : GetByUserId(userId)
+activate US
+US --> SIC
+deactivate US
+
+SIC -> PS : GetByIds(productIds)
+activate PS
+PS --> SIC
+deactivate PS
+
+SIC -> IS : GetByProductIds(productIds)
+activate IS
+IS --> SIC : Return List<Inventory>
+deactivate IS
+
+' --- Processing Phase ---
+alt All validations pass
+    SIC -> TS : CreateAsync(Transaction)
+    activate TS
+    TS --> SIC : Return new Transaction ID
+    deactivate TS
+
+    SIC -> TDS : CreateAsync(TransactionDetail)
+    activate TDS
+    TDS --> SIC : Return confirmation
+    deactivate TDS
+    
+
+    SIC --> UI : Return "Order created successfully"
+else Validation fails
+    SIC --> UI : Return specific error message (e.g., "Out of stock")
+end
+
+deactivate SIC
+UI --> Actor : Display success or error message
+deactivate UI
+
+@enduml
