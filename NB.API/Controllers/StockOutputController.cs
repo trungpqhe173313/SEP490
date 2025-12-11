@@ -512,7 +512,7 @@ namespace NB.API.Controllers
         }
 
         [HttpPut("UpdateToOrderStatus/{transactionId}")]
-        public async Task<IActionResult> UpdateToOrderStatus(int transactionId)
+        public async Task<IActionResult> UpdateToOrderStatus(int transactionId, [FromBody] int responsibleId)
         {
             var transaction = await _transactionService.GetByTransactionId(transactionId);
             if (transaction == null)
@@ -522,6 +522,19 @@ namespace NB.API.Controllers
             if (transaction.Status != (int)TransactionStatus.draft)
             {
                 return BadRequest(ApiResponse<string>.Fail("Đơn hàng không trong trạng thái nháp"));
+            }
+
+            // Kiểm tra userId có được truyền từ frontend
+            if (responsibleId <= 0)
+            {
+                return BadRequest(ApiResponse<TransactionDto>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
+            }
+
+            // Kiểm tra user có tồn tại không
+            var responsibleUser = await _userService.GetByUserId(responsibleId);
+            if (responsibleUser == null)
+            {
+                return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy người chịu trách nhiệm với ID này", 404));
             }
             var listTransDetail = await _transactionDetailService.GetByTransactionId(transactionId);
             if (listTransDetail == null || !listTransDetail.Any())
@@ -627,6 +640,9 @@ namespace NB.API.Controllers
                         await _inventoryService.UpdateNoTracking(inventoryEntity);
                     }
                 }
+
+                // Gán người chịu trách nhiệm cho đơn hàng từ frontend
+                transaction.ResponsibleId = responsibleId;
 
                 //cap nhat trang thai cho don hang
                 transaction.Status = (int)TransactionStatus.order;
@@ -1034,32 +1050,20 @@ namespace NB.API.Controllers
         }
 
         [HttpPut("UpdateToDoneStatus/{transactionId}")]
-        public async Task<IActionResult> UpdateToDoneStatus(int transactionId, [FromBody] int responsibleId)
+        public async Task<IActionResult> UpdateToDoneStatus(int transactionId)
         {
             var transaction = await _transactionService.GetByTransactionId(transactionId);
             if (transaction == null)
             {
                 return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404 ));
             }
-
-            // Kiểm tra userId có được truyền từ frontend
-            if (responsibleId <= 0)
+            if (transaction.Status != (int)TransactionStatus.delivering)
             {
-                return BadRequest(ApiResponse<TransactionDto>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
-            }
-
-            // Kiểm tra user có tồn tại không
-            var responsibleUser = await _userService.GetByUserId(responsibleId);
-            if (responsibleUser == null)
-            {
-                return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy người chịu trách nhiệm với ID này", 404));
+                return BadRequest(ApiResponse<string>.Fail("Đơn hàng không trong trạng thái đang giao"));
             }
 
             try
             {
-                // Gán người chịu trách nhiệm cho đơn hàng từ frontend
-                transaction.ResponsibleId = responsibleId;
-
                 //cap nhat trang thai cho don hang
                 transaction.Status = (int)TransactionStatus.done;
                 await _transactionService.UpdateAsync(transaction);
@@ -1080,6 +1084,10 @@ namespace NB.API.Controllers
             if (transaction == null)
             {
                 return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404 ));
+            }
+            if (transaction.Status != (int)TransactionStatus.order)
+            {
+                return BadRequest(ApiResponse<string>.Fail("Đơn hàng không trong trạng thái nháp"));
             }
             try
             {
