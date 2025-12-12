@@ -562,19 +562,38 @@ namespace NB.API.Controllers
                                     var quantityStr = mainSheet.Cells[row, 5].Value?.ToString()?.Trim();  // Cột E: Quantity
                                     var unitPriceStr = mainSheet.Cells[row, 6].Value?.ToString()?.Trim(); // Cột F: UnitPrice
 
+                                    // Kiểm tra dòng trống hoàn toàn (cả 3 field đều trống)
+                                    bool isEmptyRow = string.IsNullOrWhiteSpace(productName) 
+                                                      && string.IsNullOrWhiteSpace(quantityStr) 
+                                                      && string.IsNullOrWhiteSpace(unitPriceStr);
+                                    
+                                    if (isEmptyRow)
+                                    {
+                                        continue; // Skip dòng trống, không xử lý gì
+                                    }
+
+                                    // Parse Quantity để kiểm tra
+                                    int quantity = 0;
+                                    bool quantityParsed = int.TryParse(quantityStr, out quantity);
+
+                                    // Nếu có ProductName nhưng Quantity = 0 hoặc rỗng → Skip dòng này (không báo lỗi)
+                                    // Cho phép user giữ list sản phẩm cố định, chỉ điều chỉnh quantity
+                                    if (!string.IsNullOrWhiteSpace(productName) && (!quantityParsed || quantity == 0))
+                                    {
+                                        continue; // Skip sản phẩm có quantity = 0, không import
+                                    }
+
+                                    // Nếu đến đây nghĩa là có dữ liệu cần xử lý → Validate đầy đủ
                                     var rowErrors = new List<string>();
 
                                     // Validate ProductName
-                                    bool productNameValid = !string.IsNullOrWhiteSpace(productName);
-                                    if (!productNameValid)
+                                    if (string.IsNullOrWhiteSpace(productName))
                                     {
                                         rowErrors.Add($"Dòng {row}: Tên sản phẩm không được để trống");
                                     }
 
                                     // Validate Quantity
-                                    int quantity = 0;
-                                    bool quantityValid = !string.IsNullOrWhiteSpace(quantityStr) && int.TryParse(quantityStr, out quantity) && quantity > 0;
-                                    if (!quantityValid)
+                                    if (!quantityParsed || quantity <= 0)
                                     {
                                         rowErrors.Add($"Dòng {row}: Số lượng phải là số nguyên lớn hơn 0");
                                     }
@@ -588,20 +607,22 @@ namespace NB.API.Controllers
                                     }
 
                                     // Lookup Product
-                                    var existProduct = productNameValid ? await _productService.GetByProductName(productName) : null;
-                                    if (productNameValid && existProduct == null)
+                                    var existProduct = !string.IsNullOrWhiteSpace(productName) ? await _productService.GetByProductName(productName) : null;
+                                    if (!string.IsNullOrWhiteSpace(productName) && existProduct == null)
                                     {
                                         rowErrors.Add($"Dòng {row}: Không tìm thấy sản phẩm với tên: {productName}");
                                     }
-                                    totalWeight += quantity * (existProduct?.WeightPerUnit ?? 0);
-                                    totalCost += quantity * unitPrice;
 
-                                // Nếu có lỗi, thêm vào list và skip
-                                if (rowErrors.Any())
+                                    // Nếu có lỗi, thêm vào list và skip
+                                    if (rowErrors.Any())
                                     {
                                         validationErrors.AddRange(rowErrors);
                                         continue;
                                     }
+
+                                    // Tính toán tổng trọng lượng và chi phí
+                                    totalWeight += quantity * (existProduct?.WeightPerUnit ?? 0);
+                                    totalCost += quantity * unitPrice;
 
                                     // Thêm vào list đã validate
                                     validatedProducts.Add((
