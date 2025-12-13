@@ -41,6 +41,7 @@ using NB.Service.ProductService.Dto;
 using NB.Service.TransactionDetailService.ViewModels;
 using NB.Service.WarehouseService.Dto;
 using NB.Service.FinancialTransactionService.Dto;
+using NB.Service.UserService;
 
 namespace NB.Tests.Services
 {
@@ -56,6 +57,7 @@ namespace NB.Tests.Services
         private readonly Mock<IReturnTransactionService> _returnTranMock = new();
         private readonly Mock<IReturnTransactionDetailService> _returnTranDetailMock = new();
         private readonly Mock<IFinancialTransactionService> _financialMock = new();
+        private readonly Mock<IUserService> _userMock = new();
         private readonly Mock<ILogger<StockInputController>> _loggerMock = new();
         private readonly Mock<IMapper> _mapperMock = new();
 
@@ -72,6 +74,7 @@ namespace NB.Tests.Services
                 _returnTranMock.Object,
                 _returnTranDetailMock.Object,
                 _financialMock.Object,
+                _userMock.Object,
                 _loggerMock.Object,
                 _mapperMock.Object
             );
