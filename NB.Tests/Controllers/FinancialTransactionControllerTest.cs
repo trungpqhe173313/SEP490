@@ -193,6 +193,9 @@ namespace NB.Test.Controllers
                 PageSize = 10
             };
 
+            // Clear ModelState để đảm bảo ModelState.IsValid = true (tránh ảnh hưởng từ test case trước)
+            _controller.ModelState.Clear();
+
             // Tạo PagedList với Items = null (dùng reflection để set null vì constructor không cho phép)
             var pagedList = new PagedList<FinancialTransactionDto>(
                 new List<FinancialTransactionDto>(), // Tạm thời tạo với empty list

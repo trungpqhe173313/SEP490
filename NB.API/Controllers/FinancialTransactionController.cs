@@ -97,6 +97,12 @@ namespace NB.API.Controllers
             {
                 var result = await _financialTransactionService.GetData(search);
                 
+                // Kiểm tra Items null hoặc empty để tránh NullReferenceException
+                if (result.Items == null || !result.Items.Any())
+                {
+                    return Ok(ApiResponse<PagedList<FinancialTransactionDto>>.Ok(result));
+                }
+                
                 // Lấy danh sách CreatedBy để query user một lần (tối ưu performance)
                 var listCreatedById = result.Items
                     .Where(ft => ft.CreatedBy.HasValue && ft.CreatedBy.Value > 0)

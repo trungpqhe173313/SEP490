@@ -271,6 +271,16 @@ namespace NB.API.Controllers
             if (!listProduct.Any())
                 return BadRequest(ApiResponse<ProductDto>.Fail("Không tìm thấy sản phẩm nào", 404));
 
+            // Kiểm tra ResponsibleId nếu có
+            if (or.ResponsibleId.HasValue && or.ResponsibleId.Value > 0)
+            {
+                var responsibleUser = await _userService.GetByUserId(or.ResponsibleId.Value);
+                if (responsibleUser == null)
+                {
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy người chịu trách nhiệm với ID này", 404));
+                }
+            }
+
             // Kiểm tra tồn kho ở kho nguồn
             var listInventorySource = await _inventoryService.GetByWarehouseAndProductIds(or.WarehouseId, listProductId);
             foreach (var po in listProductOrder)
@@ -312,6 +322,13 @@ namespace NB.API.Controllers
                 transactionEntity.Type = transactionType;
                 transactionEntity.TransactionCode = $"TRANSFER-{Now:yyyyMMdd}";
                 transactionEntity.Status = (int)TransactionStatus.inTransit;
+                
+                // Gán người chịu trách nhiệm nếu có
+                if (or.ResponsibleId.HasValue && or.ResponsibleId.Value > 0)
+                {
+                    transactionEntity.ResponsibleId = or.ResponsibleId.Value;
+                }
+                
                 await _transactionService.CreateAsync(transactionEntity);
 
                 // 2️ Lấy tất cả stockBatch từ kho nguồn, sắp xếp theo ImportDate (hàng cũ nhất trước - FIFO)

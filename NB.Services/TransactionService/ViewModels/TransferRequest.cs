@@ -13,5 +13,6 @@ namespace NB.Service.TransactionService.ViewModels
         public int WarehouseId { get; set; }
         public int WarehouseInId { get; set; }
         public string? Note { get; set; }
+        public int? ResponsibleId { get; set; }
     }
 }
