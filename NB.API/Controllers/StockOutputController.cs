@@ -512,7 +512,7 @@ namespace NB.API.Controllers
         }
 
         [HttpPut("UpdateToOrderStatus/{transactionId}")]
-        public async Task<IActionResult> UpdateToOrderStatus(int transactionId, [FromBody] int responsibleId)
+        public async Task<IActionResult> UpdateToOrderStatus(int transactionId, [FromBody] UpdateToOrderStatusRequest request)
         {
             var transaction = await _transactionService.GetByTransactionId(transactionId);
             if (transaction == null)
@@ -524,7 +524,13 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<string>.Fail("Đơn hàng không trong trạng thái nháp"));
             }
 
-            // Kiểm tra userId có được truyền từ frontend
+            // Kiểm tra request và userId có được truyền từ frontend
+            if (request == null)
+            {
+                return BadRequest(ApiResponse<TransactionDto>.Fail("Request không hợp lệ", 400));
+            }
+
+            int responsibleId = request.ResponsibleId;
             if (responsibleId <= 0)
             {
                 return BadRequest(ApiResponse<TransactionDto>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
