@@ -248,5 +248,61 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<TransactionDetailResponseDto>.Fail("Có lỗi xảy ra khi lấy dữ liệu"));
             }
         }
+
+        /// <summary>
+        /// Cập nhật người chịu trách nhiệm cho transaction
+        /// - Chỉ cập nhật nếu có sự thay đổi
+        /// - Kiểm tra transaction và user tồn tại
+        /// </summary>
+        [HttpPut("UpdateResponsible/{transactionId}")]
+        public async Task<IActionResult> UpdateResponsible(int transactionId, [FromBody] UpdateTransactionResponsibleRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            if (transactionId <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail("TransactionId không hợp lệ", 400));
+            }
+
+            try
+            {
+                // Lấy transaction entity
+                var transaction = await _transactionService.GetByIdAsync(transactionId);
+                if (transaction == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch", 404));
+                }
+
+                // Kiểm tra nếu ResponsibleId có giá trị thì phải kiểm tra user tồn tại
+                if (request.ResponsibleId.HasValue && request.ResponsibleId.Value > 0)
+                {
+                    var responsibleUser = await _userService.GetByUserId(request.ResponsibleId.Value);
+                    if (responsibleUser == null)
+                    {
+                        return NotFound(ApiResponse<object>.Fail("Không tìm thấy người chịu trách nhiệm với ID này", 404));
+                    }
+                }
+
+                // Kiểm tra xem có sự thay đổi không
+                if (transaction.ResponsibleId == request.ResponsibleId)
+                {
+                    return Ok(ApiResponse<string>.Ok("Không có sự thay đổi về người chịu trách nhiệm"));
+                }
+
+                // Cập nhật ResponsibleId
+                transaction.ResponsibleId = request.ResponsibleId;
+                await _transactionService.UpdateAsync(transaction);
+
+                return Ok(ApiResponse<string>.Ok("Cập nhật người chịu trách nhiệm thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật người chịu trách nhiệm cho transaction {TransactionId}", transactionId);
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi cập nhật người chịu trách nhiệm"));
+            }
+        }
     }
 }
