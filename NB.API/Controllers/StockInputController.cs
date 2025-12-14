@@ -178,12 +178,14 @@ namespace NB.API.Controllers
                         transaction.Note = detail.Note;
                         transaction.TotalCost = detail.TotalCost;
                         transaction.ResponsibleId = detail.ResponsibleId;
-                        
+
                         // Lấy tên người chịu trách nhiệm
                         if (detail.ResponsibleId.HasValue)
                         {
                             var responsible = await _userService.GetByUserId(detail.ResponsibleId.Value);
                             transaction.ResponsibleName = responsible?.FullName ?? responsible?.Username ?? "N/A";
+                            transaction.EmployeePhone = responsible?.Phone;
+                            transaction.EmployeeEmail = responsible?.Email;
                         }
                         
                         int id = detail.SupplierId ?? 0;
