@@ -178,12 +178,14 @@ namespace NB.API.Controllers
                         transaction.Note = detail.Note;
                         transaction.TotalCost = detail.TotalCost;
                         transaction.ResponsibleId = detail.ResponsibleId;
-                        
+
                         // Lấy tên người chịu trách nhiệm
                         if (detail.ResponsibleId.HasValue)
                         {
                             var responsible = await _userService.GetByUserId(detail.ResponsibleId.Value);
                             transaction.ResponsibleName = responsible?.FullName ?? responsible?.Username ?? "N/A";
+                            transaction.EmployeePhone = responsible?.Phone;
+                            transaction.EmployeeEmail = responsible?.Email;
                         }
                         
                         int id = detail.SupplierId ?? 0;
@@ -360,12 +362,19 @@ namespace NB.API.Controllers
                 }
             }
 
-        [HttpPost("CreateStockInputs")]
-        public async Task<IActionResult> CreateStockInputs([FromBody] StockBatchCreateWithProductsVM model)
+        [HttpPost("CreateStockInputs/{responsibleId}")]
+        public async Task<IActionResult> CreateStockInputs(int responsibleId, [FromBody] StockBatchCreateWithProductsVM model)
             {
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+                }
+
+                // Validate User (Responsible Person)
+                var existingUser = await _userService.GetByUserId(responsibleId);
+                if (existingUser == null)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy người chịu trách nhiệm", 404));
                 }
 
                 // Validate Warehouse
@@ -417,6 +426,7 @@ namespace NB.API.Controllers
                     {
                         SupplierId = model.SupplierId,
                         WarehouseId = model.WarehouseId,
+                        ResponsibleId = responsibleId,
                         Type = "Import",
                         Status = 1, // Mặc định - Đang kiểm
                         TransactionDate = Now,
