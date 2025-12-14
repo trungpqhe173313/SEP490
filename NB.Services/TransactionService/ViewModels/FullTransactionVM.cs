@@ -23,6 +23,8 @@ namespace NB.Service.TransactionService.ViewModels
         public decimal? TotalCost { get; set; }
         public int? ResponsibleId { get; set; }
         public string? ResponsibleName { get; set; }
+        public string? EmployeePhone { get; set; }
+        public string? EmployeeEmail { get; set; }
         public SupplierOutputVM Supplier { get; set; }
         public List<TransactionDetailOutputVM?> list { get; set; }
     }
