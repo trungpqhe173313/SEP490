@@ -642,33 +642,12 @@ namespace NB.API.Controllers
                             return BadRequest(ApiResponse<ProductImportResultVM>.Fail("Không tìm thấy sheet 'Nhập sản phẩm'", 400));
                         }
 
-                        // Tìm dòng cuối cùng có dữ liệu bằng cách kiểm tra cột ProductCode (cột C)
-                        // Bắt đầu từ dòng 3 (dòng đầu tiên có dữ liệu sản phẩm)
-                        int lastRowWithData = 2; // Khởi tạo là 2 (trước dòng dữ liệu đầu tiên)
-
-                        // Tìm dòng cuối cùng có ProductCode (cột 3)
-                        int maxRowToCheck = mainSheet.Dimension?.Rows ?? 1000; // Giới hạn tối đa 1000 dòng để tránh vòng lặp vô hạn
-                        for (int checkRow = 3; checkRow <= maxRowToCheck; checkRow++)
-                        {
-                            var productCodeCheck = mainSheet.Cells[checkRow, 3].Value?.ToString()?.Trim();
-                            if (!string.IsNullOrWhiteSpace(productCodeCheck))
-                            {
-                                lastRowWithData = checkRow;
-                            }
-                            else
-                            {
-                                // Dừng ở dòng rỗng đầu tiên
-                                break;
-                            }
-                        }
-
                         // Kiểm tra có dữ liệu không
-                        if (lastRowWithData < 3)
+                        var rowCount = mainSheet.Dimension?.Rows ?? 0;
+                        if (rowCount < 3)
                         {
                             return BadRequest(ApiResponse<ProductImportResultVM>.Fail("Sheet 'Nhập sản phẩm' không có dữ liệu", 400));
                         }
-
-                        result.TotalRows = lastRowWithData - 2; // Trừ 2 dòng header
 
                         // Class để chứa dữ liệu sản phẩm đã validate
                         var validatedProducts = new List<(
@@ -702,13 +681,14 @@ namespace NB.API.Controllers
 
                         var nextAutoNumber = maxNumber + 1;
                         var generatedCodesInBatch = new HashSet<string>(); // Track codes đã generate trong batch này
+                        var productNamesInBatch = new HashSet<string>(); // Track product names trong batch này
 
-                        //Vallidate sản phẩm (từ dòng 3 đến dòng cuối cùng có dữ liệu)
-                        for (int row = 3; row <= lastRowWithData; row++)
+                        // Validate tất cả sản phẩm (từ dòng 3)
+                        for (int row = 3; row <= rowCount; row++)
                         {
                             try
                             {
-                                //Đọc dữ liệu từ Excel
+                                // Đọc dữ liệu từ Excel
                                 var supplierName = mainSheet.Cells[row, 1].Value?.ToString()?.Trim();      // Cột A: SupplierName
                                 var categoryName = mainSheet.Cells[row, 2].Value?.ToString()?.Trim();      // Cột B: CategoryName
                                 var productCode = mainSheet.Cells[row, 3].Value?.ToString()?.Trim();       // Cột C: ProductCode
@@ -717,21 +697,35 @@ namespace NB.API.Controllers
                                 var sellingPriceStr = mainSheet.Cells[row, 6].Value?.ToString()?.Trim();  // Cột F: SellingPrice
                                 var description = mainSheet.Cells[row, 7].Value?.ToString()?.Trim();       // Cột G: Description
 
+                                // Kiểm tra dòng trống hoàn toàn (tất cả các field quan trọng đều trống)
+                                bool isEmptyRow = string.IsNullOrWhiteSpace(supplierName)
+                                                  && string.IsNullOrWhiteSpace(categoryName)
+                                                  && string.IsNullOrWhiteSpace(productCode)
+                                                  && string.IsNullOrWhiteSpace(productName)
+                                                  && string.IsNullOrWhiteSpace(weightPerUnitStr)
+                                                  && string.IsNullOrWhiteSpace(sellingPriceStr);
+
+                                if (isEmptyRow)
+                                {
+                                    continue; // Skip dòng trống, không xử lý gì
+                                }
+
+                                // Nếu đến đây nghĩa là có dữ liệu cần xử lý → Validate đầy đủ
                                 var rowErrors = new List<string>();
 
-                                //Validate SupplierName
+                                // Validate SupplierName
                                 if (string.IsNullOrWhiteSpace(supplierName))
                                 {
                                     rowErrors.Add($"Dòng {row}: Tên nhà cung cấp không được để trống");
                                 }
 
-                                //Validate CategoryName
+                                // Validate CategoryName
                                 if (string.IsNullOrWhiteSpace(categoryName))
                                 {
                                     rowErrors.Add($"Dòng {row}: Tên danh mục không được để trống");
                                 }
 
-                                //Validate ProductCode
+                                // Validate và xử lý ProductCode
                                 if (string.IsNullOrWhiteSpace(productCode))
                                 {
                                     // Tự động generate ProductCode theo format NSPxxxxxx
@@ -741,17 +735,17 @@ namespace NB.API.Controllers
                                 }
                                 else
                                 {
-                                    //Chuẩn hóa ProductCode
+                                    // Chuẩn hóa ProductCode
                                     productCode = productCode.Replace(" ", "");
 
-                                    //Kiểm tra trùng trong DB
+                                    // Kiểm tra trùng trong DB
                                     var existingProduct = await _productService.GetByCode(productCode);
                                     if (existingProduct != null)
                                     {
                                         rowErrors.Add($"Dòng {row}: Mã sản phẩm '{productCode}' đã tồn tại trong hệ thống");
                                     }
 
-                                    // Kiểm tra trùng trong batch hiện tại (các dòng đã xử lý trước đó)
+                                    // Kiểm tra trùng trong batch hiện tại
                                     if (generatedCodesInBatch.Contains(productCode))
                                     {
                                         rowErrors.Add($"Dòng {row}: Mã sản phẩm '{productCode}' bị trùng với dòng khác trong file Excel");
@@ -762,7 +756,7 @@ namespace NB.API.Controllers
                                     }
                                 }
 
-                                //Validate ProductName
+                                // Validate ProductName
                                 if (string.IsNullOrWhiteSpace(productName))
                                 {
                                     rowErrors.Add($"Dòng {row}: Tên sản phẩm không được để trống");
@@ -775,9 +769,19 @@ namespace NB.API.Controllers
                                     {
                                         rowErrors.Add($"Dòng {row}: Tên sản phẩm '{productName}' đã tồn tại trong hệ thống");
                                     }
+
+                                    // Kiểm tra trùng trong batch hiện tại
+                                    if (productNamesInBatch.Contains(productName))
+                                    {
+                                        rowErrors.Add($"Dòng {row}: Tên sản phẩm '{productName}' bị trùng với dòng khác trong file Excel");
+                                    }
+                                    else
+                                    {
+                                        productNamesInBatch.Add(productName);
+                                    }
                                 }
 
-                                //Validate WeightPerUnit
+                                // Validate WeightPerUnit
                                 decimal weightPerUnit = 0;
                                 bool weightPerUnitValid = !string.IsNullOrWhiteSpace(weightPerUnitStr) &&
                                                          decimal.TryParse(weightPerUnitStr, out weightPerUnit) &&
@@ -787,7 +791,7 @@ namespace NB.API.Controllers
                                     rowErrors.Add($"Dòng {row}: Trọng lượng trên đơn vị phải là số >= 0");
                                 }
 
-                                //Validate SellingPrice
+                                // Validate SellingPrice
                                 decimal sellingPrice = 0;
                                 bool sellingPriceValid = !string.IsNullOrWhiteSpace(sellingPriceStr) &&
                                                         decimal.TryParse(sellingPriceStr, out sellingPrice) &&
@@ -797,7 +801,7 @@ namespace NB.API.Controllers
                                     rowErrors.Add($"Dòng {row}: Giá bán phải là số >= 0");
                                 }
 
-                                //Vallidate Supplier
+                                // Lookup Supplier
                                 var supplier = !string.IsNullOrWhiteSpace(supplierName)
                                     ? await _supplierService.GetByName(supplierName)
                                     : null;
@@ -806,7 +810,7 @@ namespace NB.API.Controllers
                                     rowErrors.Add($"Dòng {row}: Không tìm thấy nhà cung cấp với tên: {supplierName}");
                                 }
 
-                                //Vallidate Category
+                                // Lookup Category
                                 var category = !string.IsNullOrWhiteSpace(categoryName)
                                     ? await _categoryService.GetByName(categoryName)
                                     : null;
@@ -897,6 +901,7 @@ namespace NB.API.Controllers
                 // Hoàn tất import và trả về kết quả
                 result.ErrorMessages = new List<string>();
                 result.FailedCount = 0;
+                result.TotalRows = result.SuccessCount;
                 return Ok(ApiResponse<ProductImportResultVM>.Ok(result));
             }
             catch (Exception ex)
