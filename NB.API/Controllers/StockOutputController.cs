@@ -105,6 +105,28 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<PagedList<WarehouseDto>>.Fail("Không tìm thấy kho", 404));
                 }
+
+                // Lấy danh sách ResponsibleId 
+                var listResponsibleId = result.Items
+                    .Where(item => item.ResponsibleId.HasValue && item.ResponsibleId.Value > 0)
+                    .Select(item => item.ResponsibleId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                // Gán tên người chịu trách nhiệm
+                var responsibleDict = new Dictionary<int, string>();
+                if (listResponsibleId.Any())
+                {
+                    var responsibleUsers = _userService.GetQueryable()
+                        .Where(u => listResponsibleId.Contains(u.UserId))
+                        .ToList();
+
+                    foreach (var user in responsibleUsers)
+                    {
+                        responsibleDict[user.UserId] = user.FullName ?? user.Username ?? "N/A";
+                    }
+                }
+
                 foreach (var t in result.Items)
                 {
                     //gắn tên khách hàng
@@ -115,13 +137,9 @@ namespace NB.API.Controllers
                     }
 
                     //gắn tên người chịu trách nhiệm
-                    if (t.ResponsibleId.HasValue)
+                    if (t.ResponsibleId.HasValue && responsibleDict.ContainsKey(t.ResponsibleId.Value))
                     {
-                        var responsible = listUser.FirstOrDefault(u => u.UserId == t.ResponsibleId.Value);
-                        if (responsible != null)
-                        {
-                            t.ResponsibleName = responsible.FullName ?? responsible.Username ?? "N/A";
-                        }
+                        t.ResponsibleName = responsibleDict[t.ResponsibleId.Value];
                     }
 
                     //lay tên kho
@@ -175,12 +193,14 @@ namespace NB.API.Controllers
                         transaction.TotalCost = detail.TotalCost ?? 0;
                         transaction.PriceListId = detail.PriceListId;
                         transaction.ResponsibleId = detail.ResponsibleId;
-                        
+
                         // Lấy tên người chịu trách nhiệm
                         if (detail.ResponsibleId.HasValue)
                         {
                             var responsible = await _userService.GetByUserId(detail.ResponsibleId.Value);
                             transaction.ResponsibleName = responsible?.FullName ?? responsible?.Username ?? "N/A";
+                            transaction.EmployeePhone = responsible?.Phone;
+                            transaction.EmployeeEmail = responsible?.Email;
                         }
                         
                         int id = detail.SupplierId ?? 0;
@@ -694,6 +714,18 @@ namespace NB.API.Controllers
                 if (transaction.Status != (int)TransactionStatus.order)
                 {
                     return BadRequest(ApiResponse<string>.Fail("Đơn hàng không trong trạng thái lên đơn" ));
+                }
+
+                // Kiểm tra ResponsibleId 
+                if (or.ResponsibleId == null || or.ResponsibleId <= 0)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
+                }
+
+                // Kiểm tra xem responsibleId có khớp với người được gán cho transaction không
+                if (!transaction.ResponsibleId.HasValue || transaction.ResponsibleId.Value != or.ResponsibleId.Value)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Bạn không có quyền xác nhận xuất kho cho đơn hàng này.", 403));
                 }
 
                 // Lấy WarehouseId từ transaction

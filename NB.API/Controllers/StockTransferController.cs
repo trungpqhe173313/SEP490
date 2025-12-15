@@ -92,13 +92,14 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<PagedList<WarehouseDto>>.Fail("Không tìm thấy kho"));
                 }
                 
-                // Lấy danh sách ResponsibleId để query user một lần
+                // Lấy danh sách ResponsibleId 
                 var listResponsibleId = result.Items
                     .Where(t => t.ResponsibleId.HasValue && t.ResponsibleId.Value > 0)
                     .Select(t => t.ResponsibleId!.Value)
                     .Distinct()
                     .ToList();
 
+                // Gábn tên khách hàng
                 var responsibleDict = new Dictionary<int, string>();
                 if (listResponsibleId.Any())
                 {
@@ -180,12 +181,14 @@ namespace NB.API.Controllers
                         transaction.TotalWeight = detail.TotalWeight;
                         transaction.Note = detail.Note;
                         transaction.ResponsibleId = detail.ResponsibleId;
-                        
+
                         // Lấy tên người chịu trách nhiệm
                         if (detail.ResponsibleId.HasValue)
                         {
                             var responsible = await _userService.GetByUserId(detail.ResponsibleId.Value);
                             transaction.ResponsibleName = responsible?.FullName ?? responsible?.Username ?? "N/A";
+                            transaction.EmployeePhone = responsible?.Phone;
+                            transaction.EmployeeEmail = responsible?.Email;
                         }
                         
                         // Lấy thông tin kho nguồn
@@ -541,6 +544,18 @@ namespace NB.API.Controllers
                 if (transaction.Status == (int)TransactionStatus.cancel)
                 {
                     return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn chuyển kho đã hủy", 400));
+                }
+
+                // Kiểm tra ResponsibleId 
+                if (or.ResponsibleId == null || or.ResponsibleId <= 0)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
+                }
+
+                // Kiểm tra xem responsibleId có khớp với người được gán cho transaction không
+                if (!transaction.ResponsibleId.HasValue || transaction.ResponsibleId.Value != or.ResponsibleId.Value)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Bạn không có quyền xác nhận đơn chuyển kho này. Chỉ người được giao.", 403));
                 }
 
                 // Lấy thông tin kho
