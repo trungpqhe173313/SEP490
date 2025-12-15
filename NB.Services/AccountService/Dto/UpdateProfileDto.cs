@@ -9,10 +9,10 @@ namespace NB.Service.AccountService.Dto
 {
     public class UpdateProfileDto
     {
-        public string? FullName { get; set; }
-        public string? Email { get; set; }
-        public string? Phone { get; set; }
-        public string? Image { get; set; }
-        public IFormFile? ImageFile { get; set; }
+        public string? fullName { get; set; }
+        public string? email { get; set; }
+        public string? phone { get; set; }
+        public string? image { get; set; }
+        public IFormFile? imageFile { get; set; }
     }
 }
