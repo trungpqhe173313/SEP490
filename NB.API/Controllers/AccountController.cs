@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using NB.API.Utils;
 using NB.Service.AccountService;
 using NB.Service.AccountService.Dto;
 using NB.Service.Dto;
@@ -14,9 +15,12 @@ namespace NB.API.Controllers
     public class AccountController : ControllerBase
     {
         private readonly IAccountService _accountService;
-        public AccountController(IAccountService accountService)
+        private readonly ICloudinaryService _cloudinaryService;
+
+        public AccountController(IAccountService accountService, ICloudinaryService cloudinaryService)
         {
             _accountService = accountService;
+            _cloudinaryService = cloudinaryService;
         }
         [HttpPost("Login")]
         [AllowAnonymous]
@@ -158,7 +162,7 @@ namespace NB.API.Controllers
 
         [Authorize]
         [HttpPut("profile")]
-        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto request)
+        public async Task<IActionResult> UpdateProfile([FromForm] UpdateProfileDto request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ApiResponse<bool>.Fail("Dữ liệu không hợp lệ", 400));
@@ -166,6 +170,30 @@ namespace NB.API.Controllers
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim))
                 return Unauthorized(ApiResponse<bool>.Fail("Không thể xác định người dùng", 401));
+
+            // Validate image file type 
+            if (request.ImageFile != null)
+            {
+                var imageExtension = Path.GetExtension(request.ImageFile.FileName).ToLowerInvariant();
+                var allowedImageExtensions = new[] { ".png", ".jpg", ".jpeg" };
+
+                if (!allowedImageExtensions.Contains(imageExtension))
+                {
+                    return BadRequest(ApiResponse<bool>.Fail(
+                        $"File ảnh phải có định dạng PNG, JPG hoặc JPEG. File hiện tại: {imageExtension}",
+                        400));
+                }
+
+                // Upload image to Cloudinary
+                var imageUrl = await _cloudinaryService.UploadImageAsync(request.ImageFile, "users/images");
+                if (imageUrl == null)
+                {
+                    return BadRequest(ApiResponse<bool>.Fail("Không thể upload ảnh", 400));
+                }
+
+                // Set image và uploaded URL 
+                request.Image = imageUrl;
+            }
 
             var userId = int.Parse(userIdClaim);
             var result = await _accountService.UpdateProfileAsync(userId, request);
