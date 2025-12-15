@@ -107,16 +107,19 @@ namespace NB.API.Controllers
                     .Distinct()
                     .ToList();
 
-                var responsibleDict = new Dictionary<int, string>();
+                var responsibleDict = new Dictionary<int, (string name, string phone)>();
                 if (listResponsibleId.Any())
                 {
                     var responsibleUsers = _userService.GetQueryable()
                         .Where(u => listResponsibleId.Contains(u.UserId))
                         .ToList();
-                    
+
                     foreach (var user in responsibleUsers)
                     {
-                        responsibleDict[user.UserId] = user.FullName ?? user.Username ?? "N/A";
+                        responsibleDict[user.UserId] = (
+                            user.FullName ?? user.Username ?? "N/A",
+                            user.Phone ?? "N/A"
+                        );
                     }
                 }
 
@@ -136,7 +139,10 @@ namespace NB.API.Controllers
                         TotalCost = item.TotalCost,
                         ResponsibleId = item.ResponsibleId,
                         ResponsibleName = item.ResponsibleId.HasValue && responsibleDict.ContainsKey(item.ResponsibleId.Value)
-                            ? responsibleDict[item.ResponsibleId.Value]
+                            ? responsibleDict[item.ResponsibleId.Value].name
+                            : null,
+                        ResponsiblePhone = item.ResponsibleId.HasValue && responsibleDict.ContainsKey(item.ResponsibleId.Value)
+                            ? responsibleDict[item.ResponsibleId.Value].phone
                             : null
                     });
                 }
