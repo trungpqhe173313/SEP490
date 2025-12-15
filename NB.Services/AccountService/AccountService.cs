@@ -27,14 +27,16 @@ namespace NB.Service.AccountService
         private readonly IUserRolerRepository _userRoleRepository;
         private readonly IRoleRepository _roleRepository;
         private readonly IEmailService _emailService;
+        private readonly ICloudinaryService _cloudinaryService;
         private readonly ILogger<AccountService> _logger;
-        
+
         public AccountService(IUserService userService,
             IRepository<User> userRepository,
-            IJwtService jwtService, 
-            IUserRolerRepository userRolerRepository, 
+            IJwtService jwtService,
+            IUserRolerRepository userRolerRepository,
             IRoleRepository roleRepository,
             IEmailService emailService,
+            ICloudinaryService cloudinaryService,
             ILogger<AccountService> logger) : base(userRepository)
         {
             _userService = userService;
@@ -42,6 +44,7 @@ namespace NB.Service.AccountService
             _userRoleRepository = userRolerRepository;
             _roleRepository = roleRepository;
             _emailService = emailService;
+            _cloudinaryService = cloudinaryService;
             _logger = logger;
         }
 
@@ -378,26 +381,38 @@ namespace NB.Service.AccountService
             var user = await GetQueryable().FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null)
                 return ApiResponse<bool>.Fail("Không tìm thấy người dùng", 404);
-            if (!string.IsNullOrWhiteSpace(request.Phone))
+
+            // Upload image lên Cloudinary nếu có 
+            if (request.imageFile != null)
+            {
+                var imageUrl = await _cloudinaryService.UploadImageAsync(request.imageFile, "users/images");
+                if (imageUrl == null)
+                {
+                    return ApiResponse<bool>.Fail("Không thể upload ảnh", 400);
+                }
+                request.image = imageUrl;
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.phone))
             {
                 bool phoneExists = await GetQueryable()
-                    .AnyAsync(u => u.Phone == request.Phone && u.UserId != userId);
+                    .AnyAsync(u => u.Phone == request.phone && u.UserId != userId);
 
                 if (phoneExists)
                     return ApiResponse<bool>.Fail("Số điện thoại đã tồn tại", 409);
             }
-            if (!string.IsNullOrWhiteSpace(request.Email))
+            if (!string.IsNullOrWhiteSpace(request.email))
             {
                 bool emailExists = await GetQueryable()
-                    .AnyAsync(u => u.Email == request.Email && u.UserId != userId);
+                    .AnyAsync(u => u.Email == request.email && u.UserId != userId);
 
                 if (emailExists)
                     return ApiResponse<bool>.Fail("Email đã tồn tại", 409);
             }
-            user.FullName = request.FullName ?? user.FullName;
-            user.Email = request.Email ?? user.Email;
-            user.Phone = request.Phone ?? user.Phone;
-            user.Image = request.Image ?? user.Image;
+            user.FullName = request.fullName ?? user.FullName;
+            user.Email = request.email ?? user.Email;
+            user.Phone = request.phone ?? user.Phone;
+            user.Image = request.image ?? user.Image;
 
             await _userService.UpdateAsync(user);
 

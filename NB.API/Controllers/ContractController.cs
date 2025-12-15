@@ -201,12 +201,7 @@ namespace NB.API.Controllers
 
             try
             {
-                // Vallidate file và upload song song
-                var imageUploadTask = request.Image != null
-                    ? _cloudinaryService.UploadImageAsync(request.Image, "contracts/images")
-                    : Task.FromResult<string?>(null);
-
-                //Validate User và Supplier
+                //Validate User và Supplier 
                 UserDto? customer = null;
                 SupplierDto? supplier = null;
 
@@ -234,12 +229,16 @@ namespace NB.API.Controllers
                         return BadRequest(ApiResponse<object>.Fail("Nhà cung cấp không tồn tại", 400));
                     }
                 }
-                
-                string? imageUrl = await imageUploadTask;
 
-                if (request.Image != null && imageUrl == null)
+                // Upload image 
+                string? imageUrl = null;
+                if (request.Image != null)
                 {
-                    return BadRequest(ApiResponse<object>.Fail("Không thể upload ảnh", 400));
+                    imageUrl = await _cloudinaryService.UploadImageAsync(request.Image, "contracts/images");
+                    if (imageUrl == null)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail("Không thể upload ảnh", 400));
+                    }
                 }
                 var contract = new Contract
                 {
@@ -313,7 +312,7 @@ namespace NB.API.Controllers
                 // Lưu URL cũ để xóa nếu cần
                 string? oldImageUrl = contract.Image;
 
-                // Handle image update if new image is provided
+                // Handle image update 
                 if (request.Image != null)
                 {
                     string? newImageUrl = await _cloudinaryService.UpdateImageAsync(request.Image, oldImageUrl, "contracts/images");
