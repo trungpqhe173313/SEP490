@@ -546,18 +546,6 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<string>.Fail("Không thể cập nhật đơn chuyển kho đã hủy", 400));
                 }
 
-                // Kiểm tra ResponsibleId 
-                if (or.ResponsibleId == null || or.ResponsibleId <= 0)
-                {
-                    return BadRequest(ApiResponse<string>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
-                }
-
-                // Kiểm tra xem responsibleId có khớp với người được gán cho transaction không
-                if (!transaction.ResponsibleId.HasValue || transaction.ResponsibleId.Value != or.ResponsibleId.Value)
-                {
-                    return BadRequest(ApiResponse<string>.Fail("Bạn không có quyền xác nhận đơn chuyển kho này. Chỉ người được giao.", 403));
-                }
-
                 // Lấy thông tin kho
                 var sourceWarehouse = await _warehouseService.GetByIdAsync(or.WarehouseId);
                 var destWarehouse = await _warehouseService.GetByIdAsync(or.WarehouseInId);
@@ -1088,10 +1076,27 @@ namespace NB.API.Controllers
         /// <param name="transactionId">ID của đơn chuyển kho</param>
         /// <returns>Kết quả cập nhật</returns>
         [HttpPut("UpdateToTransferredStatus/{transactionId}")]
-        public async Task<IActionResult> UpdateToTransferredStatus(int transactionId)
+        public async Task<IActionResult> UpdateToTransferredStatus(int transactionId, [FromBody] UpdateToTransferredStatusRequest request)
         {
             try
             {
+                if (transactionId <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Transaction ID không hợp lệ", 400));
+                }
+
+                // Kiểm tra request
+                if (request == null)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Request không hợp lệ", 400));
+                }
+
+                int responsibleId = request.ResponsibleId;
+                if (responsibleId <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
+                }
+
                 // Lấy thông tin đơn chuyển kho
                 var transaction = await _transactionService.GetByIdAsync(transactionId);
                 if (transaction == null)
@@ -1103,6 +1108,12 @@ namespace NB.API.Controllers
                 if (transaction.Type != transactionType)
                 {
                     return BadRequest(ApiResponse<string>.Fail("Đơn này không phải là đơn chuyển kho", 400));
+                }
+
+                // Kiểm tra responsibleId 
+                if (!transaction.ResponsibleId.HasValue || transaction.ResponsibleId.Value != responsibleId)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Bạn không có quyền xác nhận hoàn thành đơn chuyển kho này.", 403));
                 }
 
                 // Kiểm tra trạng thái hiện tại - chỉ cho phép chuyển từ inTransit sang transferred
