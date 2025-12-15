@@ -760,7 +760,7 @@ namespace NB.API.Controllers
             try
             {
                 var transaction = await _transactionService.GetByIdAsync(transactionId);
-                if (!(transaction.Status == 1))
+                if (transaction.Status != 1)
                     return BadRequest(ApiResponse<string>.Fail("Chỉ được cập nhật đơn hàng đang kiểm.", 400));
                 if (transaction == null)
                     return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn hàng nhập kho.", 404));
@@ -853,10 +853,11 @@ namespace NB.API.Controllers
                 {
                     return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Giao dịch không phải là nhập kho", 400));
                 }
-                if(transaction.Status == 0)
+                if(transaction.Status != 1)
                 {
-                    return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Giao dịch đã bị hủy từ trước.", 400));
+                    return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Chỉ được hủy giao dịch ở trạng thái đang kiểm.", 400));
                 }
+                
                 transaction.Status = 0; // Đặt trạng thái là hủy
                 await _transactionService.UpdateAsync(transaction);
                 return Ok(ApiResponse<object>.Ok("Đã hủy giao dịch nhập kho thành công"));
