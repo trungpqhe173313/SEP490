@@ -912,7 +912,7 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail("Transaction ID không hợp lệ", 400));
                 }
 
-                // Kiểm tra request và responsibleId 
+                // Kiểm tra request 
                 if (request == null)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Request không hợp lệ", 400));
@@ -929,13 +929,17 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch", 404));
                 }
+                if (transaction.Status != 1)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Chỉ có thể cập nhật trạng thái 'Đã kiểm' cho giao dịch đang ở trạng thái 'Đang kiểm'", 400));
+                }
 
                 if (string.IsNullOrEmpty(transaction.Type) || !transaction.Type.Equals("Import", StringComparison.OrdinalIgnoreCase))
                 {
                     return BadRequest(ApiResponse<object>.Fail("Giao dịch không phải là loại Import", 400));
                 }
 
-                // Kiểm tra xem responsibleId có khớp với người được gán cho transaction không
+                // Kiểm tra responsibleId 
                 if (!transaction.ResponsibleId.HasValue || transaction.ResponsibleId.Value != responsibleId)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Bạn không có quyền xác nhận nhập kho cho đơn hàng này.", 403));

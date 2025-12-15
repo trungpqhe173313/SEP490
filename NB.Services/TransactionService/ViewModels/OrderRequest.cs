@@ -18,7 +18,5 @@ namespace NB.Service.TransactionService.ViewModels
         public string? Reason { get; set; }
         // Kho xuất hàng (nếu không có thì sẽ lấy từ stockBatch)
         public int? WarehouseId { get; set; }
-        // Người chịu trách nhiệm
-        public int? ResponsibleId { get; set; }
     }
 }
