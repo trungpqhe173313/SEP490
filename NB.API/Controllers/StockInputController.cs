@@ -903,13 +903,25 @@ namespace NB.API.Controllers
         }
 
         [HttpPut("UpdateToCheckedStatus/{transactionId}")]
-        public async Task<IActionResult> SetStatusChecked(int transactionId)
+        public async Task<IActionResult> SetStatusChecked(int transactionId, [FromBody] UpdateToCheckedStatusRequest request)
         {
             try
             {
                 if (transactionId <= 0)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Transaction ID không hợp lệ", 400));
+                }
+
+                // Kiểm tra request và responsibleId 
+                if (request == null)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Request không hợp lệ", 400));
+                }
+
+                int responsibleId = request.ResponsibleId;
+                if (responsibleId <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
                 }
 
                 var transaction = await _transactionService.GetByTransactionId(transactionId);
@@ -921,6 +933,12 @@ namespace NB.API.Controllers
                 if (string.IsNullOrEmpty(transaction.Type) || !transaction.Type.Equals("Import", StringComparison.OrdinalIgnoreCase))
                 {
                     return BadRequest(ApiResponse<object>.Fail("Giao dịch không phải là loại Import", 400));
+                }
+
+                // Kiểm tra xem responsibleId có khớp với người được gán cho transaction không
+                if (!transaction.ResponsibleId.HasValue || transaction.ResponsibleId.Value != responsibleId)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Bạn không có quyền xác nhận nhập kho cho đơn hàng này.", 403));
                 }
 
                 // Tự động tính ExpireDate = Now + 3 tháng
