@@ -100,16 +100,19 @@ namespace NB.API.Controllers
                     .ToList();
 
                 // Gábn tên khách hàng
-                var responsibleDict = new Dictionary<int, string>();
+                var responsibleDict = new Dictionary<int, (string name, string phone)>();
                 if (listResponsibleId.Any())
                 {
                     var responsibleUsers = _userService.GetQueryable()
                         .Where(u => listResponsibleId.Contains(u.UserId))
                         .ToList();
-                    
+
                     foreach (var user in responsibleUsers)
                     {
-                        responsibleDict[user.UserId] = user.FullName ?? user.Username ?? "N/A";
+                        responsibleDict[user.UserId] = (
+                            user.FullName ?? user.Username ?? "N/A",
+                            user.Phone ?? "N/A"
+                        );
                     }
                 }
 
@@ -135,7 +138,8 @@ namespace NB.API.Controllers
                     //gắn tên người chịu trách nhiệm
                     if (t.ResponsibleId.HasValue && responsibleDict.ContainsKey(t.ResponsibleId.Value))
                     {
-                        t.ResponsibleName = responsibleDict[t.ResponsibleId.Value];
+                        t.ResponsibleName = responsibleDict[t.ResponsibleId.Value].name;
+                        t.ResponsiblePhone = responsibleDict[t.ResponsibleId.Value].phone;
                     }
                     
                     //gắn statusName cho transaction

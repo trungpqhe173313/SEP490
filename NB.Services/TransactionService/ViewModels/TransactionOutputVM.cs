@@ -25,5 +25,6 @@ namespace NB.Service.TransactionService.ViewModels
         public decimal? TotalCost { get; set; }
         public int? ResponsibleId { get; set; }
         public string? ResponsibleName { get; set; }
+        public string? ResponsiblePhone { get; set; }
     }
 }

@@ -106,15 +106,15 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<PagedList<WarehouseDto>>.Fail("Không tìm thấy kho", 404));
                 }
 
-                // Lấy danh sách ResponsibleId 
+                // Lấy danh sách ResponsibleId
                 var listResponsibleId = result.Items
                     .Where(item => item.ResponsibleId.HasValue && item.ResponsibleId.Value > 0)
                     .Select(item => item.ResponsibleId!.Value)
                     .Distinct()
                     .ToList();
 
-                // Gán tên người chịu trách nhiệm
-                var responsibleDict = new Dictionary<int, string>();
+                // Gán tên và số điện thoại người chịu trách nhiệm
+                var responsibleDict = new Dictionary<int, (string name, string phone)>();
                 if (listResponsibleId.Any())
                 {
                     var responsibleUsers = _userService.GetQueryable()
@@ -123,7 +123,10 @@ namespace NB.API.Controllers
 
                     foreach (var user in responsibleUsers)
                     {
-                        responsibleDict[user.UserId] = user.FullName ?? user.Username ?? "N/A";
+                        responsibleDict[user.UserId] = (
+                            user.FullName ?? user.Username ?? "N/A",
+                            user.Phone ?? "N/A"
+                        );
                     }
                 }
 
@@ -136,10 +139,11 @@ namespace NB.API.Controllers
                         t.FullName = user.FullName;
                     }
 
-                    //gắn tên người chịu trách nhiệm
+                    //gắn tên và số điện thoại người chịu trách nhiệm
                     if (t.ResponsibleId.HasValue && responsibleDict.ContainsKey(t.ResponsibleId.Value))
                     {
-                        t.ResponsibleName = responsibleDict[t.ResponsibleId.Value];
+                        t.ResponsibleName = responsibleDict[t.ResponsibleId.Value].name;
+                        t.ResponsiblePhone = responsibleDict[t.ResponsibleId.Value].phone;
                     }
 
                     //lay tên kho
