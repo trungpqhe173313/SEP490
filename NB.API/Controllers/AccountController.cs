@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using NB.API.Utils;
 using NB.Service.AccountService;
 using NB.Service.AccountService.Dto;
 using NB.Service.Dto;
@@ -15,12 +14,10 @@ namespace NB.API.Controllers
     public class AccountController : ControllerBase
     {
         private readonly IAccountService _accountService;
-        private readonly ICloudinaryService _cloudinaryService;
 
-        public AccountController(IAccountService accountService, ICloudinaryService cloudinaryService)
+        public AccountController(IAccountService accountService)
         {
             _accountService = accountService;
-            _cloudinaryService = cloudinaryService;
         }
         [HttpPost("Login")]
         [AllowAnonymous]
@@ -183,16 +180,6 @@ namespace NB.API.Controllers
                         $"File ảnh phải có định dạng PNG, JPG hoặc JPEG. File hiện tại: {imageExtension}",
                         400));
                 }
-
-                // Upload image to Cloudinary
-                var imageUrl = await _cloudinaryService.UploadImageAsync(request.imageFile, "users/images");
-                if (imageUrl == null)
-                {
-                    return BadRequest(ApiResponse<bool>.Fail("Không thể upload ảnh", 400));
-                }
-
-                // Set image và uploaded URL 
-                request.image = imageUrl;
             }
 
             var userId = int.Parse(userIdClaim);
