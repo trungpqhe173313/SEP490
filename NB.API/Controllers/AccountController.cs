@@ -172,9 +172,9 @@ namespace NB.API.Controllers
                 return Unauthorized(ApiResponse<bool>.Fail("Không thể xác định người dùng", 401));
 
             // Validate image file type 
-            if (request.ImageFile != null)
+            if (request.imageFile != null)
             {
-                var imageExtension = Path.GetExtension(request.ImageFile.FileName).ToLowerInvariant();
+                var imageExtension = Path.GetExtension(request.imageFile.FileName).ToLowerInvariant();
                 var allowedImageExtensions = new[] { ".png", ".jpg", ".jpeg" };
 
                 if (!allowedImageExtensions.Contains(imageExtension))
@@ -185,14 +185,14 @@ namespace NB.API.Controllers
                 }
 
                 // Upload image to Cloudinary
-                var imageUrl = await _cloudinaryService.UploadImageAsync(request.ImageFile, "users/images");
+                var imageUrl = await _cloudinaryService.UploadImageAsync(request.imageFile, "users/images");
                 if (imageUrl == null)
                 {
                     return BadRequest(ApiResponse<bool>.Fail("Không thể upload ảnh", 400));
                 }
 
                 // Set image và uploaded URL 
-                request.Image = imageUrl;
+                request.image = imageUrl;
             }
 
             var userId = int.Parse(userIdClaim);
