@@ -16,6 +16,7 @@ namespace NB.Service.TransactionService.Dto
 
         public string? FullName { get; set; }
         public string? ResponsibleName { get; set; }
+        public string? ResponsiblePhone { get; set; }
     }
 
     public class TransactionDetailResponseDto

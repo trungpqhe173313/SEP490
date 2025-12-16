@@ -100,7 +100,7 @@ builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
 
 //add DI
 builder.Services.AddScoped<IMapper, Mapper>();
-builder.Services.AddScoped<NB.API.Utils.ICloudinaryService, NB.API.Utils.CloudinaryService>();
+builder.Services.AddScoped<NB.Service.Common.ICloudinaryService, NB.API.Utils.CloudinaryService>();
 
 builder.Services.AddAutoMapper(cfg => cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
 

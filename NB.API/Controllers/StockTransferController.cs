@@ -92,23 +92,27 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<PagedList<WarehouseDto>>.Fail("Không tìm thấy kho"));
                 }
                 
-                // Lấy danh sách ResponsibleId để query user một lần
+                // Lấy danh sách ResponsibleId 
                 var listResponsibleId = result.Items
                     .Where(t => t.ResponsibleId.HasValue && t.ResponsibleId.Value > 0)
                     .Select(t => t.ResponsibleId!.Value)
                     .Distinct()
                     .ToList();
 
-                var responsibleDict = new Dictionary<int, string>();
+                // Gábn tên khách hàng
+                var responsibleDict = new Dictionary<int, (string name, string phone)>();
                 if (listResponsibleId.Any())
                 {
                     var responsibleUsers = _userService.GetQueryable()
                         .Where(u => listResponsibleId.Contains(u.UserId))
                         .ToList();
-                    
+
                     foreach (var user in responsibleUsers)
                     {
-                        responsibleDict[user.UserId] = user.FullName ?? user.Username ?? "N/A";
+                        responsibleDict[user.UserId] = (
+                            user.FullName ?? user.Username ?? "N/A",
+                            user.Phone ?? "N/A"
+                        );
                     }
                 }
 
@@ -134,7 +138,8 @@ namespace NB.API.Controllers
                     //gắn tên người chịu trách nhiệm
                     if (t.ResponsibleId.HasValue && responsibleDict.ContainsKey(t.ResponsibleId.Value))
                     {
-                        t.ResponsibleName = responsibleDict[t.ResponsibleId.Value];
+                        t.ResponsibleName = responsibleDict[t.ResponsibleId.Value].name;
+                        t.ResponsiblePhone = responsibleDict[t.ResponsibleId.Value].phone;
                     }
                     
                     //gắn statusName cho transaction
@@ -180,12 +185,14 @@ namespace NB.API.Controllers
                         transaction.TotalWeight = detail.TotalWeight;
                         transaction.Note = detail.Note;
                         transaction.ResponsibleId = detail.ResponsibleId;
-                        
+
                         // Lấy tên người chịu trách nhiệm
                         if (detail.ResponsibleId.HasValue)
                         {
                             var responsible = await _userService.GetByUserId(detail.ResponsibleId.Value);
                             transaction.ResponsibleName = responsible?.FullName ?? responsible?.Username ?? "N/A";
+                            transaction.EmployeePhone = responsible?.Phone;
+                            transaction.EmployeeEmail = responsible?.Email;
                         }
                         
                         // Lấy thông tin kho nguồn
@@ -1073,10 +1080,27 @@ namespace NB.API.Controllers
         /// <param name="transactionId">ID của đơn chuyển kho</param>
         /// <returns>Kết quả cập nhật</returns>
         [HttpPut("UpdateToTransferredStatus/{transactionId}")]
-        public async Task<IActionResult> UpdateToTransferredStatus(int transactionId)
+        public async Task<IActionResult> UpdateToTransferredStatus(int transactionId, [FromBody] UpdateToTransferredStatusRequest request)
         {
             try
             {
+                if (transactionId <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Transaction ID không hợp lệ", 400));
+                }
+
+                // Kiểm tra request
+                if (request == null)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Request không hợp lệ", 400));
+                }
+
+                int responsibleId = request.ResponsibleId;
+                if (responsibleId <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
+                }
+
                 // Lấy thông tin đơn chuyển kho
                 var transaction = await _transactionService.GetByIdAsync(transactionId);
                 if (transaction == null)
@@ -1088,6 +1112,12 @@ namespace NB.API.Controllers
                 if (transaction.Type != transactionType)
                 {
                     return BadRequest(ApiResponse<string>.Fail("Đơn này không phải là đơn chuyển kho", 400));
+                }
+
+                // Kiểm tra responsibleId 
+                if (!transaction.ResponsibleId.HasValue || transaction.ResponsibleId.Value != responsibleId)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Bạn không có quyền xác nhận hoàn thành đơn chuyển kho này.", 403));
                 }
 
                 // Kiểm tra trạng thái hiện tại - chỉ cho phép chuyển từ inTransit sang transferred

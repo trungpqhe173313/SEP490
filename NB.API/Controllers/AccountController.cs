@@ -14,6 +14,7 @@ namespace NB.API.Controllers
     public class AccountController : ControllerBase
     {
         private readonly IAccountService _accountService;
+
         public AccountController(IAccountService accountService)
         {
             _accountService = accountService;
@@ -158,7 +159,7 @@ namespace NB.API.Controllers
 
         [Authorize]
         [HttpPut("profile")]
-        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto request)
+        public async Task<IActionResult> UpdateProfile([FromForm] UpdateProfileDto request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ApiResponse<bool>.Fail("Dữ liệu không hợp lệ", 400));
@@ -166,6 +167,20 @@ namespace NB.API.Controllers
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim))
                 return Unauthorized(ApiResponse<bool>.Fail("Không thể xác định người dùng", 401));
+
+            // Validate image file type 
+            if (request.imageFile != null)
+            {
+                var imageExtension = Path.GetExtension(request.imageFile.FileName).ToLowerInvariant();
+                var allowedImageExtensions = new[] { ".png", ".jpg", ".jpeg" };
+
+                if (!allowedImageExtensions.Contains(imageExtension))
+                {
+                    return BadRequest(ApiResponse<bool>.Fail(
+                        $"File ảnh phải có định dạng PNG, JPG hoặc JPEG. File hiện tại: {imageExtension}",
+                        400));
+                }
+            }
 
             var userId = int.Parse(userIdClaim);
             var result = await _accountService.UpdateProfileAsync(userId, request);

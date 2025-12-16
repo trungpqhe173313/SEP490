@@ -107,16 +107,19 @@ namespace NB.API.Controllers
                     .Distinct()
                     .ToList();
 
-                var responsibleDict = new Dictionary<int, string>();
+                var responsibleDict = new Dictionary<int, (string name, string phone)>();
                 if (listResponsibleId.Any())
                 {
                     var responsibleUsers = _userService.GetQueryable()
                         .Where(u => listResponsibleId.Contains(u.UserId))
                         .ToList();
-                    
+
                     foreach (var user in responsibleUsers)
                     {
-                        responsibleDict[user.UserId] = user.FullName ?? user.Username ?? "N/A";
+                        responsibleDict[user.UserId] = (
+                            user.FullName ?? user.Username ?? "N/A",
+                            user.Phone ?? "N/A"
+                        );
                     }
                 }
 
@@ -136,7 +139,10 @@ namespace NB.API.Controllers
                         TotalCost = item.TotalCost,
                         ResponsibleId = item.ResponsibleId,
                         ResponsibleName = item.ResponsibleId.HasValue && responsibleDict.ContainsKey(item.ResponsibleId.Value)
-                            ? responsibleDict[item.ResponsibleId.Value]
+                            ? responsibleDict[item.ResponsibleId.Value].name
+                            : null,
+                        ResponsiblePhone = item.ResponsibleId.HasValue && responsibleDict.ContainsKey(item.ResponsibleId.Value)
+                            ? responsibleDict[item.ResponsibleId.Value].phone
                             : null
                     });
                 }
@@ -760,7 +766,7 @@ namespace NB.API.Controllers
             try
             {
                 var transaction = await _transactionService.GetByIdAsync(transactionId);
-                if (!(transaction.Status == 1))
+                if (transaction.Status != 1)
                     return BadRequest(ApiResponse<string>.Fail("Chỉ được cập nhật đơn hàng đang kiểm.", 400));
                 if (transaction == null)
                     return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn hàng nhập kho.", 404));
@@ -853,10 +859,11 @@ namespace NB.API.Controllers
                 {
                     return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Giao dịch không phải là nhập kho", 400));
                 }
-                if(transaction.Status == 0)
+                if(transaction.Status != 1)
                 {
-                    return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Giao dịch đã bị hủy từ trước.", 400));
+                    return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Chỉ được hủy giao dịch ở trạng thái đang kiểm.", 400));
                 }
+                
                 transaction.Status = 0; // Đặt trạng thái là hủy
                 await _transactionService.UpdateAsync(transaction);
                 return Ok(ApiResponse<object>.Ok("Đã hủy giao dịch nhập kho thành công"));
@@ -903,7 +910,7 @@ namespace NB.API.Controllers
         }
 
         [HttpPut("UpdateToCheckedStatus/{transactionId}")]
-        public async Task<IActionResult> SetStatusChecked(int transactionId)
+        public async Task<IActionResult> SetStatusChecked(int transactionId, [FromBody] UpdateToCheckedStatusRequest request)
         {
             try
             {
@@ -912,15 +919,37 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail("Transaction ID không hợp lệ", 400));
                 }
 
+                // Kiểm tra request 
+                if (request == null)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Request không hợp lệ", 400));
+                }
+
+                int responsibleId = request.ResponsibleId;
+                if (responsibleId <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
+                }
+
                 var transaction = await _transactionService.GetByTransactionId(transactionId);
                 if (transaction == null)
                 {
                     return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch", 404));
                 }
+                if (transaction.Status != 1)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Chỉ có thể cập nhật trạng thái 'Đã kiểm' cho giao dịch đang ở trạng thái 'Đang kiểm'", 400));
+                }
 
                 if (string.IsNullOrEmpty(transaction.Type) || !transaction.Type.Equals("Import", StringComparison.OrdinalIgnoreCase))
                 {
                     return BadRequest(ApiResponse<object>.Fail("Giao dịch không phải là loại Import", 400));
+                }
+
+                // Kiểm tra responsibleId 
+                if (!transaction.ResponsibleId.HasValue || transaction.ResponsibleId.Value != responsibleId)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Bạn không có quyền xác nhận nhập kho cho đơn hàng này.", 403));
                 }
 
                 // Tự động tính ExpireDate = Now + 3 tháng

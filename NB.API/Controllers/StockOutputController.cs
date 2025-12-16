@@ -105,6 +105,31 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<PagedList<WarehouseDto>>.Fail("Không tìm thấy kho", 404));
                 }
+
+                // Lấy danh sách ResponsibleId
+                var listResponsibleId = result.Items
+                    .Where(item => item.ResponsibleId.HasValue && item.ResponsibleId.Value > 0)
+                    .Select(item => item.ResponsibleId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                // Gán tên và số điện thoại người chịu trách nhiệm
+                var responsibleDict = new Dictionary<int, (string name, string phone)>();
+                if (listResponsibleId.Any())
+                {
+                    var responsibleUsers = _userService.GetQueryable()
+                        .Where(u => listResponsibleId.Contains(u.UserId))
+                        .ToList();
+
+                    foreach (var user in responsibleUsers)
+                    {
+                        responsibleDict[user.UserId] = (
+                            user.FullName ?? user.Username ?? "N/A",
+                            user.Phone ?? "N/A"
+                        );
+                    }
+                }
+
                 foreach (var t in result.Items)
                 {
                     //gắn tên khách hàng
@@ -114,14 +139,11 @@ namespace NB.API.Controllers
                         t.FullName = user.FullName;
                     }
 
-                    //gắn tên người chịu trách nhiệm
-                    if (t.ResponsibleId.HasValue)
+                    //gắn tên và số điện thoại người chịu trách nhiệm
+                    if (t.ResponsibleId.HasValue && responsibleDict.ContainsKey(t.ResponsibleId.Value))
                     {
-                        var responsible = listUser.FirstOrDefault(u => u.UserId == t.ResponsibleId.Value);
-                        if (responsible != null)
-                        {
-                            t.ResponsibleName = responsible.FullName ?? responsible.Username ?? "N/A";
-                        }
+                        t.ResponsibleName = responsibleDict[t.ResponsibleId.Value].name;
+                        t.ResponsiblePhone = responsibleDict[t.ResponsibleId.Value].phone;
                     }
 
                     //lay tên kho
@@ -175,12 +197,14 @@ namespace NB.API.Controllers
                         transaction.TotalCost = detail.TotalCost ?? 0;
                         transaction.PriceListId = detail.PriceListId;
                         transaction.ResponsibleId = detail.ResponsibleId;
-                        
+
                         // Lấy tên người chịu trách nhiệm
                         if (detail.ResponsibleId.HasValue)
                         {
                             var responsible = await _userService.GetByUserId(detail.ResponsibleId.Value);
                             transaction.ResponsibleName = responsible?.FullName ?? responsible?.Username ?? "N/A";
+                            transaction.EmployeePhone = responsible?.Phone;
+                            transaction.EmployeeEmail = responsible?.Email;
                         }
                         
                         int id = detail.SupplierId ?? 0;
@@ -1056,8 +1080,25 @@ namespace NB.API.Controllers
         }
 
         [HttpPut("UpdateToDoneStatus/{transactionId}")]
-        public async Task<IActionResult> UpdateToDoneStatus(int transactionId)
+        public async Task<IActionResult> UpdateToDoneStatus(int transactionId, [FromBody] UpdateToDoneStatusRequest request)
         {
+            if (transactionId <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Transaction ID không hợp lệ", 400));
+            }
+
+            // Kiểm tra request 
+            if (request == null)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Request không hợp lệ", 400));
+            }
+
+            int responsibleId = request.ResponsibleId;
+            if (responsibleId <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
+            }
+
             var transaction = await _transactionService.GetByTransactionId(transactionId);
             if (transaction == null)
             {
@@ -1066,6 +1107,12 @@ namespace NB.API.Controllers
             if (transaction.Status != (int)TransactionStatus.delivering)
             {
                 return BadRequest(ApiResponse<string>.Fail("Đơn hàng không trong trạng thái đang giao"));
+            }
+
+            // Kiểm tra responsibleId 
+            if (!transaction.ResponsibleId.HasValue || transaction.ResponsibleId.Value != responsibleId)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Bạn không có quyền xác nhận hoàn thành đơn hàng này.", 403));
             }
 
             try
@@ -1084,8 +1131,25 @@ namespace NB.API.Controllers
         }
 
         [HttpPut("UpdateToDeliveringStatus/{transactionId}")]
-        public async Task<IActionResult> UpdateToDeliveringStatus(int transactionId)
+        public async Task<IActionResult> UpdateToDeliveringStatus(int transactionId, [FromBody] UpdateToDeliveringStatusRequest request)
         {
+            if (transactionId <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Transaction ID không hợp lệ", 400));
+            }
+
+            // Kiểm tra request
+            if (request == null)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Request không hợp lệ", 400));
+            }
+
+            int responsibleId = request.ResponsibleId;
+            if (responsibleId <= 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail("UserId người chịu trách nhiệm không hợp lệ", 400));
+            }
+
             var transaction = await _transactionService.GetByTransactionId(transactionId);
             if (transaction == null)
             {
@@ -1095,6 +1159,13 @@ namespace NB.API.Controllers
             {
                 return BadRequest(ApiResponse<string>.Fail("Đơn hàng không trong trạng thái nháp"));
             }
+
+            // Kiểm tra responsibleId 
+            if (!transaction.ResponsibleId.HasValue || transaction.ResponsibleId.Value != responsibleId)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Bạn không có quyền xác nhận giao hàng cho đơn hàng này.", 403));
+            }
+
             try
             {
                 //cap nhat trang thai cho don hang
