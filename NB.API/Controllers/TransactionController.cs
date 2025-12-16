@@ -275,7 +275,7 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch", 404));
                 }
-                if (transaction.Status != (int)TransactionStatus.draft || transaction.Status != (int)TransactionStatus.order)
+                if (transaction.Status != (int)TransactionStatus.order)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Transaction không hợp lệ", 400));
                 }
