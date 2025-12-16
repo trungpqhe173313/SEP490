@@ -275,7 +275,16 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch", 404));
                 }
-                if (transaction.Status != (int)TransactionStatus.order)
+                // Kiểm tra trạng thái hiện tại có hợp lệ không
+                var isValidStatus = transaction.Type switch
+                {
+                    "Export" => transaction.Status == (int)TransactionStatus.order,
+                    "Transfer" => transaction.Status == (int)TransactionStatus.inTransit,
+                    "Import" => transaction.Status == 1,
+                    _ => false
+                };
+
+                if (!isValidStatus)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Transaction không hợp lệ", 400));
                 }
