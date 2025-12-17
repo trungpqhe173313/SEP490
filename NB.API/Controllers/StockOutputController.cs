@@ -197,6 +197,7 @@ namespace NB.API.Controllers
                         transaction.TotalCost = detail.TotalCost ?? 0;
                         transaction.PriceListId = detail.PriceListId;
                         transaction.ResponsibleId = detail.ResponsibleId;
+                        transaction.Note = detail.Note;
 
                         // Lấy tên người chịu trách nhiệm
                         if (detail.ResponsibleId.HasValue)

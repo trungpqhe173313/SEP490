@@ -42,6 +42,7 @@ using NB.Service.TransactionDetailService.ViewModels;
 using NB.Service.WarehouseService.Dto;
 using NB.Service.FinancialTransactionService.Dto;
 using NB.Service.UserService;
+using NB.Service.UserService.Dto;
 
 namespace NB.Tests.Services
 {
@@ -223,6 +224,13 @@ namespace NB.Tests.Services
         public async Task CreateStockInputs_ReturnsOk_OnSuccess()
         {
             var controller = CreateController();
+            int responsibleId = 1;
+            
+            // Mock existing responsible user
+            _userMock
+                .Setup(u => u.GetByUserId(responsibleId))
+                .ReturnsAsync(new UserDto { UserId = responsibleId, FullName = "Responsible User" });
+
             var model = new StockBatchCreateWithProductsVM
             {
                 WarehouseId = 1,
@@ -245,7 +253,7 @@ namespace NB.Tests.Services
             _inventoryMock.Setup(i => i.GetByWarehouseAndProductId(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync((InventoryDto?)null);
             _inventoryMock.Setup(i => i.CreateAsync(It.IsAny<InventoryDto>())).Returns(Task.CompletedTask);
 
-            var result = await controller.CreateStockInputs(model);
+            var result = await controller.CreateStockInputs(responsibleId, model);
             var ok = Assert.IsType<OkObjectResult>(result);
             Assert.NotNull(ok.Value);
         }
@@ -327,11 +335,46 @@ namespace NB.Tests.Services
         public async Task SetStatusChecked_ReturnsOk_OnSuccess()
         {
             var controller = CreateController();
-            var transaction = new TransactionDto { TransactionId = 1, Type = "Import" };
-            _transactionMock.Setup(t => t.GetByTransactionId(1)).ReturnsAsync(transaction);
+            int transactionId = 1;
+            int responsibleId = 1;
+            var request = new UpdateToCheckedStatusRequest { ResponsibleId = responsibleId };
+
+            var transaction = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Type = "Import",
+                Status = 1, // Đang kiểm
+                WarehouseId = 1,
+                ResponsibleId = responsibleId
+            };
+            _transactionMock.Setup(t => t.GetByTransactionId(transactionId)).ReturnsAsync(transaction);
+            _transactionDetailMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(new List<TransactionDetailDto>
+                {
+                    new TransactionDetailDto { Id = 1, ProductId = 1, Quantity = 10 }
+                });
+            _warehouseMock
+                .Setup(w => w.GetById(transaction.WarehouseId))
+                .ReturnsAsync(new WarehouseDto { WarehouseId = transaction.WarehouseId, WarehouseName = "WH" });
+            _stockBatchMock
+                .Setup(s => s.GetByName(It.IsAny<string>()))
+                .ReturnsAsync((StockBatchDto?)null);
+            _stockBatchMock
+                .Setup(s => s.CreateAsync(It.IsAny<StockBatchDto>()))
+                .Returns(Task.CompletedTask);
+            _inventoryMock
+                .Setup(i => i.GetByWarehouseAndProductId(transaction.WarehouseId, It.IsAny<int>()))
+                .ReturnsAsync((InventoryDto?)null);
+            _inventoryMock
+                .Setup(i => i.CreateAsync(It.IsAny<InventoryDto>()))
+                .Returns(Task.CompletedTask);
+            _inventoryMock
+                .Setup(i => i.UpdateAsync(It.IsAny<InventoryDto>()))
+                .Returns(Task.CompletedTask);
             _transactionMock.Setup(t => t.UpdateAsync(It.IsAny<TransactionDto>())).Returns(Task.CompletedTask);
 
-            var result = await controller.SetStatusChecked(1);
+            var result = await controller.SetStatusChecked(transactionId, request);
             var ok = Assert.IsType<OkObjectResult>(result);
             Assert.NotNull(ok.Value);
         }
@@ -450,6 +493,12 @@ namespace NB.Tests.Services
         {
             // Arrange
             var controller = CreateController();
+            int responsibleId = 1;
+
+            // Mock existing responsible user để không fail ở bước check user
+            _userMock
+                .Setup(u => u.GetByUserId(responsibleId))
+                .ReturnsAsync(new UserDto { UserId = responsibleId, FullName = "Responsible User" });
             var model = new StockBatchCreateWithProductsVM
             {
                 WarehouseId = 999, // Non-existent warehouse
@@ -461,7 +510,7 @@ namespace NB.Tests.Services
             _warehouseMock.Setup(w => w.GetById(999)).ReturnsAsync((WarehouseDto?)null);
 
             // Act
-            var result = await controller.CreateStockInputs(model);
+            var result = await controller.CreateStockInputs(responsibleId, model);
 
             // Assert
             var badRequest = result.Should().BeOfType<NotFoundObjectResult>().Subject;
@@ -473,6 +522,11 @@ namespace NB.Tests.Services
         {
             // Arrange
             var controller = CreateController();
+            int responsibleId = 1;
+
+            _userMock
+                .Setup(u => u.GetByUserId(responsibleId))
+                .ReturnsAsync(new UserDto { UserId = responsibleId, FullName = "Responsible User" });
             var model = new StockBatchCreateWithProductsVM
             {
                 WarehouseId = 1,
@@ -485,7 +539,7 @@ namespace NB.Tests.Services
             _supplierMock.Setup(s => s.GetBySupplierId(999)).ReturnsAsync((SupplierDto?)null);
 
             // Act
-            var result = await controller.CreateStockInputs(model);
+            var result = await controller.CreateStockInputs(responsibleId, model);
 
             // Assert
             var badRequest = result.Should().BeOfType<NotFoundObjectResult>().Subject;
@@ -497,6 +551,11 @@ namespace NB.Tests.Services
         {
             // Arrange
             var controller = CreateController();
+            int responsibleId = 1;
+
+            _userMock
+                .Setup(u => u.GetByUserId(responsibleId))
+                .ReturnsAsync(new UserDto { UserId = responsibleId, FullName = "Responsible User" });
             var model = new StockBatchCreateWithProductsVM
             {
                 WarehouseId = 1,
@@ -509,7 +568,7 @@ namespace NB.Tests.Services
             _supplierMock.Setup(s => s.GetBySupplierId(1)).ReturnsAsync(new SupplierDto());
 
             // Act
-            var result = await controller.CreateStockInputs(model);
+            var result = await controller.CreateStockInputs(responsibleId, model);
 
             // Assert
             var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
@@ -521,6 +580,11 @@ namespace NB.Tests.Services
         {
             // Arrange
             var controller = CreateController();
+            int responsibleId = 1;
+
+            _userMock
+                .Setup(u => u.GetByUserId(responsibleId))
+                .ReturnsAsync(new UserDto { UserId = responsibleId, FullName = "Responsible User" });
             var model = new StockBatchCreateWithProductsVM
             {
                 WarehouseId = 1,
@@ -533,7 +597,7 @@ namespace NB.Tests.Services
             _supplierMock.Setup(s => s.GetBySupplierId(1)).ReturnsAsync(new SupplierDto());
 
             // Act
-            var result = await controller.CreateStockInputs(model);
+            var result = await controller.CreateStockInputs(responsibleId, model);
 
             // Assert
             var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
@@ -545,6 +609,11 @@ namespace NB.Tests.Services
         {
             // Arrange
             var controller = CreateController();
+            int responsibleId = 1;
+
+            _userMock
+                .Setup(u => u.GetByUserId(responsibleId))
+                .ReturnsAsync(new UserDto { UserId = responsibleId, FullName = "Responsible User" });
             var model = new StockBatchCreateWithProductsVM
             {
                 WarehouseId = 1,
@@ -560,7 +629,7 @@ namespace NB.Tests.Services
             _supplierMock.Setup(s => s.GetBySupplierId(1)).ReturnsAsync(new SupplierDto());
 
             // Act
-            var result = await controller.CreateStockInputs(model);
+            var result = await controller.CreateStockInputs(responsibleId, model);
 
             // Assert
             var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
@@ -572,6 +641,11 @@ namespace NB.Tests.Services
         {
             // Arrange
             var controller = CreateController();
+            int responsibleId = 1;
+
+            _userMock
+                .Setup(u => u.GetByUserId(responsibleId))
+                .ReturnsAsync(new UserDto { UserId = responsibleId, FullName = "Responsible User" });
             var model = new StockBatchCreateWithProductsVM
             {
                 WarehouseId = 1,
@@ -588,7 +662,7 @@ namespace NB.Tests.Services
             _productMock.Setup(p => p.GetById(999)).ReturnsAsync((ProductDto?)null);
 
             // Act
-            var result = await controller.CreateStockInputs(model);
+            var result = await controller.CreateStockInputs(responsibleId, model);
 
             // Assert
             var badRequest = result.Should().BeOfType<NotFoundObjectResult>().Subject;
@@ -600,6 +674,11 @@ namespace NB.Tests.Services
         {
             // Arrange
             var controller = CreateController();
+            int responsibleId = 1;
+
+            _userMock
+                .Setup(u => u.GetByUserId(responsibleId))
+                .ReturnsAsync(new UserDto { UserId = responsibleId, FullName = "Responsible User" });
             var model = new StockBatchCreateWithProductsVM
             {
                 WarehouseId = 1,
@@ -634,7 +713,7 @@ namespace NB.Tests.Services
             _inventoryMock.Setup(i => i.CreateAsync(It.IsAny<InventoryDto>())).Returns(Task.CompletedTask);
 
             // Act
-            var result = await controller.CreateStockInputs(model);
+            var result = await controller.CreateStockInputs(responsibleId, model);
 
             // Assert
             result.Should().BeOfType<OkObjectResult>();
@@ -1031,6 +1110,12 @@ namespace NB.Tests.Services
         {
             // Arrange
             var controller = CreateController();
+            int responsibleId = 1;
+
+            _userMock
+                .Setup(u => u.GetByUserId(responsibleId))
+                .ReturnsAsync(new UserDto { UserId = responsibleId, FullName = "Responsible User" });
+
             var model = new StockBatchCreateWithProductsVM
             {
                 WarehouseId = 1,
@@ -1047,7 +1132,7 @@ namespace NB.Tests.Services
             _productMock.Setup(p => p.GetById(1)).ReturnsAsync(new ProductDto { ProductId = 1, WeightPerUnit = 1 });
 
             // Act
-            var result = await controller.CreateStockInputs(model);
+            var result = await controller.CreateStockInputs(responsibleId, model);
 
             // Assert
             var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;

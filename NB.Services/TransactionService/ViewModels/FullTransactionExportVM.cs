@@ -22,6 +22,7 @@ namespace NB.Service.TransactionService.ViewModels
         public string? ResponsibleName { get; set; }
         public string? EmployeePhone { get; set; }
         public string? EmployeeEmail { get; set; }
+        public string? Note { get; set; }
         public CustomerOutputVM Customer { get; set; }
         public List<TransactionDetailOutputVM?> list { get; set; }
     }

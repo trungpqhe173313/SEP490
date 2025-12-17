@@ -2354,6 +2354,8 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Transaction không tồn tại
             int transactionId = 999;
+            int responsibleId = 1;
+            var request = new UpdateToTransferredStatusRequest { ResponsibleId = responsibleId };
 
             // Setup mock: Transaction không tồn tại
             _transactionServiceMock
@@ -2361,7 +2363,7 @@ namespace NB.Test.Controllers
                 .ReturnsAsync((Transaction?)null);
 
             // Act
-            var result = await _controller.UpdateToTransferredStatus(transactionId);
+            var result = await _controller.UpdateToTransferredStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy đơn chuyển kho"
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -2392,6 +2394,8 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Transaction không phải là Transfer type
             int transactionId = 1;
+            int responsibleId = 1;
+            var request = new UpdateToTransferredStatusRequest { ResponsibleId = responsibleId };
 
             // Setup mock: Transaction tồn tại nhưng Type != "Transfer"
             var transaction = new Transaction
@@ -2405,7 +2409,7 @@ namespace NB.Test.Controllers
                 .ReturnsAsync(transaction);
 
             // Act
-            var result = await _controller.UpdateToTransferredStatus(transactionId);
+            var result = await _controller.UpdateToTransferredStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: BadRequest với message "Đơn này không phải là đơn chuyển kho"
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -2436,6 +2440,8 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Transaction đã transferred
             int transactionId = 1;
+            int responsibleId = 1;
+            var request = new UpdateToTransferredStatusRequest { ResponsibleId = responsibleId };
 
             // Setup mock: Transaction đã transferred
             var transaction = new Transaction
@@ -2449,7 +2455,7 @@ namespace NB.Test.Controllers
                 .ReturnsAsync(transaction);
 
             // Act
-            var result = await _controller.UpdateToTransferredStatus(transactionId);
+            var result = await _controller.UpdateToTransferredStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: BadRequest với message "Đơn chuyển kho đã ở trạng thái hoàn thành"
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -2480,6 +2486,8 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Transaction đã cancel
             int transactionId = 1;
+            int responsibleId = 1;
+            var request = new UpdateToTransferredStatusRequest { ResponsibleId = responsibleId };
 
             // Setup mock: Transaction đã cancel
             var transaction = new Transaction
@@ -2493,7 +2501,7 @@ namespace NB.Test.Controllers
                 .ReturnsAsync(transaction);
 
             // Act
-            var result = await _controller.UpdateToTransferredStatus(transactionId);
+            var result = await _controller.UpdateToTransferredStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: BadRequest với message "Không thể cập nhật đơn chuyển kho đã hủy"
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -2524,6 +2532,8 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Transaction không ở trạng thái inTransit
             int transactionId = 1;
+            int responsibleId = 1;
+            var request = new UpdateToTransferredStatusRequest { ResponsibleId = responsibleId };
 
             // Setup mock: Transaction ở trạng thái draft (không phải inTransit)
             var transaction = new Transaction
@@ -2537,7 +2547,7 @@ namespace NB.Test.Controllers
                 .ReturnsAsync(transaction);
 
             // Act
-            var result = await _controller.UpdateToTransferredStatus(transactionId);
+            var result = await _controller.UpdateToTransferredStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: BadRequest với message "Chỉ có thể cập nhật trạng thái khi đơn đang ở trạng thái 'Đang Chuyển'"
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -2568,13 +2578,16 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Transaction hợp lệ
             int transactionId = 1;
+            int responsibleId = 1;
+            var request = new UpdateToTransferredStatusRequest { ResponsibleId = responsibleId };
 
             // Setup mock: Transaction tồn tại, Type = "Transfer", Status = inTransit
             var transaction = new Transaction
             {
                 TransactionId = 1,
                 Type = "Transfer",
-                Status = (int)TransactionStatus.inTransit
+                Status = (int)TransactionStatus.inTransit,
+                ResponsibleId = responsibleId
             };
             _transactionServiceMock
                 .Setup(s => s.GetByIdAsync(1))
@@ -2584,7 +2597,7 @@ namespace NB.Test.Controllers
                 .Returns(Task.CompletedTask);
 
             // Act
-            var result = await _controller.UpdateToTransferredStatus(transactionId);
+            var result = await _controller.UpdateToTransferredStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: Ok với message "Cập nhật đơn chuyển kho thành công"
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -2618,13 +2631,16 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Transaction hợp lệ nhưng service throw exception
             int transactionId = 1;
+            int responsibleId = 1;
+            var request = new UpdateToTransferredStatusRequest { ResponsibleId = responsibleId };
 
             // Setup mock: Transaction tồn tại và hợp lệ
             var transaction = new Transaction
             {
                 TransactionId = 1,
                 Type = "Transfer",
-                Status = (int)TransactionStatus.inTransit
+                Status = (int)TransactionStatus.inTransit,
+                ResponsibleId = responsibleId
             };
             _transactionServiceMock
                 .Setup(s => s.GetByIdAsync(1))
@@ -2636,7 +2652,7 @@ namespace NB.Test.Controllers
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
-            var result = await _controller.UpdateToTransferredStatus(transactionId);
+            var result = await _controller.UpdateToTransferredStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn chuyển kho"
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
