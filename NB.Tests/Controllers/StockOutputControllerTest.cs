@@ -613,6 +613,11 @@ namespace NB.Test.Controllers
                 .Setup(s => s.GetAll())
                 .Returns(users);
 
+            // Setup mock: GetQueryable để controller lấy thông tin người chịu trách nhiệm
+            _userServiceMock
+                .Setup(s => s.GetQueryable())
+                .Returns(users.AsQueryable());
+
             // Act
             var result = await _controller.GetData(search);
 
@@ -3389,13 +3394,14 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Transaction không tồn tại
             int transactionId = 999;
+            var request = new UpdateToDoneStatusRequest { ResponsibleId = 1 };
 
             _transactionServiceMock
                 .Setup(s => s.GetByTransactionId(transactionId))
                 .ReturnsAsync((TransactionDto?)null);
 
             // Act
-            var result = await _controller.UpdateToDoneStatus(transactionId);
+            var result = await _controller.UpdateToDoneStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy đơn hàng"
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -3426,11 +3432,14 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Transaction tồn tại
             int transactionId = 1;
+            int responsibleId = 1;
+            var request = new UpdateToDoneStatusRequest { ResponsibleId = responsibleId };
             var transactionDto = new TransactionDto
             {
                 TransactionId = transactionId,
                 Status = (int)TransactionStatus.delivering, // Phải là delivering để có thể update to done
-                WarehouseId = 1
+                WarehouseId = 1,
+                ResponsibleId = responsibleId
             };
 
             _transactionServiceMock
@@ -3442,7 +3451,7 @@ namespace NB.Test.Controllers
                 .Returns(Task.CompletedTask);
 
             // Act
-            var result = await _controller.UpdateToDoneStatus(transactionId);
+            var result = await _controller.UpdateToDoneStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: Ok với message "Cập nhật đơn hàng thành công"
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -3473,11 +3482,14 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Exception sẽ xảy ra
             int transactionId = 1;
+            int responsibleId = 1;
+            var request = new UpdateToDoneStatusRequest { ResponsibleId = responsibleId };
             var transactionDto = new TransactionDto
             {
                 TransactionId = transactionId,
                 Status = (int)TransactionStatus.delivering, // Phải là delivering để có thể update to done
-                WarehouseId = 1
+                WarehouseId = 1,
+                ResponsibleId = responsibleId
             };
 
             _transactionServiceMock
@@ -3490,7 +3502,7 @@ namespace NB.Test.Controllers
                 .ThrowsAsync(new Exception("DB error"));
 
             // Act
-            var result = await _controller.UpdateToDoneStatus(transactionId);
+            var result = await _controller.UpdateToDoneStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -3525,13 +3537,14 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Transaction không tồn tại
             int transactionId = 999;
+            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = 1 };
 
             _transactionServiceMock
                 .Setup(s => s.GetByTransactionId(transactionId))
                 .ReturnsAsync((TransactionDto?)null);
 
             // Act
-            var result = await _controller.UpdateToDeliveringStatus(transactionId);
+            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy đơn hàng"
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -3562,11 +3575,14 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Transaction tồn tại
             int transactionId = 1;
+            int responsibleId = 1;
+            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = responsibleId };
             var transactionDto = new TransactionDto
             {
                 TransactionId = transactionId,
                 Status = (int)TransactionStatus.order,
-                WarehouseId = 1
+                WarehouseId = 1,
+                ResponsibleId = responsibleId
             };
 
             _transactionServiceMock
@@ -3578,7 +3594,7 @@ namespace NB.Test.Controllers
                 .Returns(Task.CompletedTask);
 
             // Act
-            var result = await _controller.UpdateToDeliveringStatus(transactionId);
+            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: Ok với message "Cập nhật đơn hàng thành công"
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -3609,11 +3625,14 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Exception sẽ xảy ra
             int transactionId = 1;
+            int responsibleId = 1;
+            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = responsibleId };
             var transactionDto = new TransactionDto
             {
                 TransactionId = transactionId,
                 Status = (int)TransactionStatus.order,
-                WarehouseId = 1
+                WarehouseId = 1,
+                ResponsibleId = responsibleId
             };
 
             _transactionServiceMock
@@ -3626,7 +3645,7 @@ namespace NB.Test.Controllers
                 .ThrowsAsync(new Exception("DB error"));
 
             // Act
-            var result = await _controller.UpdateToDeliveringStatus(transactionId);
+            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
 
             // Assert - EXPECTED OUTPUT: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
