@@ -97,6 +97,32 @@ namespace NB.Service.StockBatchService
             return await query.ToListAsync();
         }
 
+        public async Task<StockBatchDto?> GetFirstByTransactionId(int transactionId)
+        {
+            var query = from sb in GetQueryable()
+                        where sb.TransactionId == transactionId
+                        select new StockBatchDto()
+                        {
+                            BatchId = sb.BatchId,
+                            WarehouseId = sb.WarehouseId,
+                            WarehouseName = sb.Warehouse.WarehouseName,
+                            ProductId = sb.ProductId,
+                            ProductName = sb.Product.ProductName,
+                            TransactionId = sb.TransactionId,
+                            ProductionFinishId = sb.ProductionFinishId,
+                            BatchCode = sb.BatchCode,
+                            ImportDate = sb.ImportDate,
+                            ExpireDate = sb.ExpireDate,
+                            QuantityIn = sb.QuantityIn,
+                            QuantityOut = sb.QuantityOut,
+                            Status = sb.Status,
+                            IsActive = sb.IsActive,
+                            Note = sb.Note,
+                            LastUpdated = sb.LastUpdated
+                        };
+            return await query.FirstOrDefaultAsync();
+        }
+
         public async Task<StockBatchDto?> GetByName(string name)
         {
             var normalizedSearchName = name.Replace(" ", "").ToLower();
