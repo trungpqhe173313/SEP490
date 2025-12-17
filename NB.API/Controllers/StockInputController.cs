@@ -912,6 +912,11 @@ namespace NB.API.Controllers
         [HttpPut("UpdateToCheckedStatus/{transactionId}")]
         public async Task<IActionResult> SetStatusChecked(int transactionId, [FromBody] UpdateToCheckedStatusRequest request)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
             try
             {
                 if (transactionId <= 0)
@@ -919,7 +924,7 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail("Transaction ID không hợp lệ", 400));
                 }
 
-                // Kiểm tra request 
+                // Kiểm tra request
                 if (request == null)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Request không hợp lệ", 400));
@@ -946,14 +951,20 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail("Giao dịch không phải là loại Import", 400));
                 }
 
-                // Kiểm tra responsibleId 
+                // Kiểm tra responsibleId
                 if (!transaction.ResponsibleId.HasValue || transaction.ResponsibleId.Value != responsibleId)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Bạn không có quyền xác nhận nhập kho cho đơn hàng này.", 403));
                 }
 
-                // Tự động tính ExpireDate = Now + 3 tháng
-                var expireDate = Now.AddMonths(3);
+                // Kiểm tra ngày hết hạn không phải là ngày quá khứ
+                if (request.ExpireDate.Date < Now.Date)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Ngày hết hạn không được là ngày quá khứ", 400));
+                }
+
+                // Sử dụng ExpireDate từ request
+                var expireDate = request.ExpireDate;
 
                 // Lấy TransactionDetails của transaction này
                 var transactionDetails = await _transactionDetailService.GetByTransactionId(transactionId);
