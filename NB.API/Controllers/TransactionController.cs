@@ -275,6 +275,19 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch", 404));
                 }
+                // Kiểm tra trạng thái hiện tại có hợp lệ không
+                var isValidStatus = transaction.Type switch
+                {
+                    "Export" => transaction.Status == (int)TransactionStatus.order,
+                    "Transfer" => transaction.Status == (int)TransactionStatus.inTransit,
+                    "Import" => transaction.Status == 1,
+                    _ => false
+                };
+
+                if (!isValidStatus)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Transaction không hợp lệ", 400));
+                }
 
                 // Kiểm tra nếu ResponsibleId có giá trị thì phải kiểm tra user tồn tại
                 if (request.ResponsibleId.HasValue && request.ResponsibleId.Value > 0)
