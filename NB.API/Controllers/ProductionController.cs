@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NB.API.Utils;
 using NB.Model.Entities;
 using NB.Model.Enums;
+using NB.Repository.Common;
 using NB.Service.Core.Mapper;
 using NB.Service.Dto;
 using NB.Service.FinishproductService;
@@ -39,6 +40,7 @@ namespace NB.API.Controllers
         private readonly IInventoryService _inventoryService;
         private readonly IStockBatchService _stockBatchService;
         private readonly IWarehouseService _warehouseService;
+        private readonly IRepository<IoTdevice> _iotDeviceRepository;
 
         public ProductionController(
             IProductionOrderService productionOrderService,
@@ -48,6 +50,7 @@ namespace NB.API.Controllers
             IInventoryService inventoryService,
             IStockBatchService stockBatchService,
             IWarehouseService warehouseService,
+            IRepository<IoTdevice> iotDeviceRepository,
             IMapper mapper,
             ILogger<ProductionController> logger,
             ICloudinaryService cloudinaryService)
@@ -59,6 +62,7 @@ namespace NB.API.Controllers
             _inventoryService = inventoryService;
             _stockBatchService = stockBatchService;
             _warehouseService = warehouseService;
+            _iotDeviceRepository = iotDeviceRepository;
             _mapper = mapper;
             _logger = logger;
             _cloudinaryService = cloudinaryService;
@@ -185,13 +189,19 @@ namespace NB.API.Controllers
         /// <summary>
         /// Chuyển đơn sản xuất sang trạng thái Processing
         /// Trừ số lượng nguyên liệu từ stockBatch và inventory ở kho nguyên liệu (warehouseId = 2)
+        /// Gắn deviceCode vào đơn sản xuất
         /// </summary>
         [HttpPut("ChangeToProcessing/{productionOrderId}")]
-        public async Task<IActionResult> ChangeToProcessing(int productionOrderId)
+        public async Task<IActionResult> ChangeToProcessing(int productionOrderId, [FromBody] ChangeToProcessingRequest request)
         {
             if (productionOrderId <= 0)
             {
                 return BadRequest(ApiResponse<string>.Fail("Id đơn sản xuất không hợp lệ", 400));
+            }
+
+            if (request == null || string.IsNullOrWhiteSpace(request.DeviceCode))
+            {
+                return BadRequest(ApiResponse<string>.Fail("DeviceCode là bắt buộc", 400));
             }
 
             try
@@ -207,6 +217,17 @@ namespace NB.API.Controllers
                 if (productionOrder.Status != (int)ProductionOrderStatus.Pending)
                 {
                     return BadRequest(ApiResponse<string>.Fail("Chỉ có thể chuyển đơn từ trạng thái Pending sang Processing", 400));
+                }
+
+                // Kiểm tra xem đã có đơn nào đang Processing chưa (chỉ cho phép 1 đơn Processing tại một thời điểm)
+                var existingProcessingOrder = await _productionOrderService.GetQueryable()
+                    .Where(po => po.Status == (int)ProductionOrderStatus.Processing && po.Id != productionOrderId)
+                    .FirstOrDefaultAsync();
+
+                if (existingProcessingOrder != null)
+                {
+                    return BadRequest(ApiResponse<string>.Fail(
+                        $"Đã có đơn sản xuất #{existingProcessingOrder.Id} đang ở trạng thái Processing. Vui lòng hoàn thành đơn đó trước khi bắt đầu đơn mới.", 409));
                 }
 
                 // Lấy danh sách nguyên liệu của đơn sản xuất
@@ -320,6 +341,34 @@ namespace NB.API.Controllers
                 productionOrder.Status = (int)ProductionOrderStatus.Processing;
                 productionOrder.StartDate = DateTime.Now;
                 await _productionOrderService.UpdateAsync(productionOrder);
+
+                // Kiểm tra và gắn productionId cho thiết bị IoT được chỉ định
+                var iotDevice = await _iotDeviceRepository.GetQueryable()
+                    .FirstOrDefaultAsync(d => d.DeviceCode == request.DeviceCode);
+
+                if (iotDevice == null)
+                {
+                    // Rollback trạng thái nếu không tìm thấy thiết bị
+                    productionOrder.Status = (int)ProductionOrderStatus.Pending;
+                    productionOrder.StartDate = null;
+                    await _productionOrderService.UpdateAsync(productionOrder);
+                    return BadRequest(ApiResponse<string>.Fail($"Không tìm thấy thiết bị với mã '{request.DeviceCode}'", 404));
+                }
+
+                if (iotDevice.CurrentProductionId != null)
+                {
+                    // Rollback trạng thái nếu thiết bị đang bận
+                    productionOrder.Status = (int)ProductionOrderStatus.Pending;
+                    productionOrder.StartDate = null;
+                    await _productionOrderService.UpdateAsync(productionOrder);
+                    return BadRequest(ApiResponse<string>.Fail(
+                        $"Thiết bị '{request.DeviceCode}' đang được sử dụng cho đơn sản xuất #{iotDevice.CurrentProductionId}", 409));
+                }
+
+                // Gắn productionId vào thiết bị IoT
+                iotDevice.CurrentProductionId = productionOrderId;
+                _iotDeviceRepository.Update(iotDevice);
+                await _iotDeviceRepository.SaveAsync();
 
                 return Ok(ApiResponse<string>.Ok("Đơn sản xuất đang được xử lý"));
             }
@@ -462,6 +511,22 @@ namespace NB.API.Controllers
                 productionOrder.Status = (int)ProductionOrderStatus.Finished;
                 productionOrder.EndDate = DateTime.Now;
                 await _productionOrderService.UpdateAsync(productionOrder);
+
+                // Clear CurrentProductionId khỏi các thiết bị IoT đang gắn với đơn này
+                var assignedIotDevices = await _iotDeviceRepository.GetQueryable()
+                    .Where(d => d.CurrentProductionId == productionOrderId)
+                    .ToListAsync();
+
+                foreach (var device in assignedIotDevices)
+                {
+                    device.CurrentProductionId = null;
+                    _iotDeviceRepository.Update(device);
+                }
+
+                if (assignedIotDevices.Any())
+                {
+                    await _iotDeviceRepository.SaveAsync();
+                }
 
                 return Ok(ApiResponse<string>.Ok("Đơn sản xuất đã hoàn thành"));
             }

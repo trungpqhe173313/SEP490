@@ -13,21 +13,15 @@ public partial class IoTdevice
 
     public int WarehouseId { get; set; }
 
-    public int? ProductionOrderId { get; set; }
+    public int? CurrentProductionId { get; set; }
 
-    public decimal RemainingStock { get; set; }
+    public bool? IsOnline { get; set; }
 
-    public bool IsActive { get; set; }
+    public DateTime? LastHeartbeat { get; set; }
 
-    public DateTime? LastSync { get; set; }
+    public DateTime? CreatedAt { get; set; }
 
-    public string? Ipaddress { get; set; }
+    public virtual ProductionOrder? CurrentProduction { get; set; }
 
-    public DateTime CreatedAt { get; set; }
-
-    public virtual ICollection<ProductionLog> ProductionLogs { get; set; } = new List<ProductionLog>();
-
-    public virtual ProductionOrder? ProductionOrder { get; set; }
-
-    public virtual Warehouse Warehouse { get; set; } = null!;
+    public virtual ICollection<ProductionWeightLog> ProductionWeightLogs { get; set; } = new List<ProductionWeightLog>();
 }
