@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NB.Service.ProductionWeightLogService;
 using System.Threading.Tasks;
@@ -6,6 +7,7 @@ namespace NB.API.Controllers
 {
     [Route("api/production-weight-logs")]
     [ApiController]
+    [Authorize]
     public class ProductionWeightLogController : ControllerBase
     {
         private readonly IProductionWeightLogService _productionWeightLogService;
