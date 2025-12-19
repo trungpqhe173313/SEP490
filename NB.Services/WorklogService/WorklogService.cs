@@ -12,16 +12,42 @@ namespace NB.Service.WorklogService
         private readonly IRepository<Job> _jobRepository;
         private readonly IRepository<User> _userRepository;
         private readonly IRepository<UserRole> _userRoleRepository;
+        private readonly IRepository<Payroll> _payrollRepository;
 
         public WorklogService(
             IRepository<Worklog> worklogRepository,
             IRepository<Job> jobRepository,
             IRepository<User> userRepository,
-            IRepository<UserRole> userRoleRepository) : base(worklogRepository)
+            IRepository<UserRole> userRoleRepository,
+            IRepository<Payroll> payrollRepository) : base(worklogRepository)
         {
             _jobRepository = jobRepository;
             _userRepository = userRepository;
             _userRoleRepository = userRoleRepository;
+            _payrollRepository = payrollRepository;
+        }
+
+        /// <summary>
+        /// Kiểm tra xem đã tồn tại bảng lương cho nhân viên trong tháng/năm cụ thể
+        /// Chỉ so sánh tháng và năm, bỏ qua ngày cụ thể
+        /// </summary>
+        private async Task<bool> HasPayrollForDateAsync(int employeeId, DateTime workDate)
+        {
+            var month = workDate.Month;
+            var year = workDate.Year;
+
+            // Tạo ngày đầu và cuối của tháng để kiểm tra overlap
+            var firstDayOfMonth = new DateOnly(year, month, 1);
+            var lastDayOfMonth = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
+
+            // Kiểm tra xem có payroll nào overlap với tháng này không
+            // Payroll overlap nếu: StartDate <= lastDay AND EndDate >= firstDay
+            var payrollExists = await _payrollRepository.GetQueryable()
+                .AnyAsync(p => p.EmployeeId == employeeId
+                    && p.StartDate <= lastDayOfMonth
+                    && p.EndDate >= firstDayOfMonth);
+
+            return payrollExists;
         }
 
         public async Task<WorklogResponseVM> CreateWorklogAsync(int employeeId, int jobId, decimal? quantity, DateTime? workDate, string? note)
@@ -129,6 +155,12 @@ namespace NB.Service.WorklogService
                 throw new Exception("Nhân viên không tồn tại");
             }
 
+            // Kiểm tra employee có active không
+            if (employee.IsActive != true)
+            {
+                throw new Exception("Nhân viên không còn hoạt động");
+            }
+
             // Kiểm tra user có role Employee (RoleId = 3) không
             var hasEmployeeRole = await _userRoleRepository.GetQueryable()
                 .AnyAsync(ur => ur.UserId == dto.EmployeeId && ur.RoleId == 3);
@@ -138,6 +170,14 @@ namespace NB.Service.WorklogService
             }
 
             var workDateValue = dto.WorkDate ?? DateTime.Now;
+
+            // Kiểm tra đã có bảng lương cho nhân viên trong ngày này chưa
+            var hasPayroll = await HasPayrollForDateAsync(dto.EmployeeId, workDateValue);
+            if (hasPayroll)
+            {
+                throw new Exception("Không thể tạo worklog vì đã có bảng lương cho nhân viên trong khoảng thời gian này");
+            }
+
             var startOfDay = workDateValue.Date;
             var endOfDay = startOfDay.AddDays(1);
 
@@ -359,6 +399,27 @@ namespace NB.Service.WorklogService
 
         public async Task<WorklogResponseVM> UpdateWorklogAsync(UpdateWorklogDto dto)
         {
+            // Kiểm tra employee tồn tại và active
+            var employee = await _userRepository.GetQueryable()
+                .FirstOrDefaultAsync(u => u.UserId == dto.EmployeeId);
+            if (employee == null)
+            {
+                throw new Exception("Nhân viên không tồn tại");
+            }
+
+            // Kiểm tra employee có active không
+            if (employee.IsActive != true)
+            {
+                throw new Exception("Nhân viên không còn hoạt động");
+            }
+
+            // Kiểm tra đã có bảng lương cho nhân viên trong ngày này chưa
+            var hasPayroll = await HasPayrollForDateAsync(dto.EmployeeId, dto.WorkDate);
+            if (hasPayroll)
+            {
+                throw new Exception("Không thể cập nhật worklog vì đã có bảng lương cho nhân viên trong khoảng thời gian này");
+            }
+
             var startOfDay = dto.WorkDate.Date;
             var endOfDay = startOfDay.AddDays(1);
 
@@ -432,12 +493,25 @@ namespace NB.Service.WorklogService
                 throw new Exception("Nhân viên không tồn tại");
             }
 
+            // Kiểm tra employee có active không
+            if (employee.IsActive != true)
+            {
+                throw new Exception("Nhân viên không còn hoạt động");
+            }
+
             // Kiểm tra user có role Employee (RoleId = 3) không
             var hasEmployeeRole = await _userRoleRepository.GetQueryable()
                 .AnyAsync(ur => ur.UserId == dto.EmployeeId && ur.RoleId == 3);
             if (!hasEmployeeRole)
             {
                 throw new Exception("User này không phải là nhân viên (Employee)");
+            }
+
+            // Kiểm tra đã có bảng lương cho nhân viên trong ngày này chưa
+            var hasPayroll = await HasPayrollForDateAsync(dto.EmployeeId, dto.WorkDate);
+            if (hasPayroll)
+            {
+                throw new Exception("Không thể xác nhận worklog vì đã có bảng lương cho nhân viên trong khoảng thời gian này");
             }
 
             var startOfDay = dto.WorkDate.Date;
@@ -493,12 +567,25 @@ namespace NB.Service.WorklogService
                 throw new Exception("Nhân viên không tồn tại");
             }
 
+            // Kiểm tra employee có active không
+            if (employee.IsActive != true)
+            {
+                throw new Exception("Nhân viên không còn hoạt động");
+            }
+
             // Kiểm tra user có role Employee (RoleId = 3) không
             var hasEmployeeRole = await _userRoleRepository.GetQueryable()
                 .AnyAsync(ur => ur.UserId == dto.EmployeeId && ur.RoleId == 3);
             if (!hasEmployeeRole)
             {
                 throw new Exception("User này không phải là nhân viên (Employee)");
+            }
+
+            // Kiểm tra đã có bảng lương cho nhân viên trong tháng này chưa
+            var hasPayroll = await HasPayrollForDateAsync(dto.EmployeeId, dto.WorkDate);
+            if (hasPayroll)
+            {
+                throw new Exception("Không thể cập nhật worklog vì đã có bảng lương cho nhân viên trong khoảng thời gian này");
             }
 
             var startOfDay = dto.WorkDate.Date;

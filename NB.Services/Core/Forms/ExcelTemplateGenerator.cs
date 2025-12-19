@@ -388,7 +388,7 @@ namespace NB.Service.Core.Forms
                 {
                     "Tên nhà cung cấp (Bắt buộc)",
                     "Tên danh mục (Bắt buộc)",
-                    "Mã sản phẩm (Bắt buộc, không trùng)",
+                    "Mã sản phẩm (Tùy chọn, tự động tạo nếu để trống)",
                     "Tên sản phẩm (Bắt buộc, không trùng)",
                     "Trọng lượng/đơn vị (Bắt buộc, số >= 0)",
                     "Giá bán (Bắt buộc, số >= 0)",
@@ -489,13 +489,13 @@ namespace NB.Service.Core.Forms
                 instructionSheet.Cells["A8"].Style.Font.Bold = true;
                 instructionSheet.Cells["A9"].Value = "   - SupplierName: Tên nhà cung cấp (phải tồn tại trong hệ thống)";
                 instructionSheet.Cells["A10"].Value = "   - CategoryName: Tên danh mục (phải tồn tại trong hệ thống)";
-                instructionSheet.Cells["A11"].Value = "   - ProductCode: Mã sản phẩm (không được trùng với sản phẩm đã có)";
-                instructionSheet.Cells["A12"].Value = "   - ProductName: Tên sản phẩm (không được trùng với sản phẩm đã có)";
-                instructionSheet.Cells["A13"].Value = "   - WeightPerUnit: Trọng lượng trên đơn vị (số >= 0, VD: 1.5, 2.0)";
-                instructionSheet.Cells["A14"].Value = "   - SellingPrice: Giá bán (số >= 0, VD: 50000, 75000)";
+                instructionSheet.Cells["A11"].Value = "   - ProductName: Tên sản phẩm (không được trùng với sản phẩm đã có)";
+                instructionSheet.Cells["A12"].Value = "   - WeightPerUnit: Trọng lượng trên đơn vị (số >= 0, VD: 1.5, 2.0)";
+                instructionSheet.Cells["A13"].Value = "   - SellingPrice: Giá bán (số >= 0, VD: 50000, 75000)";
 
-                instructionSheet.Cells["A16"].Value = "3. Các trường tùy chọn:";
-                instructionSheet.Cells["A16"].Style.Font.Bold = true;
+                instructionSheet.Cells["A15"].Value = "3. Các trường tùy chọn:";
+                instructionSheet.Cells["A15"].Style.Font.Bold = true;
+                instructionSheet.Cells["A16"].Value = "   - ProductCode: Mã sản phẩm (có thể để trống, hệ thống sẽ tự động tạo mã)";
                 instructionSheet.Cells["A17"].Value = "   - Description: Mô tả sản phẩm (có thể để trống)";
 
                 instructionSheet.Cells["A19"].Value = "4. Các trường tự động:";
@@ -515,13 +515,14 @@ namespace NB.Service.Core.Forms
                 instructionSheet.Cells["A28"].Value = "   - Tất cả sản phẩm phải hợp lệ mới được import";
                 instructionSheet.Cells["A29"].Value = "   - Nếu có 1 sản phẩm lỗi, toàn bộ file sẽ bị hủy (rollback)";
                 instructionSheet.Cells["A30"].Value = "   - Tên nhà cung cấp và danh mục phải chính xác (có phân biệt hoa thường)";
-                instructionSheet.Cells["A31"].Value = "   - ProductCode và ProductName không được trùng với sản phẩm đã có";
-                instructionSheet.Cells["A32"].Value = "   - Các dòng màu vàng là dữ liệu mẫu, có thể xóa và thay bằng dữ liệu thực";
-                instructionSheet.Cells["A33"].Value = "   - File chỉ chấp nhận định dạng .xlsx hoặc .xls";
-                instructionSheet.Cells["A34"].Value = "   - Kích thước file tối đa: 10MB";
+                instructionSheet.Cells["A31"].Value = "   - ProductCode nếu nhập vào phải không trùng với sản phẩm đã có";
+                instructionSheet.Cells["A32"].Value = "   - ProductName không được trùng với sản phẩm đã có";
+                instructionSheet.Cells["A33"].Value = "   - Các dòng màu vàng là dữ liệu mẫu, có thể xóa và thay bằng dữ liệu thực";
+                instructionSheet.Cells["A34"].Value = "   - File chỉ chấp nhận định dạng .xlsx hoặc .xls";
+                instructionSheet.Cells["A35"].Value = "   - Kích thước file tối đa: 10MB";
 
                 instructionSheet.Column(1).Width = 90;
-                instructionSheet.Cells["A1:A34"].Style.WrapText = true;
+                instructionSheet.Cells["A1:A35"].Style.WrapText = true;
 
                 package.Save();
             }
