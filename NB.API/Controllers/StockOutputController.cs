@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NB.Model.Entities;
 using NB.Model.Enums;
@@ -36,6 +37,7 @@ using static System.DateTime;
 namespace NB.API.Controllers
 {
     [Route("api/stockoutput")]
+    [Authorize(Roles = "Manager,Employee")]
     public class StockOutputController : Controller
     {
         private readonly ITransactionService _transactionService;

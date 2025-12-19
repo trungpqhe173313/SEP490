@@ -119,6 +119,15 @@ namespace NB.Service.AdminService
             if (dto.IsActive.HasValue)
                 user.IsActive = dto.IsActive.Value;
 
+            // Cập nhật mật khẩu nếu có
+            if (!string.IsNullOrWhiteSpace(dto.Password))
+            {
+                if (dto.Password.Length < 6)
+                    return ApiResponse<bool>.Fail("Mật khẩu phải có ít nhất 6 ký tự", 400);
+                
+                user.Password = PasswordHasher.HashPassword(dto.Password);
+            }
+
             // Cập nhật roles
             if (dto.Roles != null && dto.Roles.Count > 0)
             {

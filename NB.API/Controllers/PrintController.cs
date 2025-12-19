@@ -143,62 +143,67 @@ namespace NB.API.Controllers
                     });
                 }
 
-                // Tải QR Code thanh toán từ VietQR API
+                // Tải QR Code thanh toán từ VietQR API (chỉ cho đơn Export)
                 byte[]? qrCodeBytes = null;
-                try
+
+                // Chỉ tạo QR code nếu là đơn Export
+                if (transaction.Type?.Equals("Export", StringComparison.OrdinalIgnoreCase) == true)
                 {
-                    // Thông tin tài khoản Vietcombank
-                    var bankAccount = "1077909999"; // STK Vietcombank
-                    var bankCode = "970436"; // Mã ngân hàng Vietcombank
-                    var accountName = "CONG TY TNHH TM DV QUANG THANH";
-                    var amount = ((int)(transaction.TotalCost ?? 0)).ToString(); // Số tiền thanh toán
-                    var transactionCode = transaction.TransactionCode ?? transaction.TransactionId.ToString();
-                    var description = $"Thanh toan {transactionCode}";
-
-                    // VietQR API URL - Tải QR image trực tiếp từ VietQR
-                    // Format: https://img.vietqr.io/image/{BANK_CODE}-{ACCOUNT_NUMBER}-compact2.png?amount={AMOUNT}&addInfo={DESCRIPTION}&accountName={ACCOUNT_NAME}
-                    var vietQRUrl = $"https://img.vietqr.io/image/{bankCode}-{bankAccount}-compact2.png?amount={amount}&addInfo={Uri.EscapeDataString(description)}&accountName={Uri.EscapeDataString(accountName)}";
-
-                    // Tải QR code image từ VietQR API
-                    using (var httpClient = new HttpClient())
+                    try
                     {
-                        httpClient.Timeout = TimeSpan.FromSeconds(10);
-                        var response = await httpClient.GetAsync(vietQRUrl);
+                        // Thông tin tài khoản Vietcombank
+                        var bankAccount = "1077909999"; // STK Vietcombank
+                        var bankCode = "970436"; // Mã ngân hàng Vietcombank
+                        var accountName = "CONG TY TNHH TM DV QUANG THANH";
+                        var amount = ((int)(transaction.TotalCost ?? 0)).ToString(); // Số tiền thanh toán
+                        var transactionCode = transaction.TransactionCode ?? transaction.TransactionId.ToString();
+                        var description = $"Thanh toan {transactionCode}";
 
-                        if (response.IsSuccessStatusCode)
-                        {
-                            qrCodeBytes = await response.Content.ReadAsByteArrayAsync();
-                            _logger.LogInformation($"Downloaded VietQR image successfully for transaction {transactionId}");
-                        }
-                        else
-                        {
-                            _logger.LogWarning($"Failed to download VietQR image: {response.StatusCode}");
-                        }
-                    }
+                        // VietQR API URL - Tải QR image trực tiếp từ VietQR
+                        // Format: https://img.vietqr.io/image/{BANK_CODE}-{ACCOUNT_NUMBER}-compact2.png?amount={AMOUNT}&addInfo={DESCRIPTION}&accountName={ACCOUNT_NAME}
+                        var vietQRUrl = $"https://img.vietqr.io/image/{bankCode}-{bankAccount}-compact2.png?amount={amount}&addInfo={Uri.EscapeDataString(description)}&accountName={Uri.EscapeDataString(accountName)}";
 
-                    // Upload QR code lên Cloudinary
-                    if (qrCodeBytes != null && qrCodeBytes.Length > 0)
-                    {
-                        var qrFileName = $"QR_Transaction_{transactionCode}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
-                        var qrUrl = await _cloudinaryService.UploadImageFromBytesAsync(qrCodeBytes, qrFileName, "transactions/qrcodes");
-
-                        if (!string.IsNullOrEmpty(qrUrl))
+                        // Tải QR code image từ VietQR API
+                        using (var httpClient = new HttpClient())
                         {
-                            // Lưu URL QR code vào Transaction
-                            var transactionEntity = await _transactionService.GetByIdAsync(transactionId);
-                            if (transactionEntity != null)
+                            httpClient.Timeout = TimeSpan.FromSeconds(10);
+                            var response = await httpClient.GetAsync(vietQRUrl);
+
+                            if (response.IsSuccessStatusCode)
                             {
-                                transactionEntity.TransactionQr = qrUrl;
-                                await _transactionService.UpdateAsync(transactionEntity);
-                                _logger.LogInformation($"QR code uploaded and saved for transaction {transactionId}: {qrUrl}");
+                                qrCodeBytes = await response.Content.ReadAsByteArrayAsync();
+                                _logger.LogInformation($"Downloaded VietQR image successfully for transaction {transactionId}");
+                            }
+                            else
+                            {
+                                _logger.LogWarning($"Failed to download VietQR image: {response.StatusCode}");
+                            }
+                        }
+
+                        // Upload QR code lên Cloudinary
+                        if (qrCodeBytes != null && qrCodeBytes.Length > 0)
+                        {
+                            var qrFileName = $"QR_Transaction_{transactionCode}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+                            var qrUrl = await _cloudinaryService.UploadImageFromBytesAsync(qrCodeBytes, qrFileName, "transactions/qrcodes");
+
+                            if (!string.IsNullOrEmpty(qrUrl))
+                            {
+                                // Lưu URL QR code vào Transaction
+                                var transactionEntity = await _transactionService.GetByIdAsync(transactionId);
+                                if (transactionEntity != null)
+                                {
+                                    transactionEntity.TransactionQr = qrUrl;
+                                    await _transactionService.UpdateAsync(transactionEntity);
+                                    _logger.LogInformation($"QR code uploaded and saved for transaction {transactionId}: {qrUrl}");
+                                }
                             }
                         }
                     }
-                }
-                catch (Exception qrEx)
-                {
-                    _logger.LogWarning(qrEx, $"Không thể tạo QR code cho giao dịch {transactionId}");
-                    // Tiếp tục tạo PDF ngay cả khi QR code fail
+                    catch (Exception qrEx)
+                    {
+                        _logger.LogWarning(qrEx, $"Không thể tạo QR code cho giao dịch {transactionId}");
+                        // Tiếp tục tạo PDF ngay cả khi QR code fail
+                    }
                 }
 
                 // Tạo PDF với QR code

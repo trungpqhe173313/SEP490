@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using NB.Model.Entities;
 using NB.Service.Common;
 using NB.Service.Core.Mapper;
@@ -10,6 +11,7 @@ using NB.Service.SupplierService.ViewModels;
 namespace NB.API.Controllers
 {
     [Route("api/suppliers")]
+    //[Authorize(Roles = "Manager")]
     public class SupplierController : Controller
     {
         private readonly ISupplierService _supplierService;
@@ -27,6 +29,7 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("GetData")]
+        [Authorize(Roles = "Manager,Customer")]
         public async Task<IActionResult> GetData([FromBody] SupplierSearch search)
         {
             try
