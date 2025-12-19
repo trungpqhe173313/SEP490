@@ -296,6 +296,7 @@ namespace NB.Service.AccountService
                 Username = user.Username,
                 FullName = user.FullName,
                 Email = user.Email,
+                Image = user.Image,
             };
 
             var userRefreshToken = await _userService.GetByIdAsync(user.UserId);
