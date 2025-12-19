@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NB.Service.IoTDeviceService;
 using System.Threading.Tasks;
@@ -6,6 +7,7 @@ namespace NB.API.Controllers
 {
     [Route("api/iot-devices")]
     [ApiController]
+    [Authorize]
     public class IoTDeviceController : ControllerBase
     {
         private readonly IIoTDeviceService _iotDeviceService;

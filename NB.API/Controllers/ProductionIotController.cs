@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NB.Service.ProductionIotService.Dto;
 using NB.Services.ProductionIotService;
@@ -8,6 +9,7 @@ namespace NB.API.Controllers
 {
     [Route("api/iot")]
     [ApiController]
+    [Authorize]
     public class ProductionIotController : ControllerBase
     {
         private readonly IProductionIotService _productionIotService;
