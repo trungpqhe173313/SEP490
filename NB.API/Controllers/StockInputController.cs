@@ -100,7 +100,7 @@ namespace NB.API.Controllers
 
                 var result = await _transactionService.GetData(search);
                 
-                // Lấy danh sách ResponsibleId để query user một lần (tối ưu performance)
+                // Lấy danh sách ResponsibleId 
                 var listResponsibleId = result.Items
                     .Where(item => item.ResponsibleId.HasValue && item.ResponsibleId.Value > 0)
                     .Select(item => item.ResponsibleId!.Value)
@@ -126,6 +126,10 @@ namespace NB.API.Controllers
                 List<TransactionOutputVM> list = new List<TransactionOutputVM>();
                 foreach (var item in result.Items)
                 {
+                    // Lấy ExpireDate từ StockBatch đầu tiên của Transaction
+                    var firstStockBatch = await _stockBatchService.GetFirstByTransactionId(item.TransactionId);
+                    DateTime? expireDate = firstStockBatch?.ExpireDate;
+
                     list.Add(new TransactionOutputVM
                     {
                         TransactionId = item.TransactionId,
@@ -143,7 +147,8 @@ namespace NB.API.Controllers
                             : null,
                         ResponsiblePhone = item.ResponsibleId.HasValue && responsibleDict.ContainsKey(item.ResponsibleId.Value)
                             ? responsibleDict[item.ResponsibleId.Value].phone
-                            : null
+                            : null,
+                        ExpireDate = expireDate
                     });
                 }
 
@@ -193,7 +198,7 @@ namespace NB.API.Controllers
                             transaction.EmployeePhone = responsible?.Phone;
                             transaction.EmployeeEmail = responsible?.Email;
                         }
-                        
+
                         int id = detail.SupplierId ?? 0;
                         var supplier = await _supplierService.GetBySupplierId(id);
                         if(supplier != null)
@@ -248,7 +253,10 @@ namespace NB.API.Controllers
                     item.ProductName = product != null ? product.ProductName : "N/A";
                     item.Code = product != null ? product.ProductCode : "N/A";
                 }
-                
+
+                // Lấy ExpireDate từ StockBatch đầu tiên của Transaction
+                var firstStockBatch = await _stockBatchService.GetFirstByTransactionId(Id);
+                DateTime? expireDate = firstStockBatch?.ExpireDate;
 
                 var listResult = transactionDetails.Select(item => new TransactionDetailOutputVM
                 {
@@ -259,7 +267,8 @@ namespace NB.API.Controllers
                     UnitPrice = item.UnitPrice,
                     WeightPerUnit = item.WeightPerUnit,
                     Quantity = item.Quantity,
-                    Note = targetTransaction.Note
+                    Note = targetTransaction.Note,
+                    ExpireDate = expireDate
                 }).ToList();
 
                 transaction.list = listResult;
