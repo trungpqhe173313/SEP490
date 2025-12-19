@@ -14,6 +14,7 @@ namespace NB.Service.StockBatchService
         Task<PagedList<StockBatchDto?>> GetData(StockBatchSearch search);
 
         Task<List<StockBatchDto>> GetByTransactionId(int id);
+        Task<StockBatchDto?> GetFirstByTransactionId(int transactionId);
         //Duc Anh
         Task<List<StockBatchDto>> GetByProductIdForOrder(List<int> ids);
         Task<List<StockBatchDto>> GetByProductId(int? ids);
