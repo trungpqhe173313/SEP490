@@ -12,5 +12,6 @@ namespace NB.Service.AdminService.Dto
         public bool? IsActive { get; set; }
         public string? FullName { get; set; }
         // Thêm các trường khác nếu cần thiết
+        public string? Password { get; set; }
     }
 }

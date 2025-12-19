@@ -65,7 +65,7 @@ namespace NB.API.Controllers
         }
 
         /// <summary>
-        /// Cập nhật thông tin tài khoản người dùng (bao gồm role, tên, email, trạng thái, ...)
+        /// Cập nhật thông tin tài khoản người dùng (bao gồm role, tên, email, trạng thái, mật khẩu, ...)
         /// </summary>
         [HttpPut("accounts/{id}")]
         public async Task<IActionResult> UpdateAccount([FromRoute] int id, [FromBody] UpdateAccountDto dto)

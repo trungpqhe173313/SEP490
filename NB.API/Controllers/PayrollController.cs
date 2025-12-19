@@ -11,11 +11,12 @@ namespace NB.API.Controllers
 {
     [Route("api/payroll")]
     [ApiController]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Manager")]
     public class PayrollController : ControllerBase
     {
         private readonly IPayrollService _payrollService;
         private readonly ILogger<PayrollController> _logger;
+
 
         public PayrollController(
             IPayrollService payrollService,
