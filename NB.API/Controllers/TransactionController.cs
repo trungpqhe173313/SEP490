@@ -14,7 +14,7 @@ namespace NB.API.Controllers
 {
     [Route("api/transaction")]
     [ApiController]
-    //[Authorize]
+    [Authorize]
     public class TransactionController : ControllerBase
     {
         private readonly ITransactionService _transactionService;
@@ -255,6 +255,7 @@ namespace NB.API.Controllers
         /// - Kiểm tra transaction và user tồn tại
         /// </summary>
         [HttpPut("UpdateResponsible/{transactionId}")]
+        [Authorize(Roles = "Manager")]
         public async Task<IActionResult> UpdateResponsible(int transactionId, [FromBody] UpdateTransactionResponsibleRequest request)
         {
             if (!ModelState.IsValid)

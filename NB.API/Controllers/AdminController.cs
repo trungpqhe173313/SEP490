@@ -65,7 +65,7 @@ namespace NB.API.Controllers
         }
 
         /// <summary>
-        /// Cập nhật thông tin tài khoản người dùng (bao gồm role, tên, email, trạng thái, ...)
+        /// Cập nhật thông tin tài khoản người dùng (bao gồm role, tên, email, trạng thái, mật khẩu, ...)
         /// </summary>
         [HttpPut("accounts/{id}")]
         public async Task<IActionResult> UpdateAccount([FromRoute] int id, [FromBody] UpdateAccountDto dto)
@@ -220,29 +220,6 @@ namespace NB.API.Controllers
             }
 
             return new string(password);
-        }
-
-        /// <summary>
-        /// Đổi mật khẩu cho tài khoản người dùng (chỉ admin)
-        /// </summary>
-        [HttpPut("ChangeUserPassword/{id}")]
-        public async Task<IActionResult> ChangeUserPassword([FromRoute] int id, [FromBody] AdminChangePasswordDto dto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponse<string>.Fail("Dữ liệu không hợp lệ", 400));
-            }
-
-            try
-            {
-                var result = await _adminService.ChangeUserPasswordAsync(id, dto.NewPassword);
-                return StatusCode(result.StatusCode, result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi đổi mật khẩu cho user {UserId}", id);
-                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi đổi mật khẩu: " + ex.Message));
-            }
         }
     }
 }

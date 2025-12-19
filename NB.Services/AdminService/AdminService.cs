@@ -119,6 +119,15 @@ namespace NB.Service.AdminService
             if (dto.IsActive.HasValue)
                 user.IsActive = dto.IsActive.Value;
 
+            // Cập nhật mật khẩu nếu có
+            if (!string.IsNullOrWhiteSpace(dto.Password))
+            {
+                if (dto.Password.Length < 6)
+                    return ApiResponse<bool>.Fail("Mật khẩu phải có ít nhất 6 ký tự", 400);
+                
+                user.Password = PasswordHasher.HashPassword(dto.Password);
+            }
+
             // Cập nhật roles
             if (dto.Roles != null && dto.Roles.Count > 0)
             {
@@ -151,28 +160,6 @@ namespace NB.Service.AdminService
 
             // Lưu thay đổi
             await _userRoleRepository.SaveAsync();
-            await UpdateAsync(user);
-
-            return ApiResponse<bool>.Ok(true);
-        }
-
-        public async Task<ApiResponse<bool>> ChangeUserPasswordAsync(int userId, string newPassword)
-        {
-            if (string.IsNullOrWhiteSpace(newPassword))
-                return ApiResponse<bool>.Fail("Mật khẩu mới không được để trống", 400);
-
-            if (newPassword.Length < 6)
-                return ApiResponse<bool>.Fail("Mật khẩu phải có ít nhất 6 ký tự", 400);
-
-            // Lấy user
-            var user = await GetQueryable().FirstOrDefaultAsync(u => u.UserId == userId);
-            if (user == null)
-                return ApiResponse<bool>.Fail("Không tìm thấy tài khoản", 404);
-
-            // Hash mật khẩu mới
-            user.Password = PasswordHasher.HashPassword(newPassword);
-            
-            // Cập nhật user
             await UpdateAsync(user);
 
             return ApiResponse<bool>.Ok(true);
