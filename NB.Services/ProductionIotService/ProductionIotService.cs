@@ -5,6 +5,7 @@ using NB.Repository.Common;
 using NB.Service.Common;
 using NB.Service.Dto;
 using NB.Service.ProductionIotService.Dto;
+using NB.Services.Core.Helper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -67,7 +68,7 @@ namespace NB.Services.ProductionIotService
                 .Select(fp => new ProductItemDto
                 {
                     ProductId = fp.ProductId,
-                    ProductName = fp.Product.ProductName,
+                    ProductName = TextHelper.RemoveDiacritics(fp.Product.ProductName),
                     TargetWeight = fp.Product.WeightPerUnit ?? 0
                 })
                 .ToListAsync();
