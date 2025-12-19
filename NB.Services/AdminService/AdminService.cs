@@ -155,5 +155,27 @@ namespace NB.Service.AdminService
 
             return ApiResponse<bool>.Ok(true);
         }
+
+        public async Task<ApiResponse<bool>> ChangeUserPasswordAsync(int userId, string newPassword)
+        {
+            if (string.IsNullOrWhiteSpace(newPassword))
+                return ApiResponse<bool>.Fail("Mật khẩu mới không được để trống", 400);
+
+            if (newPassword.Length < 6)
+                return ApiResponse<bool>.Fail("Mật khẩu phải có ít nhất 6 ký tự", 400);
+
+            // Lấy user
+            var user = await GetQueryable().FirstOrDefaultAsync(u => u.UserId == userId);
+            if (user == null)
+                return ApiResponse<bool>.Fail("Không tìm thấy tài khoản", 404);
+
+            // Hash mật khẩu mới
+            user.Password = PasswordHasher.HashPassword(newPassword);
+            
+            // Cập nhật user
+            await UpdateAsync(user);
+
+            return ApiResponse<bool>.Ok(true);
+        }
     }
 }
