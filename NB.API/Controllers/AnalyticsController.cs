@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NB.Service.Dto;
 using NB.Service.ProductService;
@@ -11,6 +12,7 @@ using System.Threading.Tasks;
 namespace NB.API.Controllers
 {
     [Route("api/analytics")]
+    [Authorize(Roles = "Manager")]
     public class AnalyticsController : Controller
     {
         private readonly IProductService _productService;
