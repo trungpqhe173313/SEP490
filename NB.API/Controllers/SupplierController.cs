@@ -11,7 +11,7 @@ using NB.Service.SupplierService.ViewModels;
 namespace NB.API.Controllers
 {
     [Route("api/suppliers")]
-    [Authorize(Roles = "Manager")]
+    //[Authorize(Roles = "Manager")]
     public class SupplierController : Controller
     {
         private readonly ISupplierService _supplierService;
@@ -29,6 +29,7 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("GetData")]
+        [Authorize(Roles = "Manager,Customer")]
         public async Task<IActionResult> GetData([FromBody] SupplierSearch search)
         {
             try
