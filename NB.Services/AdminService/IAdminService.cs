@@ -16,5 +16,6 @@ namespace NB.Service.AdminService
     {
         Task<PagedList<AccountDto>> GetData(AccountSearch search);
         Task<ApiResponse<bool>> UpdateAccountAsync(int id, UpdateAccountDto dto);
+        Task<ApiResponse<string>> ResetUserPasswordAsync(int userId, string newPassword);
     }
 }
