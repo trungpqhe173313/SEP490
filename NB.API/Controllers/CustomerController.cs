@@ -321,7 +321,7 @@ namespace NB.API.Controllers
         /// <summary>
         /// Tạo tài khoản mới cho Customer (Manager)
         /// </summary>
-        [Authorize(Roles = "Manager")]
+        [Authorize(Roles = "Manager,Admin")]
         [HttpPost("CreateCustomerAccount")]
         public async Task<IActionResult> CreateCustomerAccount([FromForm] CreateCustomerAccountVM model)
         {
