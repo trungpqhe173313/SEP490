@@ -9,7 +9,6 @@ namespace NB.API.Controllers
 {
     [Route("api/iot")]
     [ApiController]
-    [Authorize]
     public class ProductionIotController : ControllerBase
     {
         private readonly IProductionIotService _productionIotService;
