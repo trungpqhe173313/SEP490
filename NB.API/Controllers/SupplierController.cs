@@ -29,7 +29,7 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("GetData")]
-        [Authorize(Roles = "Manager,Customer")]
+        [Authorize(Roles = "Manager,Admin")]
         public async Task<IActionResult> GetData([FromBody] SupplierSearch search)
         {
             try
