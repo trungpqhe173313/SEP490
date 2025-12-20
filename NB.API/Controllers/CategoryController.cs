@@ -184,12 +184,25 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<object>.Fail($"Không tìm thấy danh mục với ID: {id}", 404));
                 }
 
-                // Kiểm tra xem có sản phẩm nào thuộc category này đang có trong kho không
+                // Lấy tất cả sản phẩm thuộc category này (cả active và inactive)
                 var productsInCategory = await _productService.GetByCategoryId(id);
 
                 if (productsInCategory.Any())
                 {
-                    // Kiểm tra từng sản phẩm xem có tồn kho không (Quantity > 0)
+                    // Kiểm tra xem có sản phẩm nào còn active (IsAvailable = true) không
+                    var activeProducts = productsInCategory.Where(p => p.IsAvailable == true).ToList();
+
+                    if (activeProducts.Any())
+                    {
+                        var productNames = string.Join(", ", activeProducts.Take(3).Select(p => p.ProductName));
+                        var moreProducts = activeProducts.Count > 3 ? $" và {activeProducts.Count - 3} sản phẩm khác" : "";
+
+                        return BadRequest(ApiResponse<object>.Fail(
+                            $"Không thể xóa danh mục '{category.CategoryName}' vì còn {activeProducts.Count} sản phẩm đang ở trạng thái hoạt động: {productNames}{moreProducts}. Vui lòng xóa hoặc vô hiệu hóa các sản phẩm này trước.",
+                            400));
+                    }
+
+                    // Kiểm tra xem có sản phẩm nào còn tồn kho không (Quantity > 0)
                     var productsWithInventory = new List<string>();
 
                     foreach (var product in productsInCategory)
