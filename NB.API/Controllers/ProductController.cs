@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using NB.Model.Entities;
 using NB.Service.Common;
-using NB.API.Utils;
 using NB.Service.Dto;
 using NB.Service.InventoryService;
-using NB.Service.InventoryService.Dto;
 using NB.Service.ProductService;
 using NB.Service.ProductService.Dto;
 using NB.Service.ProductService.ViewModels;

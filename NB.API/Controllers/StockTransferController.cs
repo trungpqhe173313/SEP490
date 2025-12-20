@@ -24,10 +24,12 @@ using NB.Service.WarehouseService.Dto;
 using NB.Service.TransactionService.Dto;
 using NB.Service.Common;
 using static System.DateTime;
+using Microsoft.AspNetCore.Authorization;
 
 namespace NB.API.Controllers
 {
     [Route("api/stocktransfer")]
+    [Authorize(Roles = "Manager,Employee")]
     public class StockTransferController : Controller
     {
         private readonly IInventoryService _inventoryService;

@@ -22,10 +22,12 @@ using NB.Service.WarehouseService.Dto;
 using NB.Service.SupplierService;
 using NB.Service.SupplierService.ViewModels;
 using NB.Service.TransactionDetailService;
+using Microsoft.AspNetCore.Authorization;
 
 namespace NB.API.Controllers
 {
     [Route("api/returnorder")]
+    [Authorize]
     public class ReturnOrderController : Controller
     {
         private readonly IReturnTransactionService _returnTransactionService;

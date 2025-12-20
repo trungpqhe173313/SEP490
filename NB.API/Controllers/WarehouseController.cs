@@ -13,6 +13,7 @@ using static System.DateTime;
 namespace NB.API.Controllers
 {
     [Route("api/warehouses")]
+    [Authorize]
     public class WarehouseController : Controller
     {
         private readonly IWarehouseService _warehouseService;

@@ -17,6 +17,7 @@ using static System.DateTime;
 namespace NB.API.Controllers
 {
     [Route("api/customers")]
+    [Authorize]
     public class CustomerController : Controller
     {
         private readonly IUserService _userService;
