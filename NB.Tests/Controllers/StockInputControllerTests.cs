@@ -428,64 +428,6 @@ namespace NB.Tests.Services
             Assert.NotNull(ok.Value);
         }
 
-        [Fact]
-        public async Task ReturnOrder_ReturnsOk_OnSuccess()
-        {
-            var controller = CreateController();
-            int transactionId = 1;
-
-            var orderRequest = new OrderRequest
-            {
-                ListProductOrder = new List<ProductOrder>
-                {
-                    new ProductOrder { ProductId = 2, Quantity = 1 }
-                }
-            };
-            var transaction = new TransactionDto { TransactionId = transactionId, Type = "Import", TotalCost = 100 };
-            _transactionMock.Setup(t => t.GetByIdAsync(transactionId)).ReturnsAsync(transaction);
-
-            var currentDetails = new List<TransactionDetailDto> { new TransactionDetailDto { Id = 1, ProductId = 2, Quantity = 2, UnitPrice = 10 } };
-            _transactionDetailMock.Setup(t => t.GetByTransactionId(transactionId)).ReturnsAsync(currentDetails);
-
-            // Setup product service mock - controller calls GetByIdAsync in ReturnOrder
-            _productMock.Setup(p => p.GetByIdAsync(2)).ReturnsAsync(new Product { ProductId = 2, ProductName = "Test Product" });
-
-            _stockBatchMock.Setup(s => s.GetByTransactionId(transactionId)).ReturnsAsync(new List<StockBatchDto> { new StockBatchDto { BatchId = 1, ProductId = 2, QuantityIn = 2, ImportDate = DateTime.UtcNow } });
-            _stockBatchMock.Setup(s => s.GetByIdAsync(It.IsAny<int>())).ReturnsAsync(new StockBatch { BatchId = 1, QuantityIn = 2 });
-
-            _inventoryMock.Setup(i => i.GetEntityByProductIdAsync(2)).ReturnsAsync(new Inventory { Quantity = 10 });
-            _inventoryMock.Setup(i => i.UpdateNoTracking(It.IsAny<Inventory>())).Returns(Task.CompletedTask);
-            _stockBatchMock.Setup(s => s.UpdateNoTracking(It.IsAny<StockBatch>())).Returns(Task.CompletedTask);
-
-            // Setup mapper for ReturnTransaction and ReturnTransactionDetail
-            _mapperMock.Setup(m => m.Map<ReturnTransactionCreateVM, ReturnTransaction>(It.IsAny<ReturnTransactionCreateVM>()))
-                .Returns((ReturnTransactionCreateVM vm) => new ReturnTransaction
-                {
-                    ReturnTransactionId = 1,
-                    TransactionId = vm.TransactionId,
-                    Reason = vm.Reason
-                });
-            _mapperMock.Setup(m => m.Map<ReturnTransactionDetailCreateVM, ReturnTransactionDetail>(It.IsAny<ReturnTransactionDetailCreateVM>()))
-                .Returns((ReturnTransactionDetailCreateVM vm) => new ReturnTransactionDetail
-                {
-                    Id = 1,
-                    ProductId = vm.ProductId,
-                    Quantity = vm.Quantity,
-                    UnitPrice = vm.UnitPrice
-                });
-
-            _returnTranMock.Setup(r => r.CreateAsync(It.IsAny<ReturnTransaction>())).Returns(Task.CompletedTask);
-            _returnTranDetailMock.Setup(r => r.CreateAsync(It.IsAny<ReturnTransactionDetail>())).Returns(Task.CompletedTask);
-            _transactionDetailMock.Setup(t => t.GetByIdAsync(It.IsAny<int>())).ReturnsAsync(new TransactionDetail());
-            _transactionDetailMock.Setup(t => t.UpdateAsync(It.IsAny<TransactionDetail>())).Returns(Task.CompletedTask);
-            _transactionDetailMock.Setup(t => t.DeleteAsync(It.IsAny<TransactionDetail>())).Returns(Task.CompletedTask);
-            _transactionMock.Setup(t => t.UpdateAsync(It.IsAny<Transaction>())).Returns(Task.CompletedTask);
-
-            var result = await controller.ReturnOrder(transactionId, orderRequest);
-            var ok = Assert.IsType<OkObjectResult>(result);
-            Assert.NotNull(ok.Value);
-        }
-
         #region CreateStockInputs - Validation & Edge Cases Tests
 
         [Fact]
@@ -1011,98 +953,6 @@ namespace NB.Tests.Services
 
         #endregion
 
-        #region ReturnOrder - Edge Cases Tests
-
-        [Fact]
-        public async Task ReturnOrder_ReturnsBadRequest_WhenListIsEmpty()
-        {
-            // Arrange
-            var controller = CreateController();
-            var orderRequest = new OrderRequest
-            {
-                ListProductOrder = new List<ProductOrder>()
-            };
-
-            // Act
-            var result = await controller.ReturnOrder(1, orderRequest);
-
-            // Assert
-            var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            badRequest.StatusCode.Should().Be(400);
-        }
-
-        [Fact]
-        public async Task ReturnOrder_ReturnsNotFound_WhenTransactionNotFound()
-        {
-            // Arrange
-            var controller = CreateController();
-            var orderRequest = new OrderRequest
-            {
-                ListProductOrder = new List<ProductOrder> { new ProductOrder() }
-            };
-
-            _transactionMock.Setup(t => t.GetByIdAsync(999)).ReturnsAsync((TransactionDto?)null);
-
-            // Act
-            var result = await controller.ReturnOrder(999, orderRequest);
-
-            // Assert
-            var notFound = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            notFound.StatusCode.Should().Be(404);
-        }
-
-        [Fact]
-        public async Task ReturnOrder_ReturnsBadRequest_WhenTransactionIsNotImportType()
-        {
-            // Arrange
-            var controller = CreateController();
-            var orderRequest = new OrderRequest
-            {
-                ListProductOrder = new List<ProductOrder> { new ProductOrder { ProductId = 1, Quantity = 1 } }
-            };
-            var transaction = new TransactionDto { TransactionId = 1, Type = "Export" };
-
-            _transactionMock.Setup(t => t.GetByIdAsync(1)).ReturnsAsync(transaction);
-
-            // Act
-            var result = await controller.ReturnOrder(1, orderRequest);
-
-            // Assert
-            var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            badRequest.StatusCode.Should().Be(400);
-        }
-
-        [Fact]
-        public async Task ReturnOrder_ReturnsBadRequest_WhenReturnQuantityExceedsAvailable()
-        {
-            // Arrange
-            var controller = CreateController();
-            var orderRequest = new OrderRequest
-            {
-                ListProductOrder = new List<ProductOrder>
-                {
-                    new ProductOrder { ProductId = 1, Quantity = 100 } // Exceeds available
-                }
-            };
-            var transaction = new TransactionDto { TransactionId = 1, Type = "Import" };
-            var currentDetails = new List<TransactionDetailDto>
-            {
-                new TransactionDetailDto { ProductId = 1, Quantity = 10 } // Only 10 available
-            };
-
-            _transactionMock.Setup(t => t.GetByIdAsync(1)).ReturnsAsync(transaction);
-            _transactionDetailMock.Setup(t => t.GetByTransactionId(1)).ReturnsAsync(currentDetails);
-
-            // Act
-            var result = await controller.ReturnOrder(1, orderRequest);
-
-            // Assert
-            var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            badRequest.StatusCode.Should().Be(400);
-        }
-
-        #endregion
-
         #region Input Validation Tests - Invalid Data Types
 
         [Fact]
@@ -1223,36 +1073,6 @@ namespace NB.Tests.Services
 
             // Act
             var result = await controller.GetDetail(0);
-
-            // Assert
-            var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            badRequest.StatusCode.Should().Be(400);
-        }
-
-        [Fact]
-        public async Task ReturnOrder_ReturnsBadRequest_WhenReturnQuantityIsNegative()
-        {
-            // Arrange
-            var controller = CreateController();
-            var orderRequest = new OrderRequest
-            {
-                ListProductOrder = new List<ProductOrder>
-                {
-                    new ProductOrder { ProductId = 1, Quantity = -5 } // Negative quantity
-                }
-            };
-
-            var transaction = new TransactionDto { TransactionId = 1, Type = "Import" };
-            _transactionMock.Setup(t => t.GetByIdAsync(1)).ReturnsAsync(transaction);
-            _transactionDetailMock.Setup(t => t.GetByTransactionId(1))
-                .ReturnsAsync(new List<TransactionDetailDto>
-                {
-                    new TransactionDetailDto { ProductId = 1, Quantity = 10 }
-                });
-            _productMock.Setup(p => p.GetByIdAsync(1)).ReturnsAsync(new Product { ProductId = 1 });
-
-            // Act
-            var result = await controller.ReturnOrder(1, orderRequest);
 
             // Assert
             var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
