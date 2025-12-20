@@ -402,8 +402,9 @@ namespace NB.Service.ProductService
 
         public async Task<List<Product>> GetByCategoryId(int categoryId)
         {
+            // Lấy TẤT CẢ sản phẩm theo category (cả active và inactive)
             return await GetQueryable()
-                .Where(p => p.CategoryId == categoryId && p.IsAvailable == true)
+                .Where(p => p.CategoryId == categoryId)
                 .ToListAsync();
         }
     }

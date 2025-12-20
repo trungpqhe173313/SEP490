@@ -59,13 +59,24 @@ namespace NB.Service.TransactionDetailService
             return await query.ToListAsync();
         }
 
-        public async Task<bool> HasProductInDraftExportOrders(int productId)
+        public async Task<bool> HasProductInActiveExportOrders(int productId)
         {
+            // Kiểm tra xem có đơn xuất nào có sản phẩm này với trạng thái không phải:
+            // - draft (nháp)
+            // - paidInFull (đã thanh toán đủ)
+            // - partiallyPaid (thanh toán một phần)
+            var allowedStatuses = new[]
+            {
+                (int)TransactionStatus.draft,
+                (int)TransactionStatus.paidInFull,
+                (int)TransactionStatus.partiallyPaid
+            };
+
             return await GetQueryable()
                 .AnyAsync(td => td.ProductId == productId &&
                                td.Transaction != null &&
                                td.Transaction.Type == "Export" &&
-                               td.Transaction.Status == (int)TransactionStatus.draft);
+                               !allowedStatuses.Contains(td.Transaction.Status ?? 0));
         }
     }
 }

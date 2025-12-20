@@ -44,10 +44,8 @@ namespace NB.Model.Enums
         [Description("Đã hủy - Import")]
         importCancelled = 0,
         [Description("Đang kiểm - Import")]
-        importChecking = 1,      // Same value as draft, but for Import context
+        importChecking = 1,      
         [Description("Đã nhận hàng - Import")]
-        importReceived = 2,      // Same value as order, but for Import context
-        [Description("Trả hàng - Import")]
-        importReturned = 3       // Same value as delivering, but for Import context
+        importReceived = 2,      
     }
 }

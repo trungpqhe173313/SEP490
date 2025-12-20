@@ -380,19 +380,6 @@ namespace NB.Tests.Services
         }
 
         [Fact]
-        public async Task SetStatusRefund_ReturnsOk_OnSuccess()
-        {
-            var controller = CreateController();
-            var transaction = new TransactionDto { TransactionId = 1, Type = "Import" };
-            _transactionMock.Setup(t => t.GetByTransactionId(1)).ReturnsAsync(transaction);
-            _transactionMock.Setup(t => t.UpdateAsync(It.IsAny<TransactionDto>())).Returns(Task.CompletedTask);
-
-            var result = await controller.SetStatusRefund(1);
-            var ok = Assert.IsType<OkObjectResult>(result);
-            Assert.NotNull(ok.Value);
-        }
-
-        [Fact]
         public async Task UpdateToPaidInFullStatus_ReturnsOk_OnSuccess()
         {
             var controller = CreateController();
