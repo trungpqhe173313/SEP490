@@ -1,4 +1,5 @@
 ﻿using NB.Service.Core.Mapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using NB.API.Utils;
@@ -21,6 +22,7 @@ using static System.DateTime;
 
 namespace NB.API.Controllers
 {
+    [Authorize]
     [Route("api/contract")]
     public class ContractController : Controller
     {

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NB.Service.Common;
 using NB.Service.Core.Forms;
@@ -16,6 +17,7 @@ using NB.API.Utils;
 
 namespace NB.API.Controllers
 {
+    [Authorize]
     [Route("api/print")]
     public class PrintController : Controller
     {

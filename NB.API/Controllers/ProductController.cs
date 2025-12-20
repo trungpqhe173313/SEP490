@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using NB.Model.Entities;
 using NB.Model.Enums;
 using NB.Service.Common;
@@ -20,6 +21,7 @@ using static System.DateTime;
 
 namespace NB.API.Controllers
 {
+    [Authorize]
     [Route("api/products")]
     public class ProductController : Controller
     {

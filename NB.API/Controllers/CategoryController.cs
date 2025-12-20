@@ -7,9 +7,11 @@ using NB.Service.Common;
 using NB.Service.Dto;
 using NB.Service.ProductService;
 using NB.Service.InventoryService;
+using Microsoft.AspNetCore.Authorization;
 
 namespace NB.API.Controllers
 {
+    [Authorize]
     [Route("api/categories")]
     public class CategoryController : Controller
     {
