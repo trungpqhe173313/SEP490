@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using NB.Model.Enums;
 using NB.Service.Common;
 using NB.Service.Core.Enum;
@@ -22,6 +23,7 @@ using NB.Service.WarehouseService.Dto;
 namespace NB.API.Controllers
 {
     [Route("api/customerorder")]
+    [Authorize]
     public class CustomerOrderController : Controller
     {
         private readonly ITransactionService _transactionService;

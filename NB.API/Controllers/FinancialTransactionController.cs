@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using NB.Model.Entities;
 using NB.Model.Enums;
 using NB.Service.Common;
@@ -14,6 +15,7 @@ using NB.Service.UserService;
 namespace NB.API.Controllers
 {
     [Route("api/financialtransaction")]
+    [Authorize]
     public class FinancialTransactionController : Controller
     {
         private readonly ITransactionService _transactionService;
