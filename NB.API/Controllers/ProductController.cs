@@ -621,13 +621,23 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail("Sản phẩm đã bị xóa từ trước", 400));
                 }
 
-                // Kiểm tra xem sản phẩm có trong đơn hàng nháp (Export, Status = draft) không
-                var hasProductInDraftOrders = await _transactionDetailService.HasProductInDraftExportOrders(Id);
+                // Kiểm tra xem sản phẩm có trong đơn xuất với trạng thái đang hoạt động không
+                var hasProductInActiveOrders = await _transactionDetailService.HasProductInActiveExportOrders(Id);
 
-                if (hasProductInDraftOrders)
+                if (hasProductInActiveOrders)
                 {
                     return BadRequest(ApiResponse<object>.Fail(
-                        $"Không thể xóa sản phẩm '{product.ProductName}' vì sản phẩm này đang có trong đơn hàng nháp. Vui lòng xóa hoặc cập nhật đơn hàng trước.",
+                        $"Không thể xóa sản phẩm '{product.ProductName}' vì sản phẩm này đang có trong đơn xuất đang hoạt động (đã lên đơn, đang giao, hoàn thành, v.v.). Chỉ có thể xóa khi tất cả đơn xuất ở trạng thái nháp hoặc đã thanh toán.",
+                        400));
+                }
+
+                // Kiểm tra xem sản phẩm còn tồn kho không (Quantity > 0)
+                var hasInventoryStock = await _inventoryService.HasInventoryStock(Id);
+
+                if (hasInventoryStock)
+                {
+                    return BadRequest(ApiResponse<object>.Fail(
+                        $"Không thể xóa sản phẩm '{product.ProductName}' vì sản phẩm này vẫn còn tồn kho. Vui lòng xử lý hết sản phẩm trong kho trước khi xóa.",
                         400));
                 }
 

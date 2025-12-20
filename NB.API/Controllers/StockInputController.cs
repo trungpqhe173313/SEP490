@@ -1096,39 +1096,6 @@ namespace NB.API.Controllers
             }
         }
 
-        [HttpPut("UpdateToRefundStatus/{transactionId}")]
-        public async Task<IActionResult> SetStatusRefund(int transactionId)
-        {
-            try
-            {
-                if (transactionId <= 0)
-                {
-                    return BadRequest(ApiResponse<object>.Fail("Transaction ID không hợp lệ", 400));
-                }
-
-                var transaction = await _transactionService.GetByTransactionId(transactionId);
-                if (transaction == null)
-                {
-                    return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch", 404));
-                }
-
-                if (string.IsNullOrEmpty(transaction.Type) || !transaction.Type.Equals("Import", StringComparison.OrdinalIgnoreCase))
-                {
-                    return BadRequest(ApiResponse<object>.Fail("Giao dịch không phải là loại Import", 400));
-                }
-
-                transaction.Status = (int)TransactionStatus.importReturned; // Trả hàng
-                await _transactionService.UpdateAsync(transaction);
-
-                return Ok(ApiResponse<object>.Ok("Đã cập nhật trạng thái: Trả hàng"));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái Trả hàng");
-                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi cập nhật trạng thái", 400));
-            }
-        }
-
         /// <summary>
         /// Chuyển trạng thái đơn hàng sang thanh toán tất
         /// </summary>
@@ -1266,6 +1233,7 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"));
             }
         }
+
     }
 
 }
