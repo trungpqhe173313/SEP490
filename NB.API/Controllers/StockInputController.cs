@@ -443,7 +443,7 @@ namespace NB.API.Controllers
                         WarehouseId = model.WarehouseId,
                         ResponsibleId = responsibleId,
                         Type = "Import",
-                        Status = 1, // Mặc định - Đang kiểm
+                        Status = (int)TransactionStatus.importChecking, // Đang kiểm
                         TransactionDate = Now,
                         TotalWeight = totalWeight,
                         TotalCost = totalCost,
@@ -678,7 +678,7 @@ namespace NB.API.Controllers
                                 SupplierId = supplier.SupplierId,
                                 WarehouseId = warehouse.WarehouseId,
                                 Type = "Import",
-                                Status = 1, // Pending - Chờ kiểm hàng
+                                Status = (int)TransactionStatus.importChecking, // Đang kiểm hàng
                                 TotalWeight = totalWeight,
                                 TotalCost = totalCost,
                                 TransactionCode = $"IMPORT-{Now:yyyyMMdd}",
@@ -775,7 +775,7 @@ namespace NB.API.Controllers
             try
             {
                 var transaction = await _transactionService.GetByIdAsync(transactionId);
-                if (transaction.Status != 1)
+                if (transaction.Status != (int)TransactionStatus.importChecking)
                     return BadRequest(ApiResponse<string>.Fail("Chỉ được cập nhật đơn hàng đang kiểm.", 400));
                 if (transaction == null)
                     return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn hàng nhập kho.", 404));
@@ -868,12 +868,12 @@ namespace NB.API.Controllers
                 {
                     return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Giao dịch không phải là nhập kho", 400));
                 }
-                if(transaction.Status != 1)
+                if(transaction.Status != (int)TransactionStatus.importChecking)
                 {
                     return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Chỉ được hủy giao dịch ở trạng thái đang kiểm.", 400));
                 }
-                
-                transaction.Status = 0; // Đặt trạng thái là hủy
+
+                transaction.Status = (int)TransactionStatus.importCancelled; // Đã hủy
                 await _transactionService.UpdateAsync(transaction);
                 return Ok(ApiResponse<object>.Ok("Đã hủy giao dịch nhập kho thành công"));
             }
@@ -906,7 +906,7 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail("Giao dịch không phải là loại Import", 400));
                 }
 
-                transaction.Status = 1; // Đang kiểm hàng
+                transaction.Status = (int)TransactionStatus.importChecking; // Đang kiểm hàng
                 await _transactionService.UpdateAsync(transaction);
 
                 return Ok(ApiResponse<object>.Ok("Đã cập nhật trạng thái: Đang kiểm hàng"));
@@ -950,7 +950,7 @@ namespace NB.API.Controllers
                 {
                     return NotFound(ApiResponse<object>.Fail("Không tìm thấy giao dịch", 404));
                 }
-                if (transaction.Status != 1)
+                if (transaction.Status != (int)TransactionStatus.importChecking)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Chỉ có thể cập nhật trạng thái 'Đã kiểm' cho giao dịch đang ở trạng thái 'Đang kiểm'", 400));
                 }
@@ -1082,10 +1082,10 @@ namespace NB.API.Controllers
                 }
 
                 // Cập nhật trạng thái transaction
-                transaction.Status = 2; // Đã kiểm hàng
+                transaction.Status = (int)TransactionStatus.importReceived; // Đã nhận hàng
                 await _transactionService.UpdateAsync(transaction);
 
-                return Ok(ApiResponse<object>.Ok("Đã cập nhật trạng thái: Đã kiểm hàng và cập nhật vào kho thành công"));
+                return Ok(ApiResponse<object>.Ok("Đã cập nhật trạng thái: Đã nhận hàng và cập nhật vào kho thành công"));
             }
             catch (Exception ex)
             {
@@ -1115,7 +1115,7 @@ namespace NB.API.Controllers
                     return BadRequest(ApiResponse<object>.Fail("Giao dịch không phải là loại Import", 400));
                 }
 
-                transaction.Status = 3; // Trả hàng
+                transaction.Status = (int)TransactionStatus.importReturned; // Trả hàng
                 await _transactionService.UpdateAsync(transaction);
 
                 return Ok(ApiResponse<object>.Ok("Đã cập nhật trạng thái: Trả hàng"));

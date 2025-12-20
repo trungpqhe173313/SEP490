@@ -295,5 +295,11 @@ namespace NB.Service.InventoryService
 
             return await query.ToListAsync();
         }
+
+        public async Task<bool> HasInventoryStock(int productId)
+        {
+            return await GetQueryable()
+                .AnyAsync(i => i.ProductId == productId && i.Quantity > 0);
+        }
     }
 }

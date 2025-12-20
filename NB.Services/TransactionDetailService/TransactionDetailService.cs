@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client;
 using NB.Model.Entities;
+using NB.Model.Enums;
 using NB.Repository.Common;
 using NB.Service.Common;
 using NB.Service.TransactionDetailService.Dto;
@@ -44,7 +45,7 @@ namespace NB.Service.TransactionDetailService
                         where td.TransactionId == Id
                         select new TransactionDetailDto()
                         {
-                            Id = td.Id,                      
+                            Id = td.Id,
                             TransactionId = td.TransactionId,
                             ProductName = td.Product!.ProductName,
                             ProductId = td.ProductId,
@@ -53,9 +54,18 @@ namespace NB.Service.TransactionDetailService
                             Quantity = td.Quantity,
                             UnitPrice = td.UnitPrice
                         };
-            
+
             query = query.OrderByDescending(td => td.Id);
             return await query.ToListAsync();
+        }
+
+        public async Task<bool> HasProductInDraftExportOrders(int productId)
+        {
+            return await GetQueryable()
+                .AnyAsync(td => td.ProductId == productId &&
+                               td.Transaction != null &&
+                               td.Transaction.Type == "Export" &&
+                               td.Transaction.Status == (int)TransactionStatus.draft);
         }
     }
 }

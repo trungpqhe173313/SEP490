@@ -9,7 +9,7 @@ namespace NB.Model.Enums
 {
     public enum TransactionStatus
     {
-        //xuất kho
+        //xuất kho (Export)
         [Description("Nháp")]
         draft = 1,
         [Description("Lên đơn")]
@@ -22,21 +22,32 @@ namespace NB.Model.Enums
         failure,
         [Description("Hủy")]
         cancel,
-        //nhập kho
+        //nhập kho (Import)
         [Description("Đang kiểm")]
         checking,
         [Description("Đã kiểm")]
         @checked,
 
-        //chuyển kho
+        //chuyển kho (Transfer)
         [Description("Đang Chuyển")]
         inTransit,
         [Description("Đã Chuyển")]
         transferred,
 
-        [Description("Thanh Toán Tất")]
+        //thanh toán (Payment)
+        [Description("Đã thanh toán đủ")]
         paidInFull,
-        [Description("Thanh Toán Một Phần")]
-        partiallyPaid
+        [Description("Thanh toán một phần")]
+        partiallyPaid,
+
+        //trạng thái đặc biệt cho nhập kho (Import) - sử dụng cùng giá trị với trạng thái xuất kho (Export)
+        [Description("Đã hủy - Import")]
+        importCancelled = 0,
+        [Description("Đang kiểm - Import")]
+        importChecking = 1,      // Same value as draft, but for Import context
+        [Description("Đã nhận hàng - Import")]
+        importReceived = 2,      // Same value as order, but for Import context
+        [Description("Trả hàng - Import")]
+        importReturned = 3       // Same value as delivering, but for Import context
     }
 }
