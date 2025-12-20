@@ -399,5 +399,12 @@ namespace NB.Service.ProductService
 
             return topProducts;
         }
+
+        public async Task<List<Product>> GetByCategoryId(int categoryId)
+        {
+            return await GetQueryable()
+                .Where(p => p.CategoryId == categoryId && p.IsAvailable == true)
+                .ToListAsync();
+        }
     }
 }

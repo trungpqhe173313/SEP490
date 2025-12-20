@@ -16,5 +16,6 @@ namespace NB.Service.TransactionDetailService
 
         Task<List<TransactionDetailDto>> GetByTransactionId(int? Id);
         Task<bool> DeleteByTransactionId(int transactionId);
+        Task<bool> HasProductInDraftExportOrders(int productId);
     }
 }
