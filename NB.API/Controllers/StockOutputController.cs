@@ -1199,7 +1199,7 @@ namespace NB.API.Controllers
             try
             {
                 //cap nhat trang thai cho don hang
-                transaction.Status = (int)TransactionStatus.delivering;
+                transaction.Status = (int)TransactionStatus.cancel;
                 await _transactionService.UpdateAsync(transaction);
                 // 6️ Trả về kết quả sau khi hoàn tất toàn bộ sản phẩm
                 return Ok(ApiResponse<string>.Ok("Cập nhật đơn hàng thành công"));
