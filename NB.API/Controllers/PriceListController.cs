@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using NB.Model.Entities;
 using NB.Service.Common;
 using NB.Service.Core.Mapper;
@@ -14,6 +15,7 @@ using NB.Service.UserService;
 
 namespace NB.API.Controllers
 {
+    [Authorize]
     [Route("api/pricelist")]
     public class PriceListController : Controller
     {
