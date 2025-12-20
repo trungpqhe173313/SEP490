@@ -5,6 +5,8 @@ using NB.Service.CategoryService.Dto;
 using NB.Service.CategoryService.ViewModels;
 using NB.Service.Common;
 using NB.Service.Dto;
+using NB.Service.ProductService;
+using NB.Service.InventoryService;
 
 namespace NB.API.Controllers
 {
@@ -12,12 +14,18 @@ namespace NB.API.Controllers
     public class CategoryController : Controller
     {
         private readonly ICategoryService _categoryService;
+        private readonly IProductService _productService;
+        private readonly IInventoryService _inventoryService;
         private readonly ILogger<CategoryController> _logger;
         public CategoryController(
             ICategoryService categoryService,
+            IProductService productService,
+            IInventoryService inventoryService,
             ILogger<CategoryController> logger)
         {
             _categoryService = categoryService;
+            _productService = productService;
+            _inventoryService = inventoryService;
             _logger = logger;
         }
 
@@ -172,6 +180,35 @@ namespace NB.API.Controllers
                 if (category == null)
                 {
                     return NotFound(ApiResponse<object>.Fail($"Không tìm thấy danh mục với ID: {id}", 404));
+                }
+
+                // Kiểm tra xem có sản phẩm nào thuộc category này đang có trong kho không
+                var productsInCategory = await _productService.GetByCategoryId(id);
+
+                if (productsInCategory.Any())
+                {
+                    // Kiểm tra từng sản phẩm xem có tồn kho không (Quantity > 0)
+                    var productsWithInventory = new List<string>();
+
+                    foreach (var product in productsInCategory)
+                    {
+                        var hasStock = await _inventoryService.HasInventoryStock(product.ProductId);
+
+                        if (hasStock)
+                        {
+                            productsWithInventory.Add(product.ProductName);
+                        }
+                    }
+
+                    if (productsWithInventory.Any())
+                    {
+                        var productNames = string.Join(", ", productsWithInventory.Take(3));
+                        var moreProducts = productsWithInventory.Count > 3 ? $" và {productsWithInventory.Count - 3} sản phẩm khác" : "";
+
+                        return BadRequest(ApiResponse<object>.Fail(
+                            $"Không thể xóa danh mục '{category.CategoryName}' vì còn {productsWithInventory.Count} sản phẩm đang có trong kho: {productNames}{moreProducts}. Vui lòng xử lý hết sản phẩm trong kho trước.",
+                            400));
+                    }
                 }
 
                 category.IsActive = false;
