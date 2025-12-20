@@ -1350,6 +1350,124 @@ namespace NB.API.Controllers
         }
 
         /// <summary>
+        /// API để hủy đơn hàng và trả lại toàn bộ hàng vào kho
+        /// Chỉ áp dụng cho đơn ở trạng thái order
+        /// </summary>
+        /// <param name="transactionId">ID của đơn hàng cần hủy</param>
+        /// <returns>Kết quả hủy đơn</returns>
+        [HttpPut("CancelOrderAndReturnStock/{transactionId}")]
+        public async Task<IActionResult> CancelOrderAndReturnStock(int transactionId)
+        {
+            try
+            {
+                // Lấy thông tin đơn hàng
+                var transaction = await _transactionService.GetByIdAsync(transactionId);
+                if (transaction == null)
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn hàng", 404));
+
+                // Kiểm tra trạng thái đơn hàng - chỉ cho phép hủy đơn ở trạng thái order hoặc delivering
+                if (transaction.Status != (int)TransactionStatus.order)
+                {
+                    return BadRequest(ApiResponse<string>.Fail(
+                        "Chỉ có thể hủy đơn hàng ở trạng thái 'Lên đơn' hoặc 'Đang giao'"));
+                }
+
+                // Lấy chi tiết đơn hàng
+                var transactionDetails = await _transactionDetailService.GetByTransactionId(transactionId);
+                if (transactionDetails == null || !transactionDetails.Any())
+                {
+                    return NotFound(ApiResponse<string>.Fail("Không tìm thấy chi tiết đơn hàng", 404));
+                }
+
+                // Dictionary để track các update (tránh update trùng lặp)
+                var inventoryUpdates = new Dictionary<int, Inventory>();
+                var stockBatchUpdates = new Dictionary<int, StockBatch>();
+
+                // Xử lý trả lại hàng cho từng sản phẩm trong đơn
+                foreach (var detail in transactionDetails)
+                {
+                    var productId = detail.ProductId;
+                    var quantity = detail.Quantity;
+
+                    // Trả lại Inventory ở kho của transaction
+                    var inventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(
+                        transaction.WarehouseId, productId);
+                    if (inventoryEntity != null)
+                    {
+                        inventoryEntity.Quantity += quantity;
+                        inventoryEntity.LastUpdated = DateTime.Now;
+                        inventoryUpdates[productId] = inventoryEntity;
+                    }
+
+                    // Trả lại StockBatch theo LIFO (Last In First Out)
+                    var batchesToRevert = await _stockBatchService.GetByProductIdForOrder(new List<int> { productId });
+                    if (batchesToRevert != null && batchesToRevert.Any())
+                    {
+                        var revertList = batchesToRevert
+                            .Where(b => b.WarehouseId == transaction.WarehouseId
+                                && (b.QuantityOut ?? 0) > 0)
+                            .OrderByDescending(b => b.ImportDate)
+                            .ToList();
+
+                        decimal toRevert = quantity;
+                        foreach (var b in revertList)
+                        {
+                            if (toRevert <= 0) break;
+                            
+                            var availableOut = b.QuantityOut ?? 0;
+                            if (availableOut <= 0) continue;
+
+                            var takeBack = Math.Min(availableOut, toRevert);
+                            
+                            if (stockBatchUpdates.ContainsKey(b.BatchId))
+                            {
+                                stockBatchUpdates[b.BatchId].QuantityOut -= takeBack;
+                                if (stockBatchUpdates[b.BatchId].QuantityOut < 0)
+                                    stockBatchUpdates[b.BatchId].QuantityOut = 0;
+                            }
+                            else
+                            {
+                                var batchEntity = await _stockBatchService.GetByIdAsync(b.BatchId);
+                                if (batchEntity != null)
+                                {
+                                    batchEntity.QuantityOut -= takeBack;
+                                    if (batchEntity.QuantityOut < 0) batchEntity.QuantityOut = 0;
+                                    batchEntity.LastUpdated = DateTime.Now;
+                                    stockBatchUpdates[b.BatchId] = batchEntity;
+                                }
+                            }
+                            toRevert -= takeBack;
+                        }
+                    }
+                }
+
+                // Cập nhật tất cả Inventory
+                foreach (var inventory in inventoryUpdates.Values)
+                {
+                    await _inventoryService.UpdateNoTracking(inventory);
+                }
+
+                // Cập nhật tất cả StockBatch
+                foreach (var stockBatch in stockBatchUpdates.Values)
+                {
+                    await _stockBatchService.UpdateNoTracking(stockBatch);
+                }
+
+                // Cập nhật trạng thái đơn hàng về cancel
+                transaction.Status = (int)TransactionStatus.cancel;
+
+                await _transactionService.UpdateAsync(transaction);
+
+                return Ok(ApiResponse<string>.Ok("Hủy đơn hàng và trả lại hàng vào kho thành công"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi hủy đơn hàng và trả lại hàng");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi hủy đơn hàng"));
+            }
+        }
+
+        /// <summary>
         /// API để trả hàng - Khách hàng có thể trả lại một số sản phẩm từ đơn hàng
         /// </summary>
         /// <param name="transactionId">ID của đơn hàng cần trả hàng</param>
