@@ -25,8 +25,6 @@ public partial class Warehouse
 
     public virtual ICollection<Inventory> Inventories { get; set; } = new List<Inventory>();
 
-    public virtual ICollection<IoTdevice> IoTdevices { get; set; } = new List<IoTdevice>();
-
     public virtual ICollection<Material> Materials { get; set; } = new List<Material>();
 
     public virtual ICollection<StockAdjustment> StockAdjustments { get; set; } = new List<StockAdjustment>();

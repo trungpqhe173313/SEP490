@@ -279,6 +279,129 @@ namespace NB.Service.Core.EmailService
 
             return await SendEmailAsync(toEmail, subject, htmlBody, true);
         }
+
+        public async Task<bool> SendPasswordResetEmailAsync(string toEmail, string username, string newPassword)
+        {
+            var subject = "Mật khẩu của bạn đã được đặt lại - NutriBarn";
+
+            var htmlBody = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        .container {{
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 20px 0;
+        }}
+        .header {{
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }}
+        .content {{
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }}
+        .credentials {{
+            background-color: #f0f8ff;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 15px 0;
+        }}
+        .credentials-item {{
+            margin: 10px 0;
+        }}
+        .credentials-label {{
+            font-weight: bold;
+            color: #555;
+        }}
+        .credentials-value {{
+            font-size: 16px;
+            color: #000;
+            margin-left: 10px;
+        }}
+        .warning {{
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin: 15px 0;
+        }}
+        .footer {{
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }}
+        .highlight {{
+            background-color: #ffeb3b;
+            padding: 2px 5px;
+            font-weight: bold;
+        }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h1>🔐 Đặt lại mật khẩu</h1>
+        </div>
+        <div class='content'>
+            <p>Xin chào <strong>{username}</strong>,</p>
+            <p>Quản trị viên đã đặt lại mật khẩu cho tài khoản của bạn. Dưới đây là mật khẩu mới:</p>
+
+            <div class='credentials'>
+                <div class='credentials-item'>
+                    <span class='credentials-label'>Username:</span>
+                    <span class='credentials-value'>{username}</span>
+                </div>
+                <div class='credentials-item'>
+                    <span class='credentials-label'>Email:</span>
+                    <span class='credentials-value'>{toEmail}</span>
+                </div>
+                <div class='credentials-item'>
+                    <span class='credentials-label'>Mật khẩu mới:</span>
+                    <span class='credentials-value highlight'>{newPassword}</span>
+                </div>
+            </div>
+
+            <div class='warning'>
+                <strong>⚠️ Lưu ý bảo mật:</strong>
+                <ul>
+                    <li>Vui lòng <strong>đổi mật khẩu</strong> ngay sau khi đăng nhập để đảm bảo an toàn</li>
+                    <li>Không chia sẻ mật khẩu này với bất kỳ ai</li>
+                    <li>Chọn mật khẩu mạnh với ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt</li>
+                    <li>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng liên hệ ngay với quản trị viên</li>
+                </ul>
+            </div>
+
+            <p>Nếu bạn gặp bất kỳ vấn đề nào khi đăng nhập, vui lòng liên hệ với bộ phận hỗ trợ.</p>
+        </div>
+
+        <div class='footer'>
+            <p>Trân trọng,<br>Đội ngũ NutriBarn</p>
+            <p>Email này được gửi tự động, vui lòng không trả lời email này.</p>
+        </div>
+    </div>
+</body>
+</html>";
+
+            return await SendEmailAsync(toEmail, subject, htmlBody, true);
+        }
     }
 }
 

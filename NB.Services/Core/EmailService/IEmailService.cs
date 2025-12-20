@@ -11,6 +11,7 @@ namespace NB.Service.Core.EmailService
         Task<bool> SendEmailAsync(string toEmail, string subject, string body, bool isHtml = true);
         Task<bool> SendOtpEmailAsync(string toEmail, string otpCode, string userName = "");
         Task<bool> SendNewAccountEmailAsync(string toEmail, string username, string password);
+        Task<bool> SendPasswordResetEmailAsync(string toEmail, string username, string newPassword);
     }
 }
 
