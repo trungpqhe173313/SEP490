@@ -36,5 +36,6 @@ namespace NB.Service.InventoryService
 
         Task<Inventory?> GetEntityByProductIdAsync(int productId);
         Task<Inventory?> GetEntityByWarehouseAndProductIdAsync(int warehouseId, int productId);
+        Task<bool> HasInventoryStock(int productId);
     }
 }

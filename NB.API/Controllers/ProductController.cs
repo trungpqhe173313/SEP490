@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using NB.Model.Entities;
+using NB.Model.Enums;
 using NB.Service.Common;
 using NB.API.Utils;
 using NB.Service.Dto;
@@ -12,6 +13,7 @@ using NB.Service.SupplierService;
 using NB.Service.CategoryService;
 using NB.Service.UserService.Dto;
 using NB.Service.WarehouseService;
+using NB.Service.TransactionDetailService;
 using OfficeOpenXml;
 using NB.Service.Core.Forms;
 using static System.DateTime;
@@ -27,6 +29,7 @@ namespace NB.API.Controllers
         private readonly ICategoryService _categoryService;
         private readonly IWarehouseService _warehouseService;
         private readonly ICloudinaryService _cloudinaryService;
+        private readonly ITransactionDetailService _transactionDetailService;
         private readonly ILogger<ProductController> _logger;
 
         public ProductController(
@@ -36,6 +39,7 @@ namespace NB.API.Controllers
             ICategoryService categoryService,
             IWarehouseService warehouseService,
             ICloudinaryService cloudinaryService,
+            ITransactionDetailService transactionDetailService,
             ILogger<ProductController> logger)
         {
             _productService = productService;
@@ -44,6 +48,7 @@ namespace NB.API.Controllers
             _categoryService = categoryService;
             _warehouseService = warehouseService;
             _cloudinaryService = cloudinaryService;
+            _transactionDetailService = transactionDetailService;
             _logger = logger;
         }
 
@@ -614,6 +619,16 @@ namespace NB.API.Controllers
                 if (product.IsAvailable == false)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Sản phẩm đã bị xóa từ trước", 400));
+                }
+
+                // Kiểm tra xem sản phẩm có trong đơn hàng nháp (Export, Status = draft) không
+                var hasProductInDraftOrders = await _transactionDetailService.HasProductInDraftExportOrders(Id);
+
+                if (hasProductInDraftOrders)
+                {
+                    return BadRequest(ApiResponse<object>.Fail(
+                        $"Không thể xóa sản phẩm '{product.ProductName}' vì sản phẩm này đang có trong đơn hàng nháp. Vui lòng xóa hoặc cập nhật đơn hàng trước.",
+                        400));
                 }
 
                 product.IsAvailable = false;
