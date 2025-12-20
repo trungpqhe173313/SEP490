@@ -14,6 +14,7 @@ namespace NB.API.Controllers
 {
     [Authorize]
     [Route("api/warehouses")]
+    [Authorize]
     public class WarehouseController : Controller
     {
         private readonly IWarehouseService _warehouseService;

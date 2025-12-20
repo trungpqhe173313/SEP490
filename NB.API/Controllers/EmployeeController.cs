@@ -10,10 +10,12 @@ using NB.Service.UserService.Dto;
 using NB.Service.UserService.ViewModels;
 using NB.Service.UserRoleService.ViewModels;
 using NB.API.Utils;
+using Microsoft.AspNetCore.Authorization;
 
 namespace NB.API.Controllers
 {
     [Route("api/employees")]
+    [Authorize]
     public class EmployeeController : Controller
     {
         private readonly IUserService _userService;

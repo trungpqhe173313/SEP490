@@ -22,10 +22,12 @@ using NB.Service.StockBatchService.Dto;
 using NB.Service.StockBatchService.ViewModels;
 using NB.Service.WarehouseService;
 using static System.DateTime;
+using Microsoft.AspNetCore.Authorization;
 
 namespace NB.API.Controllers
 {
     [Route("api/production")]
+    [Authorize(Roles = "Manager")]
     public class ProductionController : Controller
     {
         private const int RawMaterialWarehouseId = 2; // Kho nguyên liệu mặc định
