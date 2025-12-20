@@ -202,28 +202,6 @@ namespace NB.API.Controllers
                             400));
                     }
 
-                    // Kiểm tra xem có sản phẩm nào còn tồn kho không (Quantity > 0)
-                    var productsWithInventory = new List<string>();
-
-                    foreach (var product in productsInCategory)
-                    {
-                        var hasStock = await _inventoryService.HasInventoryStock(product.ProductId);
-
-                        if (hasStock)
-                        {
-                            productsWithInventory.Add(product.ProductName);
-                        }
-                    }
-
-                    if (productsWithInventory.Any())
-                    {
-                        var productNames = string.Join(", ", productsWithInventory.Take(3));
-                        var moreProducts = productsWithInventory.Count > 3 ? $" và {productsWithInventory.Count - 3} sản phẩm khác" : "";
-
-                        return BadRequest(ApiResponse<object>.Fail(
-                            $"Không thể xóa danh mục '{category.CategoryName}' vì còn {productsWithInventory.Count} sản phẩm đang có trong kho: {productNames}{moreProducts}. Vui lòng xử lý hết sản phẩm trong kho trước.",
-                            400));
-                    }
                 }
 
                 category.IsActive = false;
