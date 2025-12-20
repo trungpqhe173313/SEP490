@@ -23,5 +23,5 @@ public partial class ProductionOrder
 
     public virtual ICollection<Material> Materials { get; set; } = new List<Material>();
 
-    public virtual ICollection<ProductionLog> ProductionLogs { get; set; } = new List<ProductionLog>();
+    public virtual ICollection<ProductionWeightLog> ProductionWeightLogs { get; set; } = new List<ProductionWeightLog>();
 }

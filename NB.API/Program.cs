@@ -81,7 +81,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 
-builder.Services.AddDbContext<NutriBarn2025Context>(options =>
+builder.Services.AddDbContext<NutriBarnTestlaylaingayhContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     if (string.IsNullOrEmpty(connectionString))

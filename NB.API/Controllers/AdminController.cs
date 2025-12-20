@@ -221,5 +221,52 @@ namespace NB.API.Controllers
 
             return new string(password);
         }
+
+        /// <summary>
+        /// Admin đặt lại mật khẩu cho người dùng và gửi mật khẩu mới qua email
+        /// </summary>
+        [HttpPost("reset-user-password")]
+        public async Task<IActionResult> ResetUserPassword([FromBody] ResetUserPasswordDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            try
+            {
+                // Gọi service để đặt lại mật khẩu
+                var result = await _adminService.ResetUserPasswordAsync(dto.UserId, dto.Password);
+
+                if (!result.Success)
+                {
+                    return StatusCode(result.StatusCode, result);
+                }
+
+                // Lấy thông tin user để gửi email
+                var user = await _userService.GetByUserId(dto.UserId);
+                if (user == null || string.IsNullOrWhiteSpace(user.Email))
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Không tìm thấy thông tin người dùng hoặc email", 400));
+                }
+
+                // Gửi email với mật khẩu mới
+                string newPassword = result.Data ?? "";
+                bool emailSent = await _emailService.SendPasswordResetEmailAsync(user.Email, user.Username, newPassword);
+
+                if (!emailSent)
+                {
+                    _logger.LogWarning($"Không thể gửi email đặt lại mật khẩu cho user {user.Email}. Mật khẩu đã được đặt lại nhưng email thông báo thất bại.");
+                    return Ok(ApiResponse<string>.Ok("Đã đặt lại mật khẩu nhưng không thể gửi email thông báo. Vui lòng thông báo trực tiếp cho người dùng."));
+                }
+
+                return Ok(ApiResponse<string>.Ok($"Đã đặt lại mật khẩu và gửi email thành công đến {user.Email}"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Lỗi khi đặt lại mật khẩu cho user ID {dto.UserId}");
+                return BadRequest(ApiResponse<string>.Fail($"Có lỗi xảy ra khi đặt lại mật khẩu: {ex.Message}", 400));
+            }
+        }
     }
 }
