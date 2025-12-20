@@ -45,6 +45,7 @@ namespace NB.API.Controllers
         }
 
         [HttpGet("GetBySupplierId/{id}")]
+        [Authorize]
         public async Task<IActionResult> GetBySupplierId(int id)
         {
             try
@@ -64,6 +65,7 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("CreateSupplier")]
+        [Authorize]
         public async Task<IActionResult> CreateSupplier([FromBody] SupplierCreateVM model)
         {
             if (!ModelState.IsValid)
@@ -101,6 +103,7 @@ namespace NB.API.Controllers
         }
 
         [HttpPut("UpdateSupplier/{id}")]
+        [Authorize]
         public async Task<IActionResult> UpdateSupplier(int id, [FromBody] SupplierEditVM model)
         {
             if (!ModelState.IsValid)
@@ -145,6 +148,7 @@ namespace NB.API.Controllers
         }
 
         [HttpDelete("DeleteSupplier/{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteSupplier(int id)
         {
             try
