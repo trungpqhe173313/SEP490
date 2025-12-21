@@ -419,6 +419,11 @@ namespace NB.API.Controllers
                 // Validate từng product trong list và tính tổng trọng lượng
                 foreach (var product in model.Products)
                 {
+                    // Kiểm tra số lượng phải là số nguyên
+                    if (product.Quantity % 1 != 0)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail($"Số lượng sản phẩm với ID: {product.ProductId} phải là số nguyên, không được là số thập phân.", 400));
+                    }
                     if(product.Quantity <= 0)
                     {
                         return BadRequest(ApiResponse<object>.Fail($"Số lượng sản phẩm với ID: {product.ProductId} phải lớn hơn 0.", 400));
@@ -599,13 +604,32 @@ namespace NB.API.Controllers
                                         continue; // Skip dòng trống, không xử lý gì
                                     }
 
-                                    // Parse Quantity để kiểm tra
+                                    // Parse Quantity để kiểm tra số nguyên
                                     int quantity = 0;
-                                    bool quantityParsed = int.TryParse(quantityStr, out quantity);
+                                    bool quantityParsed = false;
+                                    bool isDecimal = false;
+
+                                    // Kiểm tra xem có phải số thập phân không
+                                    if (!string.IsNullOrWhiteSpace(quantityStr))
+                                    {
+                                        if (decimal.TryParse(quantityStr, out decimal decimalQuantity))
+                                        {
+                                            // Kiểm tra xem có phải số nguyên không
+                                            if (decimalQuantity % 1 != 0)
+                                            {
+                                                isDecimal = true;
+                                            }
+                                            else
+                                            {
+                                                quantity = (int)decimalQuantity;
+                                                quantityParsed = true;
+                                            }
+                                        }
+                                    }
 
                                     // Nếu có ProductName nhưng Quantity = 0 hoặc rỗng → Skip dòng này (không báo lỗi)
                                     // Cho phép user giữ list sản phẩm cố định, chỉ điều chỉnh quantity
-                                    if (!string.IsNullOrWhiteSpace(productName) && (!quantityParsed || quantity == 0))
+                                    if (!string.IsNullOrWhiteSpace(productName) && (!quantityParsed || quantity == 0) && !isDecimal)
                                     {
                                         continue; // Skip sản phẩm có quantity = 0, không import
                                     }
@@ -619,8 +643,12 @@ namespace NB.API.Controllers
                                         rowErrors.Add($"Dòng {row}: Tên sản phẩm không được để trống");
                                     }
 
-                                    // Validate Quantity
-                                    if (!quantityParsed || quantity <= 0)
+                                    // Validate Quantity - Kiểm tra số thập phân trước
+                                    if (isDecimal)
+                                    {
+                                        rowErrors.Add($"Dòng {row}: Số lượng phải là số nguyên, không được là số thập phân");
+                                    }
+                                    else if (!quantityParsed || quantity <= 0)
                                     {
                                         rowErrors.Add($"Dòng {row}: Số lượng phải là số nguyên lớn hơn 0");
                                     }
@@ -801,6 +829,11 @@ namespace NB.API.Controllers
                     var quantity = (decimal)(po.Quantity ?? 0);
                     var unitPrice = (decimal)(po.UnitPrice ?? 0);
 
+                    // Kiểm tra số lượng phải là số nguyên
+                    if (quantity % 1 != 0)
+                    {
+                        return BadRequest(ApiResponse<string>.Fail($"Số lượng sản phẩm với ID: {po.ProductId} phải là số nguyên, không được là số thập phân.", 400));
+                    }
                     if (quantity <= 0)
                     {
                         return BadRequest(ApiResponse<string>.Fail($"Số lượng sản phẩm với ID: {po.ProductId} phải lớn hơn 0.", 400));
