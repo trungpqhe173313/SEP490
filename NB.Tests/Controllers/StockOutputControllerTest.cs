@@ -1438,7 +1438,7 @@ namespace NB.Test.Controllers
 
             // Setup mock: User tồn tại
             var userDto = new UserDto { UserId = userId, FullName = "Test User" };
-            _userServiceMock
+            _userServiceMock  
                 .Setup(s => s.GetByUserId(userId))
                 .ReturnsAsync(userDto);
 

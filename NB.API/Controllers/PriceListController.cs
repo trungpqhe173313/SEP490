@@ -74,6 +74,40 @@ namespace NB.API.Controllers
             }
         }
 
+        [HttpPost("GetDataForExport")]
+        public async Task<IActionResult> GetDataForExport([FromBody] PriceListSearch search)
+        {
+            try
+            {
+
+                var priceLists = await _priceListService.GetAllData(search);
+                var result = priceLists.Where(pl => pl.EndDate > DateTime.Now).Select(pl => new PriceListOutputVM
+                {
+                    PriceListId = pl.PriceListId,
+                    PriceListName = pl.PriceListName,
+                    StartDate = pl.StartDate,
+                    EndDate = pl.EndDate,
+                    IsActive = pl.IsActive,
+                    CreatedAt = pl.CreatedAt
+                }).ToList();
+
+                var pagedResult = new PagedList<PriceListOutputVM>(
+                    items: result,
+                    pageIndex: search.PageIndex,
+                    pageSize: search.PageSize,
+                    totalCount: result.Count
+                );
+
+
+                return Ok(ApiResponse<PagedList<PriceListOutputVM>>.Ok(pagedResult));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách bảng giá");
+                return BadRequest(ApiResponse<List<PriceListDto>>.Fail("Có lỗi xảy ra khi lấy danh sách bảng giá.", 400));
+            }
+        }
+
 
         [HttpGet("GetDetail/{priceListId}")]
         public async Task<IActionResult> GetDetail(int priceListId)
