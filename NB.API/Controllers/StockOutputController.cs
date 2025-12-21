@@ -1488,6 +1488,10 @@ namespace NB.API.Controllers
                 var transaction = await _transactionService.GetByIdAsync(transactionId);
                 if (transaction == null)
                     return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn hàng", 404 ));
+                if (transaction.Status != (int)TransactionStatus.done)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Đơn hàng không trong trạng thái đã giao"));
+                }
 
                 // Lấy chi tiết đơn hàng hiện tại
                 var currentDetails = await _transactionDetailService.GetByTransactionId(transactionId);
