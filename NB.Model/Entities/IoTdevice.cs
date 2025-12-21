@@ -20,8 +20,4 @@ public partial class IoTdevice
     public DateTime? LastHeartbeat { get; set; }
 
     public DateTime? CreatedAt { get; set; }
-
-    public virtual ProductionOrder? CurrentProduction { get; set; }
-
-    public virtual ICollection<ProductionWeightLog> ProductionWeightLogs { get; set; } = new List<ProductionWeightLog>();
 }

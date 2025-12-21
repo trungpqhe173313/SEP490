@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace NB.Model.Entities;
 
-public partial class NutriBarnTestlaylaingayhContext : DbContext
+public partial class NutriBarnTestContext : DbContext
 {
-    public NutriBarnTestlaylaingayhContext()
+    public NutriBarnTestContext()
     {
     }
 
-    public NutriBarnTestlaylaingayhContext(DbContextOptions<NutriBarnTestlaylaingayhContext> options)
+    public NutriBarnTestContext(DbContextOptions<NutriBarnTestContext> options)
         : base(options)
     {
     }
@@ -68,16 +68,15 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
     public virtual DbSet<Warehouse> Warehouses { get; set; }
 
     public virtual DbSet<Worklog> Worklogs { get; set; }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Category>(entity =>
         {
-            entity.HasKey(e => e.CategoryId).HasName("PK__Category__19093A2B55121F8A");
+            entity.HasKey(e => e.CategoryId).HasName("PK__Category__19093A2B4A970DA3");
 
             entity.ToTable("Category");
 
-            entity.HasIndex(e => e.CategoryName, "UQ__Category__8517B2E07B4B1545").IsUnique();
+            entity.HasIndex(e => e.CategoryName, "UQ__Category__8517B2E0C0F1BC31").IsUnique();
 
             entity.Property(e => e.CategoryId).HasColumnName("CategoryID");
             entity.Property(e => e.CategoryName).HasMaxLength(100);
@@ -93,7 +92,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<Contract>(entity =>
         {
-            entity.HasKey(e => e.ContractId).HasName("PK__Contract__C90D3409575881BA");
+            entity.HasKey(e => e.ContractId).HasName("PK__Contract__C90D3409326B32FA");
 
             entity.ToTable("Contract");
 
@@ -120,7 +119,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<FinancialTransaction>(entity =>
         {
-            entity.HasKey(e => e.FinancialTransactionId).HasName("PK__Financia__64181057C605DCD7");
+            entity.HasKey(e => e.FinancialTransactionId).HasName("PK__Financia__641810575D0C8480");
 
             entity.ToTable("FinancialTransaction");
 
@@ -146,7 +145,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<Finishproduct>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Finishpr__3214EC27D919ACC7");
+            entity.HasKey(e => e.Id).HasName("PK__Finishpr__3214EC273DA43231");
 
             entity.ToTable("Finishproduct");
 
@@ -183,7 +182,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<Inventory>(entity =>
         {
-            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__F5FDE6D386DF3119");
+            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__F5FDE6D32D131E2E");
 
             entity.ToTable("Inventory");
 
@@ -216,31 +215,26 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<IoTdevice>(entity =>
         {
-            entity.HasKey(e => e.DeviceId).HasName("PK__IoTdevic__49E123315F2A7D77");
+            entity.HasKey(e => e.DeviceId).HasName("PK__IoTDevic__49E12311C10DE58C");
 
-            entity.ToTable("IoTdevice");
+            entity.ToTable("IoTDevice");
 
-            entity.HasIndex(e => e.DeviceCode, "UQ__IoTdevic__5EAC23D05E0D96E8").IsUnique();
+            entity.HasIndex(e => e.DeviceCode, "UQ__IoTDevic__AFFB3E951928BD5D").IsUnique();
 
-            entity.Property(e => e.DeviceId).HasColumnName("DeviceID");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.CurrentProductionId).HasColumnName("CurrentProductionID");
             entity.Property(e => e.DeviceCode).HasMaxLength(50);
             entity.Property(e => e.DeviceName).HasMaxLength(100);
-            entity.Property(e => e.IsOnline).HasDefaultValue(false);
+            entity.Property(e => e.IsOnline).HasDefaultValue(true);
             entity.Property(e => e.LastHeartbeat).HasColumnType("datetime");
             entity.Property(e => e.WarehouseId).HasColumnName("WarehouseID");
-
-            entity.HasOne(d => d.CurrentProduction).WithMany(p => p.IoTdevices)
-                .HasForeignKey(d => d.CurrentProductionId)
-                .HasConstraintName("FK__IoTdevice__Curre__5224328E");
         });
 
         modelBuilder.Entity<Job>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Job__3214EC2744A07F7D");
+            entity.HasKey(e => e.Id).HasName("PK__Job__3214EC27C2405F14");
 
             entity.ToTable("Job");
 
@@ -258,7 +252,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<Material>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Material__3214EC2758469010");
+            entity.HasKey(e => e.Id).HasName("PK__Material__3214EC276E13BFB4");
 
             entity.ToTable("Material");
 
@@ -298,7 +292,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<Payroll>(entity =>
         {
-            entity.HasKey(e => e.PayrollId).HasName("PK__Payroll__99DFC692F8FD804B");
+            entity.HasKey(e => e.PayrollId).HasName("PK__Payroll__99DFC69229E04991");
 
             entity.ToTable("Payroll");
 
@@ -323,7 +317,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<PriceList>(entity =>
         {
-            entity.HasKey(e => e.PriceListId).HasName("PK__PriceLis__1E30F34C40AB25A6");
+            entity.HasKey(e => e.PriceListId).HasName("PK__PriceLis__1E30F34C8D66A6BC");
 
             entity.ToTable("PriceList");
 
@@ -341,7 +335,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<PriceListDetail>(entity =>
         {
-            entity.HasKey(e => e.PriceListDetailId).HasName("PK__PriceLis__7BE7C6645C33AA19");
+            entity.HasKey(e => e.PriceListDetailId).HasName("PK__PriceLis__7BE7C664D74E16B5");
 
             entity.ToTable("PriceListDetail");
 
@@ -362,7 +356,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<Product>(entity =>
         {
-            entity.HasKey(e => e.ProductId).HasName("PK__Product__B40CC6ED7CBE8EB6");
+            entity.HasKey(e => e.ProductId).HasName("PK__Product__B40CC6ED763EF5C8");
 
             entity.ToTable("Product");
 
@@ -370,7 +364,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
             entity.HasIndex(e => e.SupplierId, "IX_Product_SupplierID");
 
-            entity.HasIndex(e => e.ProductCode, "UQ__Product__2F4E024FD0BC1CAF").IsUnique();
+            entity.HasIndex(e => e.ProductCode, "UQ__Product__2F4E024F51DB2AB1").IsUnique();
 
             entity.Property(e => e.ProductId).HasColumnName("ProductID");
             entity.Property(e => e.CategoryId).HasColumnName("CategoryID");
@@ -404,7 +398,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<ProductionOrder>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Producti__3214EC271374B090");
+            entity.HasKey(e => e.Id).HasName("PK__Producti__3214EC27BC13D08E");
 
             entity.ToTable("ProductionOrder");
 
@@ -424,15 +418,9 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<ProductionWeightLog>(entity =>
         {
-            entity.HasKey(e => e.LogId).HasName("PK__Producti__5E5499A8D8D3E2F0");
+            entity.HasKey(e => e.LogId).HasName("PK__Producti__5E5499A812B6B755");
 
             entity.ToTable("ProductionWeightLog");
-
-            entity.HasIndex(e => e.CreatedAt, "IX_ProductionWeightLog_CreatedAt").IsDescending();
-
-            entity.HasIndex(e => e.DeviceCode, "IX_ProductionWeightLog_DeviceCode");
-
-            entity.HasIndex(e => e.ProductionId, "IX_ProductionWeightLog_ProductionID");
 
             entity.Property(e => e.LogId).HasColumnName("LogID");
             entity.Property(e => e.ActualWeight).HasColumnType("decimal(10, 3)");
@@ -440,31 +428,15 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.DeviceCode).HasMaxLength(50);
-            entity.Property(e => e.Note).HasMaxLength(500);
+            entity.Property(e => e.Note).HasMaxLength(200);
             entity.Property(e => e.ProductId).HasColumnName("ProductID");
             entity.Property(e => e.ProductionId).HasColumnName("ProductionID");
             entity.Property(e => e.TargetWeight).HasColumnType("decimal(10, 3)");
-
-            entity.HasOne(d => d.DeviceCodeNavigation).WithMany(p => p.ProductionWeightLogs)
-                .HasPrincipalKey(p => p.DeviceCode)
-                .HasForeignKey(d => d.DeviceCode)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Productio__Devic__5535A963");
-
-            entity.HasOne(d => d.Product).WithMany(p => p.ProductionWeightLogs)
-                .HasForeignKey(d => d.ProductId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Productio__Produ__540C7222");
-
-            entity.HasOne(d => d.Production).WithMany(p => p.ProductionWeightLogs)
-                .HasForeignKey(d => d.ProductionId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Productio__Produ__531852E9");
         });
 
         modelBuilder.Entity<ReturnTransaction>(entity =>
         {
-            entity.HasKey(e => e.ReturnTransactionId).HasName("PK__ReturnTr__4E8C11A671A72907");
+            entity.HasKey(e => e.ReturnTransactionId).HasName("PK__ReturnTr__4E8C11A69555B0A6");
 
             entity.ToTable("ReturnTransaction");
 
@@ -481,7 +453,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<ReturnTransactionDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__ReturnTr__3214EC278C9177CB");
+            entity.HasKey(e => e.Id).HasName("PK__ReturnTr__3214EC27DA3D45E7");
 
             entity.ToTable("ReturnTransactionDetail");
 
@@ -503,7 +475,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.RoleId).HasName("PK__Role__8AFACE3AD078DA78");
+            entity.HasKey(e => e.RoleId).HasName("PK__Role__8AFACE3AB1494A8B");
 
             entity.ToTable("Role");
 
@@ -517,7 +489,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<StockAdjustment>(entity =>
         {
-            entity.HasKey(e => e.AdjustmentId).HasName("PK__StockAdj__E60DB8B389CC4184");
+            entity.HasKey(e => e.AdjustmentId).HasName("PK__StockAdj__E60DB8B33B35EF3A");
 
             entity.ToTable("StockAdjustment");
 
@@ -534,7 +506,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<StockAdjustmentDetail>(entity =>
         {
-            entity.HasKey(e => e.DetailId).HasName("PK__StockAdj__135C314D1CEEFA73");
+            entity.HasKey(e => e.DetailId).HasName("PK__StockAdj__135C314DACDE4E87");
 
             entity.ToTable("StockAdjustmentDetail");
 
@@ -564,7 +536,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<StockBatch>(entity =>
         {
-            entity.HasKey(e => e.BatchId).HasName("PK__StockBat__5D55CE388B95C897");
+            entity.HasKey(e => e.BatchId).HasName("PK__StockBat__5D55CE388DE58513");
 
             entity.ToTable("StockBatch");
 
@@ -572,7 +544,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
             entity.HasIndex(e => new { e.ProductId, e.ImportDate }, "StockBatch_index_24");
 
-            entity.HasIndex(e => e.BatchCode, "UQ__StockBat__B22ADA8EB7D214DB").IsUnique();
+            entity.HasIndex(e => e.BatchCode, "UQ__StockBat__B22ADA8E6D1CCD06").IsUnique();
 
             entity.Property(e => e.BatchId).HasColumnName("BatchID");
             entity.Property(e => e.BatchCode).HasMaxLength(50);
@@ -616,11 +588,11 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<Supplier>(entity =>
         {
-            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE666946508F20E");
+            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE6669467D3B887");
 
             entity.ToTable("Supplier");
 
-            entity.HasIndex(e => e.Email, "UQ__Supplier__A9D10534005E963B").IsUnique();
+            entity.HasIndex(e => e.Email, "UQ__Supplier__A9D105340398465A").IsUnique();
 
             entity.Property(e => e.SupplierId).HasColumnName("SupplierID");
             entity.Property(e => e.CreatedAt)
@@ -634,7 +606,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<Transaction>(entity =>
         {
-            entity.HasKey(e => e.TransactionId).HasName("PK__Transact__55433A4BBC151E86");
+            entity.HasKey(e => e.TransactionId).HasName("PK__Transact__55433A4B46590997");
 
             entity.ToTable("Transaction");
 
@@ -664,7 +636,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<TransactionDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Transact__3214EC274E536A2A");
+            entity.HasKey(e => e.Id).HasName("PK__Transact__3214EC27211BA52A");
 
             entity.ToTable("TransactionDetail");
 
@@ -686,7 +658,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.UserId).HasName("PK__User__1788CCACFA72BAD8");
+            entity.HasKey(e => e.UserId).HasName("PK__User__1788CCAC7AC73529");
 
             entity.ToTable("User");
 
@@ -694,11 +666,11 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
             entity.HasIndex(e => e.Username, "IX_User_Username");
 
-            entity.HasIndex(e => e.Username, "UQ__User__536C85E401B53E16").IsUnique();
+            entity.HasIndex(e => e.Username, "UQ__User__536C85E4620D6736").IsUnique();
 
-            entity.HasIndex(e => e.Phone, "UQ__User__5C7E359ED354F58F").IsUnique();
+            entity.HasIndex(e => e.Phone, "UQ__User__5C7E359E8D6ACD2F").IsUnique();
 
-            entity.HasIndex(e => e.Email, "UQ__User__A9D105345A31DF4D").IsUnique();
+            entity.HasIndex(e => e.Email, "UQ__User__A9D10534659A2700").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("UserID");
             entity.Property(e => e.CreatedAt)
@@ -717,7 +689,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<UserRole>(entity =>
         {
-            entity.HasKey(e => e.UserRoleId).HasName("PK__UserRole__3D978A555732589C");
+            entity.HasKey(e => e.UserRoleId).HasName("PK__UserRole__3D978A55B26759C1");
 
             entity.ToTable("UserRole");
 
@@ -747,7 +719,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<Warehouse>(entity =>
         {
-            entity.HasKey(e => e.WarehouseId).HasName("PK__Warehous__2608AFD94F7A2B15");
+            entity.HasKey(e => e.WarehouseId).HasName("PK__Warehous__2608AFD979A633CB");
 
             entity.ToTable("Warehouse");
 
@@ -763,7 +735,7 @@ public partial class NutriBarnTestlaylaingayhContext : DbContext
 
         modelBuilder.Entity<Worklog>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Worklog__3214EC27E68EC76A");
+            entity.HasKey(e => e.Id).HasName("PK__Worklog__3214EC276D599FFB");
 
             entity.ToTable("Worklog");
 
