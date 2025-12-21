@@ -10,7 +10,7 @@ namespace NB.API.Modules
     {
         protected override void Load(ContainerBuilder builder)
         {
-            builder.RegisterType(typeof(NutriBarnTestlaylaingayhContext)).As(typeof(DbContext)).InstancePerLifetimeScope();
+            builder.RegisterType(typeof(NutriBarnTestContext)).As(typeof(DbContext)).InstancePerLifetimeScope();
             builder.RegisterGeneric(typeof(Repository<>))
                .As(typeof(IRepository<>))
                .InstancePerLifetimeScope();
