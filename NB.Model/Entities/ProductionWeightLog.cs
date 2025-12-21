@@ -22,4 +22,10 @@ public partial class ProductionWeightLog
     public DateTime? CreatedAt { get; set; }
 
     public string? Note { get; set; }
+
+    public virtual IoTdevice DeviceCodeNavigation { get; set; } = null!;
+
+    public virtual Product Product { get; set; } = null!;
+
+    public virtual ProductionOrder Production { get; set; } = null!;
 }

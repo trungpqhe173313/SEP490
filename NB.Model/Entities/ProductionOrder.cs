@@ -19,5 +19,9 @@ public partial class ProductionOrder
 
     public virtual ICollection<Finishproduct> Finishproducts { get; set; } = new List<Finishproduct>();
 
+    public virtual ICollection<IoTdevice> IoTdevices { get; set; } = new List<IoTdevice>();
+
     public virtual ICollection<Material> Materials { get; set; } = new List<Material>();
+
+    public virtual ICollection<ProductionWeightLog> ProductionWeightLogs { get; set; } = new List<ProductionWeightLog>();
 }
