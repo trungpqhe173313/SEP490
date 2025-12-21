@@ -11,7 +11,7 @@ using NB.Service.SupplierService.ViewModels;
 namespace NB.API.Controllers
 {
     [Route("api/suppliers")]
-    //[Authorize(Roles = "Manager")]
+    [Authorize]
     public class SupplierController : Controller
     {
         private readonly ISupplierService _supplierService;
@@ -29,7 +29,6 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("GetData")]
-        [Authorize(Roles = "Manager,Admin")]
         public async Task<IActionResult> GetData([FromBody] SupplierSearch search)
         {
             try
@@ -45,7 +44,6 @@ namespace NB.API.Controllers
         }
 
         [HttpGet("GetBySupplierId/{id}")]
-        [Authorize]
         public async Task<IActionResult> GetBySupplierId(int id)
         {
             try
@@ -65,7 +63,6 @@ namespace NB.API.Controllers
         }
 
         [HttpPost("CreateSupplier")]
-        [Authorize]
         public async Task<IActionResult> CreateSupplier([FromBody] SupplierCreateVM model)
         {
             if (!ModelState.IsValid)
@@ -103,7 +100,6 @@ namespace NB.API.Controllers
         }
 
         [HttpPut("UpdateSupplier/{id}")]
-        [Authorize]
         public async Task<IActionResult> UpdateSupplier(int id, [FromBody] SupplierEditVM model)
         {
             if (!ModelState.IsValid)
@@ -148,7 +144,6 @@ namespace NB.API.Controllers
         }
 
         [HttpDelete("DeleteSupplier/{id}")]
-        [Authorize]
         public async Task<IActionResult> DeleteSupplier(int id)
         {
             try
