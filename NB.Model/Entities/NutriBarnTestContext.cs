@@ -68,6 +68,11 @@ public partial class NutriBarnTestContext : DbContext
     public virtual DbSet<Warehouse> Warehouses { get; set; }
 
     public virtual DbSet<Worklog> Worklogs { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server=212.85.25.175;Database=NutriBarnTest;User Id=sa;Password=Addddminnn1122331;TrustServerCertificate=True;MultipleActiveResultSets=true");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Category>(entity =>
@@ -230,6 +235,10 @@ public partial class NutriBarnTestContext : DbContext
             entity.Property(e => e.IsOnline).HasDefaultValue(true);
             entity.Property(e => e.LastHeartbeat).HasColumnType("datetime");
             entity.Property(e => e.WarehouseId).HasColumnName("WarehouseID");
+
+            entity.HasOne(d => d.CurrentProduction).WithMany(p => p.IoTdevices)
+                .HasForeignKey(d => d.CurrentProductionId)
+                .HasConstraintName("FK_IoTdevice_ProductionOrder");
         });
 
         modelBuilder.Entity<Job>(entity =>
@@ -432,6 +441,22 @@ public partial class NutriBarnTestContext : DbContext
             entity.Property(e => e.ProductId).HasColumnName("ProductID");
             entity.Property(e => e.ProductionId).HasColumnName("ProductionID");
             entity.Property(e => e.TargetWeight).HasColumnType("decimal(10, 3)");
+
+            entity.HasOne(d => d.DeviceCodeNavigation).WithMany(p => p.ProductionWeightLogs)
+                .HasPrincipalKey(p => p.DeviceCode)
+                .HasForeignKey(d => d.DeviceCode)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_WeightLog_IoTdevice");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.ProductionWeightLogs)
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_WeightLog_Product");
+
+            entity.HasOne(d => d.Production).WithMany(p => p.ProductionWeightLogs)
+                .HasForeignKey(d => d.ProductionId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_WeightLog_ProductionOrder");
         });
 
         modelBuilder.Entity<ReturnTransaction>(entity =>
