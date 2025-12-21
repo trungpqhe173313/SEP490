@@ -1633,18 +1633,33 @@ namespace NB.API.Controllers
                 returnTranEntity.CreatedAt = DateTime.Now;
                 await _returnTransactionService.CreateAsync(returnTranEntity);
 
-                // Cập nhật TransactionDetail - Trừ số lượng hoặc xóa nếu trả hết
-                var updatedDetails = new List<TransactionDetail>();
-                //decimal totalCostReduction = 0;
+                // Kiểm tra xem người dùng có trả hết toàn bộ sản phẩm trong đơn không
+                bool isReturnAll = true;
+                foreach (var detail in currentDetails)
+                {
+                    if (!returnProductDict.ContainsKey(detail.ProductId))
+                    {
+                        // Có sản phẩm không được trả
+                        isReturnAll = false;
+                        break;
+                    }
+                    
+                    var returnQuantity = returnProductDict[detail.ProductId];
+                    if (returnQuantity != detail.Quantity)
+                    {
+                        // Có sản phẩm không trả hết số lượng
+                        isReturnAll = false;
+                        break;
+                    }
+                }
 
+                // Tạo chi tiết đơn trả cho tất cả sản phẩm được trả
                 foreach (var detail in currentDetails)
                 {
                     if (returnProductDict.ContainsKey(detail.ProductId))
                     {
-                        // Lấy ra số lượng phải trả của sản phẩm
                         var returnQuantity = returnProductDict[detail.ProductId];
-                        var newQuantity = detail.Quantity - returnQuantity;
-
+                        
                         //Tạo chi tiết đơn trả
                         var returnTranDetail = new ReturnTransactionDetailCreateVM
                         {
@@ -1655,54 +1670,74 @@ namespace NB.API.Controllers
                         };
                         var returnTranDetailEntity = _mapper.Map<ReturnTransactionDetailCreateVM, ReturnTransactionDetail>(returnTranDetail);
                         await _returnTransactionDetailService.CreateAsync(returnTranDetailEntity);
+                    }
+                }
 
-                        if (newQuantity > 0)
+                if (isReturnAll)
+                {
+                    // Trường hợp trả hết toàn bộ sản phẩm trong đơn
+                    // KHÔNG XÓA transactionDetail, chỉ đổi trạng thái transaction thành cancel
+                    transaction.Status = (int?)TransactionStatus.cancel;
+                    
+                    // Cập nhật note nếu có
+                    if (!string.IsNullOrEmpty(or.Note))
+                    {
+                        transaction.Note = or.Note;
+                    }
+                }
+                else
+                {
+                    // Trường hợp chỉ trả một số sản phẩm - Xử lý theo logic cũ
+                    foreach (var detail in currentDetails)
+                    {
+                        if (returnProductDict.ContainsKey(detail.ProductId))
                         {
-                            // Còn sản phẩm - Cập nhật số lượng
-                            var detailEntity = await _transactionDetailService.GetByIdAsync(detail.Id);
-                            if (detailEntity != null)
+                            // Lấy ra số lượng phải trả của sản phẩm
+                            var returnQuantity = returnProductDict[detail.ProductId];
+                            var newQuantity = detail.Quantity - returnQuantity;
+
+                            if (newQuantity > 0)
                             {
-                                detailEntity.Quantity = (int)newQuantity;
-                                await _transactionDetailService.UpdateAsync(detailEntity);
+                                // Còn sản phẩm - Cập nhật số lượng
+                                var detailEntity = await _transactionDetailService.GetByIdAsync(detail.Id);
+                                if (detailEntity != null)
+                                {
+                                    detailEntity.Quantity = (int)newQuantity;
+                                    await _transactionDetailService.UpdateAsync(detailEntity);
+                                }
                             }
-                        }
-                        else
-                        {
-                            // Trả hết - Xóa detail
-                            var detailEntity = await _transactionDetailService.GetByIdAsync(detail.Id);
-                            if (detailEntity != null)
+                            else
                             {
-                                await _transactionDetailService.DeleteAsync(detailEntity);
+                                // Trả hết sản phẩm này - Xóa detail
+                                var detailEntity = await _transactionDetailService.GetByIdAsync(detail.Id);
+                                if (detailEntity != null)
+                                {
+                                    await _transactionDetailService.DeleteAsync(detailEntity);
+                                }
                             }
                         }
                     }
-                }
-                
 
-                // Cập nhật tổng tiền đơn hàng
-                if (transaction.TotalCost.HasValue)
-                {
-                    //gia goc tru di gia tong so hang bi tra
-                    transaction.TotalCost -= or.TotalCost;
-                    if (transaction.TotalCost < 0) transaction.TotalCost = 0;
-                }
-                // Cập nhật TotalWeight - trừ đi weight của hàng bị trả
-                if (transaction.TotalWeight.HasValue)
-                {
-                    transaction.TotalWeight -= returnWeight;
-                    if (transaction.TotalWeight < 0) transaction.TotalWeight = 0;
-                }
-                // Cập nhật note
-                if (!string.IsNullOrEmpty(or.Note))
-                {
-                    transaction.Note = or.Note;
-                }
-
-                // Kiểm tra nếu trả hết tất cả sản phẩm thì chuyển trạng thái về draft hoặc cancelled
-                var remainingDetails = await _transactionDetailService.GetByTransactionId(transactionId);
-                if (remainingDetails == null || !remainingDetails.Any())
-                {
-                    transaction.Status = (int?)TransactionStatus.cancel;
+                    // Cập nhật tổng tiền đơn hàng
+                    if (transaction.TotalCost.HasValue)
+                    {
+                        //gia goc tru di gia tong so hang bi tra
+                        transaction.TotalCost -= or.TotalCost;
+                        if (transaction.TotalCost < 0) transaction.TotalCost = 0;
+                    }
+                    
+                    // Cập nhật TotalWeight - trừ đi weight của hàng bị trả
+                    if (transaction.TotalWeight.HasValue)
+                    {
+                        transaction.TotalWeight -= returnWeight;
+                        if (transaction.TotalWeight < 0) transaction.TotalWeight = 0;
+                    }
+                    
+                    // Cập nhật note
+                    if (!string.IsNullOrEmpty(or.Note))
+                    {
+                        transaction.Note = or.Note;
+                    }
                 }
 
                 await _transactionService.UpdateAsync(transaction);
