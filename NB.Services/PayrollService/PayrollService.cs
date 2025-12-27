@@ -72,7 +72,7 @@ namespace NB.Service.PayrollService
             var payrollIds = existingPayrolls.Select(p => p.PayrollId).ToList();
             var transactions = await _financialTransactionRepository.GetQueryable()
                 .Where(t => t.PayrollId.HasValue && payrollIds.Contains(t.PayrollId.Value)
-                    && t.Type == TransactionType.ThanhToanLuong.ToString())
+                    && t.Type == FinancialTransactionType.ThanhToanLuong.ToString())
                 .ToListAsync();
 
             var result = new List<PayrollOverviewDto>();
@@ -243,7 +243,7 @@ namespace NB.Service.PayrollService
             var transaction = new FinancialTransaction
             {
                 TransactionDate = DateTime.Now,
-                Type = TransactionType.ThanhToanLuong.ToString(),
+                Type = FinancialTransactionType.ThanhToanLuong.ToString(),
                 Amount = -payroll.TotalAmount, // Số âm vì thanh toán lương là chi ra
                 Description = dto.Note ?? $"Thanh toán lương tháng {payroll.StartDate.Month}/{payroll.StartDate.Year} cho {payroll.Employee.FullName}",
                 PaymentMethod = dto.PaymentMethod,
