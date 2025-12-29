@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using NB.Model.Entities;
 using NB.Model.Enums;
 using NB.Service.Common;
+using NB.Service.Core;
 using NB.Service.Core.Enum;
 using NB.Service.Core.Mapper;
 using NB.Service.Dto;
@@ -52,6 +53,7 @@ namespace NB.API.Controllers
         private readonly IFinancialTransactionService _financialTransactionService;
         private readonly ILogger<EmployeeController> _logger;
         private readonly IMapper _mapper;
+        private readonly TransactionCodeGenerator _transactionCodeGenerator;
         private readonly string transactionType = "Export";
         private readonly int generalWarehouseId = 1;
         public StockOutputController(
@@ -66,7 +68,8 @@ namespace NB.API.Controllers
             IReturnTransactionDetailService returnTransactionDetailService,
             IFinancialTransactionService financialTransactionService,
             IMapper mapper,
-            ILogger<EmployeeController> logger)
+            ILogger<EmployeeController> logger,
+            TransactionCodeGenerator transactionCodeGenerator)
         {
             _transactionService = transactionService;
             _transactionDetailService = transactionDetailService;
@@ -80,6 +83,7 @@ namespace NB.API.Controllers
             _financialTransactionService = financialTransactionService;
             _mapper = mapper;
             _logger = logger;
+            _transactionCodeGenerator = transactionCodeGenerator;
         }
 
         /// <summary>
@@ -384,7 +388,7 @@ namespace NB.API.Controllers
                 transactionEntity.Status = (int?)TransactionStatus.draft; // đang xử lý
                 transactionEntity.TransactionDate = Now;
                 transactionEntity.Type = "Export";
-                transactionEntity.TransactionCode = $"EXPORT-{Now:yyyyMMdd}";
+                transactionEntity.TransactionCode = await _transactionCodeGenerator.GenerateTransactionCode("Export");
                 await _transactionService.CreateAsync(transactionEntity);
 
                 // 3️ Duyệt từng sản phẩm để tạo transaction detail

@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using NB.Model.Entities;
 using NB.Model.Enums;
+using NB.Service.Core;
 using NB.Service.Core.Enum;
 using NB.Service.Core.Mapper;
 using NB.Service.Dto;
@@ -41,6 +43,7 @@ namespace NB.API.Controllers
         private readonly IUserService _userService;
         private readonly IStockBatchService _stockBatchService;
         private readonly IWarehouseService _warehouseService;
+        private readonly TransactionCodeGenerator _transactionCodeGenerator;
         private readonly string transactionType = "Transfer";
 
         public StockTransferController(
@@ -54,7 +57,8 @@ namespace NB.API.Controllers
             IReturnTransactionService returnTransactionService,
             IReturnTransactionDetailService returnTransactionDetailService,
             IMapper mapper,
-            ILogger<EmployeeController> logger)
+            ILogger<EmployeeController> logger,
+            TransactionCodeGenerator transactionCodeGenerator)
         {
             _transactionService = transactionService;
             _transactionDetailService = transactionDetailService;
@@ -65,6 +69,7 @@ namespace NB.API.Controllers
             _inventoryService = inventoryService;
             _mapper = mapper;
             _logger = logger;
+            _transactionCodeGenerator = transactionCodeGenerator;
         }
 
         /// <summary>
@@ -329,7 +334,7 @@ namespace NB.API.Controllers
                 var transactionEntity = _mapper.Map<TransactionCreateVM, Transaction>(tranCreate);
                 transactionEntity.TransactionDate = Now;
                 transactionEntity.Type = transactionType;
-                transactionEntity.TransactionCode = $"TRANSFER-{Now:yyyyMMdd}";
+                transactionEntity.TransactionCode = await _transactionCodeGenerator.GenerateTransactionCode(transactionType);
                 transactionEntity.Status = (int)TransactionStatus.inTransit;
                 
                 // Gán người chịu trách nhiệm nếu có
