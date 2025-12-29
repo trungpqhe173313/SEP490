@@ -17,6 +17,7 @@ namespace NB.Service.UserService
         Task<List<UserDto>?> GetAllUserForAdmin(UserSearch search);
         Task<UserDto?> GetByEmail(string email);
         Task<UserDto?> GetByUsername(string username);
+        Task<UserDto?> GetByUsernameForLogin(string username);
         Task<UserDto?> GetByRefreshTokenAsync(string RefreshToken);
         Task<bool> CheckPasswordAsync(User user, string password);
         Task<List<TopCustomerDto>> GetTopCustomersByTotalSpent(DateTime fromDate, DateTime toDate);

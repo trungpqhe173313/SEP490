@@ -165,6 +165,26 @@ namespace NB.Service.UserService
 
             return await query.FirstOrDefaultAsync();
         }
+        public async Task<UserDto?> GetByUsernameForLogin(string username)
+        {
+            var query =
+                from u in GetQueryable()
+                where EF.Functions.Collate(u.Username, "SQL_Latin1_General_CP1_CS_AS") == username
+                select new UserDto
+                {
+                    UserId = u.UserId,
+                    Username = u.Username,
+                    FullName = u.FullName,
+                    Email = u.Email,
+                    Image = u.Image,
+                    Phone = u.Phone,
+                    CreatedAt = u.CreatedAt,
+                    IsActive = u.IsActive
+                };
+
+            return await query.FirstOrDefaultAsync();
+        }
+
 
         public async Task<bool> CheckPasswordAsync(User user, string password)
         {
