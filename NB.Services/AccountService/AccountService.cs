@@ -53,7 +53,7 @@ namespace NB.Service.AccountService
             if (string.IsNullOrEmpty(password))
                 return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 400);
 
-            var user = await _userService.GetByUsername(username);
+            var user = await _userService.GetByUsernameForLogin(username);
             if (user == null)
                 return ApiResponse<LoginResponse>.Fail("Tài khoản hoặc mật khẩu không chính xác", 400);
             if (user.IsActive != true) 
