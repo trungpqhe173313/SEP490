@@ -1,4 +1,5 @@
 ﻿using Autofac;
+using NB.Service.Core;
 using System.Reflection;
 
 namespace NB.API.Modules
@@ -13,6 +14,9 @@ namespace NB.API.Modules
                       .Where(t => t.Name.EndsWith("Service"))
                       .AsImplementedInterfaces()
                       .InstancePerLifetimeScope();
+
+            builder.RegisterType<TransactionCodeGenerator>()
+                   .InstancePerLifetimeScope();
 
         }
 

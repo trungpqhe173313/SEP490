@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using NB.Model.Entities;
 using NB.Model.Enums;
 using NB.Repository.WarehouseRepository;
 using NB.Service.Common;
+using NB.Service.Core;
 using NB.Service.Core.Enum;
 using NB.Service.Core.Forms;
 using NB.Service.Core.Mapper;
@@ -58,6 +60,7 @@ namespace NB.API.Controllers
         private readonly IUserService _userService;
         private readonly ILogger<StockInputController> _logger;
         private readonly IMapper _mapper;
+        private readonly TransactionCodeGenerator _transactionCodeGenerator;
         private readonly string transactionType = "Import";
 
         public StockInputController(IInventoryService inventoryService,
@@ -72,7 +75,8 @@ namespace NB.API.Controllers
                                     IFinancialTransactionService financialTransactionService,
                                     IUserService userService,
                                     ILogger<StockInputController> logger,
-                                    IMapper mapper)
+                                    IMapper mapper,
+                                    TransactionCodeGenerator transactionCodeGenerator)
         {
             _inventoryService = inventoryService;
             _transactionService = transactionService;
@@ -87,6 +91,7 @@ namespace NB.API.Controllers
             _userService = userService;
             _logger = logger;
             _mapper = mapper;
+            _transactionCodeGenerator = transactionCodeGenerator;
         }
 
         [HttpPost("GetData")]
@@ -443,6 +448,9 @@ namespace NB.API.Controllers
 
                 try
                 {
+                    // Tạo mã TransactionCode duy nhất
+                    var transactionCode = await _transactionCodeGenerator.GenerateTransactionCode("Import");
+
                     // Tạo Transaction
                     var newTransaction = new TransactionDto
                     {
@@ -454,7 +462,7 @@ namespace NB.API.Controllers
                         TransactionDate = Now,
                         TotalWeight = totalWeight,
                         TotalCost = totalCost,
-                        TransactionCode = $"IMPORT-{Now:yyyyMMdd}",
+                        TransactionCode = transactionCode,
                         Note = model.Note
                     };
                     await _transactionService.CreateAsync(newTransaction);
@@ -702,6 +710,9 @@ namespace NB.API.Controllers
                                     400));
                             }
 
+                            // Tạo mã TransactionCode duy nhất
+                            var transactionCode = await _transactionCodeGenerator.GenerateTransactionCode("Import");
+
                             // Tạo Transaction
                             var newTransaction = new TransactionDto
                             {
@@ -711,7 +722,7 @@ namespace NB.API.Controllers
                                 Status = (int)TransactionStatus.importChecking, // Đang kiểm hàng
                                 TotalWeight = totalWeight,
                                 TotalCost = totalCost,
-                                TransactionCode = $"IMPORT-{Now:yyyyMMdd}",
+                                TransactionCode = transactionCode,
                                 TransactionDate = Now,
                                 Note = transactionNote
                             };
