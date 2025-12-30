@@ -11,6 +11,8 @@ using NB.Service.FinancialTransactionService.Dto;
 using NB.Service.FinancialTransactionService.ViewModels;
 using NB.Service.TransactionService;
 using NB.Service.UserService;
+using NB.Service.PayrollService;
+using NB.Service.SupplierService;
 
 namespace NB.API.Controllers
 {
@@ -21,6 +23,8 @@ namespace NB.API.Controllers
         private readonly ITransactionService _transactionService;
         private readonly IFinancialTransactionService _financialTransactionService;
         private readonly IUserService _userService;
+        private readonly IPayrollService _payrollService;
+        private readonly ISupplierService _supplierService;
         private readonly IMapper _mapper;
         private readonly ILogger<FinancialTransactionController> _logger;
 
@@ -28,12 +32,16 @@ namespace NB.API.Controllers
             ITransactionService transactionService,
             IFinancialTransactionService financialTransactionService,
             IUserService userService,
+            IPayrollService payrollService,
+            ISupplierService supplierService,
             IMapper mapper,
             ILogger<FinancialTransactionController> logger)
         {
             _transactionService = transactionService;
             _financialTransactionService = financialTransactionService;
             _userService = userService;
+            _payrollService = payrollService;
+            _supplierService = supplierService;
             _mapper = mapper;
             _logger = logger;
         }
@@ -126,7 +134,93 @@ namespace NB.API.Controllers
                     }
                 }
 
-                // Enrich thông tin: thêm TypeName, TypeInt từ enum và CreatedByName
+                // Lấy danh sách RelatedTransactionId và PayrollId để query thông tin liên quan
+                var relatedTransactionIds = result.Items
+                    .Where(ft => ft.RelatedTransactionId.HasValue && ft.RelatedTransactionId.Value > 0)
+                    .Select(ft => ft.RelatedTransactionId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var payrollIds = result.Items
+                    .Where(ft => ft.PayrollId.HasValue && ft.PayrollId.Value > 0)
+                    .Select(ft => ft.PayrollId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                // Query RelatedTransactions một lần (tối ưu performance)
+                var transactionDict = new Dictionary<int, Transaction>();
+                if (relatedTransactionIds.Any())
+                {
+                    var transactions = _transactionService.GetQueryable()
+                        .Where(t => relatedTransactionIds.Contains(t.TransactionId))
+                        .ToList();
+                    
+                    foreach (var trans in transactions)
+                    {
+                        transactionDict[trans.TransactionId] = trans;
+                    }
+                }
+
+                // Query Payrolls và Employee information một lần (tối ưu performance)
+                var payrollDict = new Dictionary<int, (Payroll Payroll, string EmployeeName)>();
+                if (payrollIds.Any())
+                {
+                    var payrolls = _payrollService.GetQueryable()
+                        .Where(p => payrollIds.Contains(p.PayrollId))
+                        .ToList();
+                    
+                    // Lấy danh sách EmployeeId từ Payrolls
+                    var employeeIds = payrolls.Select(p => p.EmployeeId).Distinct().ToList();
+                    var employees = _userService.GetQueryable()
+                        .Where(u => employeeIds.Contains(u.UserId))
+                        .ToList();
+                    var employeeDict = employees.ToDictionary(e => e.UserId, e => e.FullName ?? e.Username ?? "N/A");
+                    
+                    foreach (var payroll in payrolls)
+                    {
+                        var empName = employeeDict.ContainsKey(payroll.EmployeeId) ? employeeDict[payroll.EmployeeId] : "N/A";
+                        payrollDict[payroll.PayrollId] = (payroll, empName);
+                    }
+                }
+
+                // Query Customers và Suppliers từ transactions
+                var customerIds = transactionDict.Values
+                    .Where(t => t.CustomerId.HasValue && t.CustomerId.Value > 0)
+                    .Select(t => t.CustomerId!.Value)
+                    .Distinct()
+                    .ToList();
+                
+                var supplierIds = transactionDict.Values
+                    .Where(t => t.SupplierId.HasValue && t.SupplierId.Value > 0)
+                    .Select(t => t.SupplierId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var customerDict = new Dictionary<int, string>();
+                if (customerIds.Any())
+                {
+                    var customers = _userService.GetQueryable()
+                        .Where(u => customerIds.Contains(u.UserId))
+                        .ToList();
+                    foreach (var customer in customers)
+                    {
+                        customerDict[customer.UserId] = customer.FullName ?? customer.Username ?? "N/A";
+                    }
+                }
+
+                var supplierDict = new Dictionary<int, string>();
+                if (supplierIds.Any())
+                {
+                    var suppliers = _supplierService.GetQueryable()
+                        .Where(s => supplierIds.Contains(s.SupplierId))
+                        .ToList();
+                    foreach (var supplier in suppliers)
+                    {
+                        supplierDict[supplier.SupplierId] = supplier.SupplierName ?? "N/A";
+                    }
+                }
+
+                // Enrich thông tin: thêm TypeName, TypeInt từ enum và CreatedByName, thông tin liên quan
                 foreach (var ft in result.Items)
                 {
                     // Thêm TypeName và TypeInt từ enum
@@ -146,6 +240,31 @@ namespace NB.API.Controllers
                         {
                             ft.CreatedByName = userDict[ft.CreatedBy.Value];
                         }
+                    }
+
+                    // Thêm thông tin từ RelatedTransaction
+                    if (ft.RelatedTransactionId.HasValue && transactionDict.ContainsKey(ft.RelatedTransactionId.Value))
+                    {
+                        var trans = transactionDict[ft.RelatedTransactionId.Value];
+                        ft.RelatedTransactionCode = trans.TransactionCode ?? $"#{trans.TransactionId}";
+                        
+                        // Thêm tên khách hàng nếu có
+                        if (trans.CustomerId.HasValue && customerDict.ContainsKey(trans.CustomerId.Value))
+                        {
+                            ft.CustomerName = customerDict[trans.CustomerId.Value];
+                        }
+                        
+                        // Thêm tên nhà cung cấp nếu có
+                        if (trans.SupplierId.HasValue && supplierDict.ContainsKey(trans.SupplierId.Value))
+                        {
+                            ft.SupplierName = supplierDict[trans.SupplierId.Value];
+                        }
+                    }
+
+                    // Thêm thông tin từ Payroll
+                    if (ft.PayrollId.HasValue && payrollDict.ContainsKey(ft.PayrollId.Value))
+                    {
+                        ft.EmployeeName = payrollDict[ft.PayrollId.Value].EmployeeName;
                     }
                 }
 
@@ -201,6 +320,50 @@ namespace NB.API.Controllers
                     if (creator != null)
                     {
                         result.CreatedByName = creator.FullName ?? creator.Username ?? "N/A";
+                    }
+                }
+
+                // Lấy thông tin từ RelatedTransaction nếu có
+                if (result.RelatedTransactionId.HasValue && result.RelatedTransactionId.Value > 0)
+                {
+                    var relatedTransaction = await _transactionService.GetByIdAsync(result.RelatedTransactionId.Value);
+                    if (relatedTransaction != null)
+                    {
+                        result.RelatedTransactionCode = relatedTransaction.TransactionCode ?? $"#{relatedTransaction.TransactionId}";
+                        
+                        // Lấy tên khách hàng nếu có
+                        if (relatedTransaction.CustomerId.HasValue && relatedTransaction.CustomerId.Value > 0)
+                        {
+                            var customer = await _userService.GetByUserId(relatedTransaction.CustomerId.Value);
+                            if (customer != null)
+                            {
+                                result.CustomerName = customer.FullName ?? customer.Username ?? "N/A";
+                            }
+                        }
+                        
+                        // Lấy tên nhà cung cấp nếu có
+                        if (relatedTransaction.SupplierId.HasValue && relatedTransaction.SupplierId.Value > 0)
+                        {
+                            var supplier = await _supplierService.GetByIdAsync(relatedTransaction.SupplierId.Value);
+                            if (supplier != null)
+                            {
+                                result.SupplierName = supplier.SupplierName ?? "N/A";
+                            }
+                        }
+                    }
+                }
+
+                // Lấy thông tin từ Payroll nếu có
+                if (result.PayrollId.HasValue && result.PayrollId.Value > 0)
+                {
+                    var payroll = await _payrollService.GetByIdAsync(result.PayrollId.Value);
+                    if (payroll != null)
+                    {
+                        var employee = await _userService.GetByUserId(payroll.EmployeeId);
+                        if (employee != null)
+                        {
+                            result.EmployeeName = employee.FullName ?? employee.Username ?? "N/A";
+                        }
                     }
                 }
 

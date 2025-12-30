@@ -12,5 +12,13 @@ namespace NB.Service.FinancialTransactionService.Dto
         public string? TypeName { get; set; }
         public string? CreatedByName { get; set; }
         public int? TypeInt { get; set; }
+        
+        // Thông tin từ RelatedTransaction
+        public string? RelatedTransactionCode { get; set; }
+        public string? CustomerName { get; set; }
+        public string? SupplierName { get; set; }
+        
+        // Thông tin từ Payroll
+        public string? EmployeeName { get; set; }
     }
 }
