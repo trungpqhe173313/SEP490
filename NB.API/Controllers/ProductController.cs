@@ -326,10 +326,6 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<object>.Fail("Tên sản phẩm không được để trống.", 400));
             }
 
-            if (await _productService.GetByProductName(productName) != null)
-            {
-                return BadRequest(ApiResponse<object>.Fail($"Tên sản phẩm '{model.productName}' đã tồn tại.", 400));
-            }
 
             // Validate WeightPerUnit
             if (model.weightPerUnit < 0)
