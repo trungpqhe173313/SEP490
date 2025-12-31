@@ -1,9 +1,18 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client;
 using NB.Model.Entities;
+using NB.Model.Enums;
 using NB.Repository.Common;
 using NB.Service.Common;
 using NB.Service.TransactionService.Dto;
+using NB.Service.TransactionService.ViewModels;
+using NB.Service.TransactionDetailService;
+using NB.Service.ProductService;
+using NB.Service.InventoryService;
+using NB.Service.StockBatchService;
+using NB.Service.UserService;
+using NB.Service.WarehouseService;
+using NB.Service.SupplierService;
 using System.Linq;
 
 
@@ -14,16 +23,28 @@ namespace NB.Service.TransactionService
         private readonly IRepository<Warehouse> _warehouseRepository;
         private readonly IRepository<User> _userRepository;
         private readonly IRepository<Supplier> _supplierRepository;
+        private readonly ITransactionDetailService _transactionDetailService;
+        private readonly IProductService _productService;
+        private readonly IInventoryService _inventoryService;
+        private readonly IStockBatchService _stockBatchService;
 
         public TransactionService(
             IRepository<Transaction> repository,
             IRepository<Warehouse> warehouseRepository,
             IRepository<User> userRepository,
-            IRepository<Supplier> supplierRepository) : base(repository)
+            IRepository<Supplier> supplierRepository,
+            ITransactionDetailService transactionDetailService,
+            IProductService productService,
+            IInventoryService inventoryService,
+            IStockBatchService stockBatchService) : base(repository)
         {
             _warehouseRepository = warehouseRepository;
             _userRepository = userRepository;
             _supplierRepository = supplierRepository;
+            _transactionDetailService = transactionDetailService;
+            _productService = productService;
+            _inventoryService = inventoryService;
+            _stockBatchService = stockBatchService;
         }
         public async Task<List<TransactionDto>> GetById(int? id)
         {
@@ -439,6 +460,407 @@ namespace NB.Service.TransactionService
                 TotalWeight = totalWeight,
                 TransactionCount = transactionCount,
                 Details = details.OrderByDescending(d => d.TotalWeight).ToList()
+            };
+        }
+
+        public async Task<SubmitForApprovalResult> SubmitForApprovalAsync(int transactionId, SubmitForApprovalVM model)
+        {
+            // Kiểm tra transaction có tồn tại không
+            var transaction = await GetByIdAsync(transactionId);
+            if (transaction == null)
+            {
+                return new SubmitForApprovalResult
+                {
+                    Success = false,
+                    Message = "Không tìm thấy đơn nhập kho"
+                };
+            }
+
+            // Kiểm tra loại transaction phải là Import
+            if (transaction.Type != "Import")
+            {
+                return new SubmitForApprovalResult
+                {
+                    Success = false,
+                    Message = "Đơn hàng không phải là đơn nhập kho"
+                };
+            }
+
+            // Kiểm tra trạng thái phải là "Đang kiểm" (status = 1)
+            if (transaction.Status != (int)TransactionStatus.importChecking)
+            {
+                return new SubmitForApprovalResult
+                {
+                    Success = false,
+                    Message = "Chỉ có thể gửi phê duyệt cho đơn hàng đang ở trạng thái 'Đang kiểm'"
+                };
+            }
+
+            // Kiểm tra quyền: User phải là người chịu trách nhiệm
+            if (!transaction.ResponsibleId.HasValue || transaction.ResponsibleId.Value != model.ResponsibleId)
+            {
+                return new SubmitForApprovalResult
+                {
+                    Success = false,
+                    Message = "Bạn không có quyền gửi phê duyệt cho đơn hàng này"
+                };
+            }
+
+            // Kiểm tra người chịu trách nhiệm có tồn tại
+            var responsibleUser = await _userRepository.GetByIdAsync(model.ResponsibleId);
+            if (responsibleUser == null)
+            {
+                return new SubmitForApprovalResult
+                {
+                    Success = false,
+                    Message = "Không tìm thấy người chịu trách nhiệm"
+                };
+            }
+
+            // Lấy tất cả TransactionDetails của đơn hàng
+            var transactionDetails = await _transactionDetailService.GetByTransactionId(transactionId);
+
+            if (transactionDetails == null || !transactionDetails.Any())
+            {
+                return new SubmitForApprovalResult
+                {
+                    Success = false,
+                    Message = "Không tìm thấy chi tiết đơn hàng"
+                };
+            }
+
+            // Kiểm tra tất cả products trong request có tồn tại trong TransactionDetail không
+            var transactionDetailDict = transactionDetails.ToDictionary(td => td.ProductId, td => td);
+
+            foreach (var product in model.Products)
+            {
+                if (!transactionDetailDict.ContainsKey(product.ProductId))
+                {
+                    return new SubmitForApprovalResult
+                    {
+                        Success = false,
+                        Message = $"Sản phẩm với ID {product.ProductId} không có trong đơn hàng này"
+                    };
+                }
+
+                // Validate actualQuantity phải là số nguyên không âm
+                if (product.ActualQuantity < 0)
+                {
+                    return new SubmitForApprovalResult
+                    {
+                        Success = false,
+                        Message = $"Số lượng thực tế của sản phẩm {product.ProductId} không được âm"
+                    };
+                }
+            }
+
+            // Cập nhật số lượng thực tế cho từng TransactionDetail
+            decimal totalCost = 0;
+            decimal totalWeight = 0;
+
+            foreach (var product in model.Products)
+            {
+                var detail = transactionDetailDict[product.ProductId];
+
+                // Cập nhật quantity = actualQuantity
+                detail.Quantity = product.ActualQuantity;
+
+                // Tính lại tổng
+                totalCost += product.ActualQuantity * detail.UnitPrice;
+
+                // Lấy thông tin sản phẩm để tính trọng lượng
+                var productInfo = await _productService.GetById(product.ProductId);
+                if (productInfo != null)
+                {
+                    totalWeight += product.ActualQuantity * (productInfo.WeightPerUnit ?? 0);
+                }
+
+                // Lưu cập nhật
+                await _transactionDetailService.UpdateAsync(detail);
+            }
+
+            // Cập nhật Transaction
+            transaction.Status = (int)TransactionStatus.pendingWarehouseApproval; // Status = 4
+            transaction.TotalCost = totalCost;
+            transaction.TotalWeight = totalWeight;
+
+            // Cập nhật note nếu có
+            if (!string.IsNullOrWhiteSpace(model.Note))
+            {
+                transaction.Note = string.IsNullOrWhiteSpace(transaction.Note)
+                    ? model.Note
+                    : $"{transaction.Note}\n[Gửi phê duyệt lúc {DateTime.Now:dd/MM/yyyy HH:mm}]: {model.Note}";
+            }
+
+            await UpdateAsync(transaction);
+
+            return new SubmitForApprovalResult
+            {
+                Success = true,
+                Message = "Gửi phê duyệt thành công",
+                TransactionId = transaction.TransactionId,
+                Status = transaction.Status ?? 0,
+                TotalCost = transaction.TotalCost
+            };
+        }
+
+        public async Task<ApproveImportResult> ApproveImportAsync(int transactionId, ApproveImportVM model)
+        {
+            // Kiểm tra transaction có tồn tại không
+            var transaction = await GetByIdAsync(transactionId);
+            if (transaction == null)
+            {
+                return new ApproveImportResult
+                {
+                    Success = false,
+                    Message = "Không tìm thấy đơn nhập kho"
+                };
+            }
+
+            // Kiểm tra loại transaction phải là Import
+            if (transaction.Type != "Import")
+            {
+                return new ApproveImportResult
+                {
+                    Success = false,
+                    Message = "Đơn hàng không phải là đơn nhập kho"
+                };
+            }
+
+            // Kiểm tra trạng thái phải là "Chờ phê duyệt kho" (status = 4)
+            if (transaction.Status != (int)TransactionStatus.pendingWarehouseApproval)
+            {
+                return new ApproveImportResult
+                {
+                    Success = false,
+                    Message = "Chỉ có thể phê duyệt đơn hàng đang ở trạng thái 'Chờ phê duyệt kho'"
+                };
+            }
+
+            // Kiểm tra approverId có tồn tại
+            var approver = await _userRepository.GetByIdAsync(model.ApproverId);
+            if (approver == null)
+            {
+                return new ApproveImportResult
+                {
+                    Success = false,
+                    Message = "Không tìm thấy người phê duyệt"
+                };
+            }
+
+            // Lấy TransactionDetails
+            var transactionDetails = await _transactionDetailService.GetByTransactionId(transactionId);
+
+            if (transactionDetails == null || !transactionDetails.Any())
+            {
+                return new ApproveImportResult
+                {
+                    Success = false,
+                    Message = "Không tìm thấy chi tiết đơn hàng"
+                };
+            }
+
+            // Lấy thông tin kho
+            var warehouse = await _warehouseRepository.GetByIdAsync(transaction.WarehouseId);
+            if (warehouse == null)
+            {
+                return new ApproveImportResult
+                {
+                    Success = false,
+                    Message = $"Không tìm thấy kho với ID: {transaction.WarehouseId}"
+                };
+            }
+
+            // Validate ExpireDate không được là ngày quá khứ
+            if (model.ExpireDate.Date < DateTime.Now.Date)
+            {
+                return new ApproveImportResult
+                {
+                    Success = false,
+                    Message = "Ngày hết hạn không được là ngày quá khứ"
+                };
+            }
+
+            DateTime expireDate = model.ExpireDate;
+
+            // Tạo StockBatch và cập nhật Inventory
+            string batchCodePrefix = "BATCH-NUMBER";
+            int batchCounter = 1;
+            Dictionary<string, InventoryService.Dto.InventoryDto> inventoryCache = new Dictionary<string, InventoryService.Dto.InventoryDto>();
+
+            foreach (var detail in transactionDetails)
+            {
+                // Tạo BatchCode unique
+                string uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
+                while (await _stockBatchService.GetByName(uniqueBatchCode) != null)
+                {
+                    batchCounter++;
+                    uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
+                }
+
+                // Tạo StockBatch
+                var newStockBatch = new StockBatchService.Dto.StockBatchDto
+                {
+                    WarehouseId = transaction.WarehouseId,
+                    ProductId = detail.ProductId,
+                    TransactionId = transactionId,
+                    BatchCode = uniqueBatchCode,
+                    ImportDate = DateTime.Now,
+                    ExpireDate = expireDate,
+                    QuantityIn = detail.Quantity,
+                    Status = 1, // Còn hàng
+                    IsActive = true,
+                    LastUpdated = DateTime.Now,
+                    Note = transaction.Note
+                };
+                await _stockBatchService.CreateAsync(newStockBatch);
+
+                // Cập nhật Inventory với cache
+                string inventoryKey = $"{transaction.WarehouseId}_{detail.ProductId}";
+
+                if (!inventoryCache.ContainsKey(inventoryKey))
+                {
+                    var existInventory = await _inventoryService.GetByWarehouseAndProductId(transaction.WarehouseId, detail.ProductId);
+
+                    if (existInventory == null)
+                    {
+                        var newInventory = new InventoryService.Dto.InventoryDto
+                        {
+                            WarehouseId = transaction.WarehouseId,
+                            ProductId = detail.ProductId,
+                            Quantity = detail.Quantity,
+                            LastUpdated = DateTime.Now
+                        };
+                        inventoryCache[inventoryKey] = newInventory;
+                    }
+                    else
+                    {
+                        existInventory.Quantity = (existInventory.Quantity ?? 0) + detail.Quantity;
+                        existInventory.LastUpdated = DateTime.Now;
+                        inventoryCache[inventoryKey] = existInventory;
+                    }
+                }
+                else
+                {
+                    var cachedInventory = inventoryCache[inventoryKey];
+                    cachedInventory.Quantity = (cachedInventory.Quantity ?? 0) + detail.Quantity;
+                    cachedInventory.LastUpdated = DateTime.Now;
+                }
+
+                batchCounter++;
+            }
+
+            // Lưu Inventory vào DB
+            foreach (var inv in inventoryCache.Values)
+            {
+                if (inv.InventoryId == 0)
+                {
+                    await _inventoryService.CreateAsync(inv);
+                }
+                else
+                {
+                    await _inventoryService.UpdateAsync(inv);
+                }
+            }
+
+            // Cập nhật Transaction
+            transaction.Status = (int)TransactionStatus.importReceived; // Status = 2 - Đã nhận hàng
+
+            // Thêm ghi chú về việc phê duyệt
+            var approverName = approver.FullName ?? approver.Username ?? "N/A";
+            var approvalNote = $"[Phê duyệt bởi {approverName} lúc {DateTime.Now:dd/MM/yyyy HH:mm}]";
+            transaction.Note = string.IsNullOrWhiteSpace(transaction.Note)
+                ? approvalNote
+                : $"{transaction.Note}\n{approvalNote}";
+
+            await UpdateAsync(transaction);
+
+            return new ApproveImportResult
+            {
+                Success = true,
+                Message = "Phê duyệt đơn nhập kho thành công",
+                TransactionId = transaction.TransactionId,
+                Status = transaction.Status ?? 0,
+                ApprovedBy = model.ApproverId,
+                ApprovedDate = DateTime.Now
+            };
+        }
+
+        public async Task<RejectImportResult> RejectImportAsync(int transactionId, RejectImportVM model)
+        {
+            // Kiểm tra transaction có tồn tại không
+            var transaction = await GetByIdAsync(transactionId);
+            if (transaction == null)
+            {
+                return new RejectImportResult
+                {
+                    Success = false,
+                    Message = "Không tìm thấy đơn nhập kho"
+                };
+            }
+
+            // Kiểm tra loại transaction phải là Import
+            if (transaction.Type != "Import")
+            {
+                return new RejectImportResult
+                {
+                    Success = false,
+                    Message = "Đơn hàng không phải là đơn nhập kho"
+                };
+            }
+
+            // Kiểm tra trạng thái phải là "Chờ phê duyệt kho" (status = 4)
+            if (transaction.Status != (int)TransactionStatus.pendingWarehouseApproval)
+            {
+                return new RejectImportResult
+                {
+                    Success = false,
+                    Message = "Chỉ có thể từ chối đơn hàng đang ở trạng thái 'Chờ phê duyệt kho'"
+                };
+            }
+
+            // Kiểm tra approverId có tồn tại
+            var approver = await _userRepository.GetByIdAsync(model.ApproverId);
+            if (approver == null)
+            {
+                return new RejectImportResult
+                {
+                    Success = false,
+                    Message = "Không tìm thấy người phê duyệt"
+                };
+            }
+
+            // Kiểm tra lý do từ chối không được để trống
+            if (string.IsNullOrWhiteSpace(model.Reason))
+            {
+                return new RejectImportResult
+                {
+                    Success = false,
+                    Message = "Lý do từ chối không được để trống"
+                };
+            }
+
+            // Cập nhật Transaction - trả về trạng thái "Đang kiểm"
+            transaction.Status = (int)TransactionStatus.importChecking; // Status = 1
+
+            // Thêm ghi chú về việc từ chối
+            var approverName = approver.FullName ?? approver.Username ?? "N/A";
+            var rejectionNote = $"[Từ chối bởi {approverName} lúc {DateTime.Now:dd/MM/yyyy HH:mm}]: {model.Reason}";
+            transaction.Note = string.IsNullOrWhiteSpace(transaction.Note)
+                ? rejectionNote
+                : $"{transaction.Note}\n{rejectionNote}";
+
+            await UpdateAsync(transaction);
+
+            return new RejectImportResult
+            {
+                Success = true,
+                Message = "Từ chối đơn nhập kho thành công",
+                TransactionId = transaction.TransactionId,
+                Status = transaction.Status ?? 0,
+                RejectedBy = model.ApproverId,
+                RejectedDate = DateTime.Now,
+                RejectionReason = model.Reason
             };
         }
     }
