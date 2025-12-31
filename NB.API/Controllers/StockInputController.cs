@@ -1153,7 +1153,7 @@ namespace NB.API.Controllers
             {
                 return BadRequest(ApiResponse<FinancialTransactionCreateVM>.Fail("Dữ liệu không hợp lệ"));
             }
-            var transaction = await _transactionService.GetByTransactionId(transactionId);
+            var transaction = await _transactionService.GetByIdAsync(transactionId);
             if (transaction == null)
             {
                 return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));
@@ -1214,7 +1214,7 @@ namespace NB.API.Controllers
             {
                 return BadRequest(ApiResponse<FinancialTransactionCreateVM>.Fail("Số tiền trả không được để trống"));
             }
-            var transaction = await _transactionService.GetByTransactionId(transactionId);
+            var transaction = await _transactionService.GetByIdAsync(transactionId);
             if (transaction == null)
             {
                 return NotFound(ApiResponse<TransactionDto>.Fail("Không tìm thấy đơn hàng", 404));

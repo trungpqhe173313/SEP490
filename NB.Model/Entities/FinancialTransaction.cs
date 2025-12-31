@@ -23,6 +23,14 @@ public partial class FinancialTransaction
 
     public int? PayrollId { get; set; }
 
+    public string? ImageUrl { get; set; }
+
+    public int? Status { get; set; }
+
+    public int? ApprovedBy { get; set; }
+
+    public DateTime? ApprovedAt { get; set; }
+
     public virtual Payroll? Payroll { get; set; }
 
     public virtual Transaction? RelatedTransaction { get; set; }
