@@ -46,6 +46,8 @@ namespace NB.Model.Enums
         [Description("Đang kiểm - Import")]
         importChecking = 1,      
         [Description("Đã nhận hàng - Import")]
-        importReceived = 2,      
+        importReceived = 2,
+        [Description("Chờ phê duyệt kho")]
+        pendingWarehouseApproval = 4,
     }
 }

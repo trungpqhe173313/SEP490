@@ -1278,6 +1278,120 @@ namespace NB.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Nhân viên gửi phê duyệt đơn nhập kho với số lượng thực tế
+        /// </summary>
+        [HttpPut("SubmitForApproval/{id}")]
+        public async Task<IActionResult> SubmitForApproval(int id, [FromBody] SubmitForApprovalVM model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            try
+            {
+                var result = await _transactionService.SubmitForApprovalAsync(id, model);
+
+                if (!result.Success)
+                {
+                    return BadRequest(ApiResponse<object>.Fail(result.Message, 400));
+                }
+
+                var response = new
+                {
+                    result.TransactionId,
+                    result.Status,
+                    result.TotalCost,
+                    result.Message
+                };
+
+                return Ok(ApiResponse<object>.Ok(response));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi gửi phê duyệt đơn nhập kho");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi gửi phê duyệt", 400));
+            }
+        }
+
+        /// <summary>
+        /// Manager phê duyệt đơn nhập kho và cập nhật vào kho
+        /// </summary>
+        [HttpPut("ApproveImport/{id}")]
+        public async Task<IActionResult> ApproveImport(int id, [FromBody] ApproveImportVM model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            try
+            {
+                var result = await _transactionService.ApproveImportAsync(id, model);
+
+                if (!result.Success)
+                {
+                    return BadRequest(ApiResponse<object>.Fail(result.Message, 400));
+                }
+
+                var response = new
+                {
+                    result.TransactionId,
+                    result.Status,
+                    result.ApprovedBy,
+                    result.ApprovedDate,
+                    result.Message
+                };
+
+                return Ok(ApiResponse<object>.Ok(response));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi phê duyệt đơn nhập kho");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi phê duyệt đơn nhập kho", 400));
+            }
+        }
+
+        /// <summary>
+        /// Manager từ chối đơn nhập kho, trả về trạng thái "Đang kiểm"
+        /// </summary>
+        [HttpPut("RejectImport/{id}")]
+        public async Task<IActionResult> RejectImport(int id, [FromBody] RejectImportVM model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Dữ liệu không hợp lệ", 400));
+            }
+
+            try
+            {
+                var result = await _transactionService.RejectImportAsync(id, model);
+
+                if (!result.Success)
+                {
+                    return BadRequest(ApiResponse<object>.Fail(result.Message, 400));
+                }
+
+                var response = new
+                {
+                    result.TransactionId,
+                    result.Status,
+                    result.RejectedBy,
+                    result.RejectedDate,
+                    result.RejectionReason,
+                    result.Message
+                };
+
+                return Ok(ApiResponse<object>.Ok(response));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi từ chối đơn nhập kho");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi từ chối đơn nhập kho", 400));
+            }
+        }
+
     }
 
 }
