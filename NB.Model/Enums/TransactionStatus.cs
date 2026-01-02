@@ -44,7 +44,7 @@ namespace NB.Model.Enums
         [Description("Đã hủy - Import")]
         importCancelled = 0,
         [Description("Đang kiểm - Import")]
-        importChecking = 1,      
+        importChecking = 1,
         [Description("Đã nhận hàng - Import")]
         importReceived = 2,
         [Description("Chờ phê duyệt kho")]

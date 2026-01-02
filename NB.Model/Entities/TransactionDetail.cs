@@ -15,6 +15,8 @@ public partial class TransactionDetail
 
     public decimal UnitPrice { get; set; }
 
+    public int? ActualQuantity { get; set; }
+
     public virtual Product Product { get; set; } = null!;
 
     public virtual Transaction Transaction { get; set; } = null!;
