@@ -562,10 +562,10 @@ namespace NB.Service.TransactionService
             {
                 var detail = transactionDetailDict[product.ProductId];
 
-                // Cập nhật quantity = actualQuantity
-                detail.Quantity = product.ActualQuantity;
+                // Cập nhật ActualQuantity, GIỮ NGUYÊN Quantity gốc
+                detail.ActualQuantity = product.ActualQuantity;
 
-                // Tính lại tổng
+                // Tính toán dựa trên ActualQuantity
                 totalCost += product.ActualQuantity * detail.UnitPrice;
 
                 // Lấy thông tin sản phẩm để tính trọng lượng
@@ -698,6 +698,9 @@ namespace NB.Service.TransactionService
                     uniqueBatchCode = $"{batchCodePrefix}{batchCounter:D4}";
                 }
 
+                // Sử dụng ActualQuantity nếu có, fallback về Quantity
+                int quantityToImport = detail.ActualQuantity ?? detail.Quantity;
+
                 // Tạo StockBatch
                 var newStockBatch = new StockBatchService.Dto.StockBatchDto
                 {
@@ -707,7 +710,7 @@ namespace NB.Service.TransactionService
                     BatchCode = uniqueBatchCode,
                     ImportDate = DateTime.Now,
                     ExpireDate = expireDate,
-                    QuantityIn = detail.Quantity,
+                    QuantityIn = quantityToImport,
                     Status = 1, // Còn hàng
                     IsActive = true,
                     LastUpdated = DateTime.Now,
@@ -728,14 +731,14 @@ namespace NB.Service.TransactionService
                         {
                             WarehouseId = transaction.WarehouseId,
                             ProductId = detail.ProductId,
-                            Quantity = detail.Quantity,
+                            Quantity = quantityToImport,
                             LastUpdated = DateTime.Now
                         };
                         inventoryCache[inventoryKey] = newInventory;
                     }
                     else
                     {
-                        existInventory.Quantity = (existInventory.Quantity ?? 0) + detail.Quantity;
+                        existInventory.Quantity = (existInventory.Quantity ?? 0) + quantityToImport;
                         existInventory.LastUpdated = DateTime.Now;
                         inventoryCache[inventoryKey] = existInventory;
                     }
@@ -743,7 +746,7 @@ namespace NB.Service.TransactionService
                 else
                 {
                     var cachedInventory = inventoryCache[inventoryKey];
-                    cachedInventory.Quantity = (cachedInventory.Quantity ?? 0) + detail.Quantity;
+                    cachedInventory.Quantity = (cachedInventory.Quantity ?? 0) + quantityToImport;
                     cachedInventory.LastUpdated = DateTime.Now;
                 }
 

@@ -52,6 +52,7 @@ namespace NB.Service.TransactionDetailService
                             ImageUrl = td.Product.ImageUrl,
                             WeightPerUnit = td.Product.WeightPerUnit,
                             Quantity = td.Quantity,
+                            ActualQuantity = td.ActualQuantity,
                             UnitPrice = td.UnitPrice
                         };
 

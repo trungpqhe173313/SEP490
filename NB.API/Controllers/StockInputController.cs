@@ -274,7 +274,7 @@ namespace NB.API.Controllers
                     UnitPrice = item.UnitPrice,
                     WeightPerUnit = item.WeightPerUnit,
                     Quantity = item.Quantity,
-                    Note = targetTransaction.Note,
+                    ActualQuantity = item.ActualQuantity,
                     ExpireDate = expireDate
                 }).ToList();
 
