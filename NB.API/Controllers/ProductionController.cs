@@ -21,6 +21,7 @@ using NB.Service.StockBatchService;
 using NB.Service.StockBatchService.Dto;
 using NB.Service.StockBatchService.ViewModels;
 using NB.Service.WarehouseService;
+using NB.Service.UserService;
 using static System.DateTime;
 using Microsoft.AspNetCore.Authorization;
 
@@ -43,6 +44,7 @@ namespace NB.API.Controllers
         private readonly IStockBatchService _stockBatchService;
         private readonly IWarehouseService _warehouseService;
         private readonly IRepository<IoTdevice> _iotDeviceRepository;
+        private readonly IUserService _userService;
 
         public ProductionController(
             IProductionOrderService productionOrderService,
@@ -53,6 +55,7 @@ namespace NB.API.Controllers
             IStockBatchService stockBatchService,
             IWarehouseService warehouseService,
             IRepository<IoTdevice> iotDeviceRepository,
+            IUserService userService,
             IMapper mapper,
             ILogger<ProductionController> logger,
             ICloudinaryService cloudinaryService)
@@ -65,6 +68,7 @@ namespace NB.API.Controllers
             _stockBatchService = stockBatchService;
             _warehouseService = warehouseService;
             _iotDeviceRepository = iotDeviceRepository;
+            _userService = userService;
             _mapper = mapper;
             _logger = logger;
             _cloudinaryService = cloudinaryService;
@@ -592,6 +596,13 @@ namespace NB.API.Controllers
                         {
                             ProductionOrderStatus status = (ProductionOrderStatus)detail.Status.Value;
                             productionOrder.StatusName = status.GetDescription();
+                        }
+
+                        // Lấy thông tin nhân viên phụ trách
+                        if (detail.ResponsibleId.HasValue)
+                        {
+                            var responsibleEmployee = await _userService.GetByIdAsync(detail.ResponsibleId.Value);
+                            productionOrder.ResponsibleEmployeeFullName = responsibleEmployee?.FullName;
                         }
                     }
                     else
