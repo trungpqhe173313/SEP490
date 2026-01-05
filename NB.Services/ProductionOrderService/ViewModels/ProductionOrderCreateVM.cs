@@ -9,6 +9,7 @@ namespace NB.Service.ProductionOrderService.ViewModels
 {
     public class ProductionOrderCreateVM
     {
+        public int ResponsibleId { get; set; }
         public string? Note { get; set; }
     }
 }

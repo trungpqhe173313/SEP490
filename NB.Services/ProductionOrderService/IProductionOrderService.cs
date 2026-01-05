@@ -1,5 +1,6 @@
 ﻿using NB.Model.Entities;
 using NB.Service.Common;
+using NB.Service.Dto;
 using NB.Service.ProductionOrderService.Dto;
 using System;
 using System.Collections.Generic;
@@ -12,5 +13,6 @@ namespace NB.Service.ProductionOrderService
     public interface IProductionOrderService : IService<ProductionOrder>
     {
         Task<PagedList<ProductionOrderDto>> GetData(ProductionOrderSearch search);
+        Task<ApiResponse<ProductionOrder>> CreateProductionOrderAsync(ProductionRequest request);
     }
 }
