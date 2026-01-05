@@ -17,6 +17,8 @@ public partial class ProductionOrder
 
     public DateTime? CreatedAt { get; set; }
 
+    public int? ResponsibleId { get; set; }
+
     public virtual ICollection<Finishproduct> Finishproducts { get; set; } = new List<Finishproduct>();
 
     public virtual ICollection<IoTdevice> IoTdevices { get; set; } = new List<IoTdevice>();

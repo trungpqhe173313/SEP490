@@ -73,11 +73,13 @@ namespace NB.API.Controllers
         [HttpPost("CreateProductionOrder")]
         public async Task<IActionResult> CreateProductionOrder([FromBody] ProductionRequest po)
         {
+            // Validation: Kiểm tra request không null
             if (po == null)
             {
                 return BadRequest(ApiResponse<ProductionOrder>.Fail("Dữ liệu request không được để trống", 400));
             }
 
+            // Validation: Kiểm tra ModelState
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse<ProductionOrder>.Fail("Dữ liệu không hợp lệ", 400));
@@ -101,91 +103,34 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<ProductionOrder>.Fail("Danh sách thành phẩm không được để trống", 400));
             }
 
-            // Validation: Kiểm tra sản phẩm nguyên liệu tồn tại
-            var productMaterioalCheck = await _productService.GetByIdAsync(po.MaterialProductId);
-            if (productMaterioalCheck == null)
+            // Validation: Kiểm tra ResponsibleId
+            if (po.responsibleId == null || po.responsibleId <= 0)
             {
-                return BadRequest(ApiResponse<ProductionOrder>.Fail("Sản phẩm nguyên liệu không tồn tại", 404));
+                return BadRequest(ApiResponse<ProductionOrder>.Fail("Phải có nhân viên phụ trách đơn", 400));
             }
 
             // Validation: Kiểm tra danh sách thành phẩm
-            var listFinishProductId = po.ListFinishProduct.Select(fp => fp.ProductId).ToList();
-            var listFinishProduct = await _productService.GetByIds(listFinishProductId);
             foreach (var finishProduct in po.ListFinishProduct)
             {
                 if (finishProduct.ProductId <= 0)
                 {
                     return BadRequest(ApiResponse<ProductionOrder>.Fail("ID sản phẩm thành phẩm không hợp lệ", 400));
                 }
-                if (finishProduct.Quantity <= 0)
+                if (finishProduct.Quantity < 0)
                 {
-                    return BadRequest(ApiResponse<ProductionOrder>.Fail($"Số lượng thành phẩm với ID {finishProduct.ProductId} phải lớn hơn 0", 400));
-                }
-
-                var productFinishCheck = listFinishProduct.FirstOrDefault(p => p.ProductId == finishProduct.ProductId);
-                if (productFinishCheck == null)
-                {
-                    return BadRequest(ApiResponse<ProductionOrder>.Fail($"Sản phẩm hoàn thiện với ID {finishProduct.ProductId} không tồn tại", 404));
+                    return BadRequest(ApiResponse<ProductionOrder>.Fail($"Số lượng thành phẩm với ID {finishProduct.ProductId} phải lớn hơn bằng 0", 400));
                 }
             }
 
-            try
+            // Gọi Service xử lý logic
+            var result = await _productionOrderService.CreateProductionOrderAsync(po);
+            
+            if (!result.Success)
             {
-                // Tạo ProductionOrder
-                var entityProductionOrderCreate = new ProductionOrderCreateVM
-                {
-                    Note = po.Note
-                };
-                var entityProductionOrder = _mapper.Map<ProductionOrderCreateVM, ProductionOrder>(entityProductionOrderCreate);
-                entityProductionOrder.Status = (int)ProductionOrderStatus.Pending;
-                entityProductionOrder.CreatedAt = DateTime.Now;
-                await _productionOrderService.CreateAsync(entityProductionOrder);
-
-                // Sau khi CreateAsync, Id sẽ được set bởi EF Core
-                if (entityProductionOrder.Id <= 0)
-                {
-                    _logger.LogError("ProductionOrder Id không được set sau khi tạo");
-                    return StatusCode(500, ApiResponse<ProductionOrder>.Fail("Lỗi khi tạo đơn sản xuất: Không thể tạo đơn sản xuất", 500));
-                }
-
-                // Tạo Finishproducts
-                foreach (var finishProduct in po.ListFinishProduct)
-                {
-                    var product = listFinishProduct.FirstOrDefault(p => p.ProductId == finishProduct.ProductId);
-                    var entityFinishProductProductionCreate = new FinishproductCreateVM
-                    {
-                        ProductionId = entityProductionOrder.Id,
-                        ProductId = finishProduct.ProductId,
-                        Quantity = finishProduct.Quantity,
-                        WarehouseId = 1, // Mặc định kho thành phẩm là 1
-                        TotalWeight = (product?.WeightPerUnit * finishProduct.Quantity) ?? 0
-                    };
-                    var entityFinishProductProduction = _mapper.Map<FinishproductCreateVM, Finishproduct>(entityFinishProductProductionCreate);
-                    entityFinishProductProduction.CreatedAt = DateTime.Now;
-                    await _finishproductService.CreateAsync(entityFinishProductProduction);
-                }
-
-                // Tạo Material
-                var entityMaterialUsage = new MaterialCreateVM
-                {
-                    ProductionId = entityProductionOrder.Id,
-                    ProductId = po.MaterialProductId,
-                    Quantity = po.MaterialQuantity,
-                    WarehouseId = RawMaterialWarehouseId, // Mặc định kho nguyên liệu là 2
-                    TotalWeight = (productMaterioalCheck.WeightPerUnit * po.MaterialQuantity) ?? 0
-                };
-                var entityMaterial = _mapper.Map<MaterialCreateVM, Material>(entityMaterialUsage);
-                entityMaterial.CreatedAt = DateTime.Now;
-                entityMaterial.LastUpdated = DateTime.Now;
-                await _materialService.CreateAsync(entityMaterial);
-
-                return Ok(ApiResponse<string>.Ok("Tạo đơn sản xuất thành công"));
+                return StatusCode(result.StatusCode, result);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi tạo đơn sản xuất. Chi tiết: {Message}", ex.Message);
-                return StatusCode(500, ApiResponse<ProductionOrder>.Fail($"Có lỗi xảy ra khi tạo đơn sản xuất: {ex.Message}", 500));
-            }
+
+            return Ok(ApiResponse<string>.Ok("Tạo đơn sản xuất thành công"));
         }
 
         /// <summary>

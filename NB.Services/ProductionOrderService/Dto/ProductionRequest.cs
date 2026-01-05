@@ -15,6 +15,8 @@ namespace NB.Service.ProductionOrderService.Dto
         // Số lượng nguyên liệu sử dụng
         public int MaterialQuantity { get; set; }
 
+        public int responsibleId { get; set; }
+
         public string? Note { get; set; }
     }
 }
