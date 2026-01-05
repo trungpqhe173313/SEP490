@@ -16,6 +16,7 @@ namespace NB.Service.ProductionOrderService.ViewModels
         public string? StatusName { get; set; }
         public string? Note { get; set; }
         public DateTime? CreatedAt { get; set; }
+        public string? ResponsibleEmployeeFullName { get; set; }
         public List<FinishProductDetailDto> FinishProducts { get; set; } = new();
         public List<MaterialDetailDto> Materials { get; set; } = new();
     }
