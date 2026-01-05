@@ -3,6 +3,7 @@ using NB.Model.Entities;
 using NB.Model.Enums;
 using NB.Repository.Common;
 using NB.Service.Common;
+using NB.Service.Core.Enum;
 using NB.Service.Core.Mapper;
 using NB.Service.Dto;
 using NB.Service.FinishproductService;
@@ -13,6 +14,7 @@ using NB.Service.ProductionOrderService.Dto;
 using NB.Service.ProductionOrderService.ViewModels;
 using NB.Service.ProductService;
 using NB.Service.UserService;
+using NB.Service.WarehouseService;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,6 +31,7 @@ namespace NB.Service.ProductionOrderService
         private readonly IFinishproductService _finishproductService;
         private readonly IProductService _productService;
         private readonly IUserService _userService;
+        private readonly IWarehouseService _warehouseService;
 
         public ProductionOrderService(
             IRepository<ProductionOrder> repository,
@@ -36,17 +39,21 @@ namespace NB.Service.ProductionOrderService
             IMaterialService materialService,
             IFinishproductService finishproductService,
             IProductService productService,
-            IUserService userService) : base(repository)
+            IUserService userService,
+            IWarehouseService warehouseService) : base(repository)
         {
             _mapper = mapper;
             _materialService = materialService;
             _finishproductService = finishproductService;
             _productService = productService;
             _userService = userService;
+            _warehouseService = warehouseService;
         }
 
         public async Task<PagedList<ProductionOrderDto>> GetData(ProductionOrderSearch search)
         {
+            search ??= new ProductionOrderSearch();
+
             var query = from po in GetQueryable()
                         select new ProductionOrderDto
                         {
@@ -58,20 +65,50 @@ namespace NB.Service.ProductionOrderService
                             CreatedAt = po.CreatedAt
                         };
 
-            if (search != null)
+            if (search.Status.HasValue)
             {
-                if (search.Status.HasValue)
-                {
-                    query = query.Where(po => po.Status == search.Status.Value);
-                }
-                if (search.StartDateFrom.HasValue)
-                {
-                    query = query.Where(po => po.StartDate.HasValue && po.StartDate >= search.StartDateFrom.Value);
-                }
-                if (search.StartDateTo.HasValue)
-                {
-                    query = query.Where(po => po.StartDate.HasValue && po.StartDate <= search.StartDateTo.Value);
-                }
+                query = query.Where(po => po.Status == search.Status.Value);
+            }
+            if (search.StartDateFrom.HasValue)
+            {
+                query = query.Where(po => po.StartDate.HasValue && po.StartDate >= search.StartDateFrom.Value);
+            }
+            if (search.StartDateTo.HasValue)
+            {
+                query = query.Where(po => po.StartDate.HasValue && po.StartDate <= search.StartDateTo.Value);
+            }
+
+            query = query.OrderByDescending(po => po.CreatedAt);
+            return await PagedList<ProductionOrderDto>.CreateAsync(query, search);
+        }
+
+        public async Task<PagedList<ProductionOrderDto>> GetDataByResponsibleId(int responsibleId, ProductionOrderSearch search)
+        {
+            search ??= new ProductionOrderSearch();
+
+            var query = from po in GetQueryable()
+                        where po.ResponsibleId == responsibleId
+                        select new ProductionOrderDto
+                        {
+                            Id = po.Id,
+                            StartDate = po.StartDate,
+                            EndDate = po.EndDate,
+                            Status = po.Status,
+                            Note = po.Note,
+                            CreatedAt = po.CreatedAt
+                        };
+
+            if (search.Status.HasValue)
+            {
+                query = query.Where(po => po.Status == search.Status.Value);
+            }
+            if (search.StartDateFrom.HasValue)
+            {
+                query = query.Where(po => po.StartDate.HasValue && po.StartDate >= search.StartDateFrom.Value);
+            }
+            if (search.StartDateTo.HasValue)
+            {
+                query = query.Where(po => po.StartDate.HasValue && po.StartDate <= search.StartDateTo.Value);
             }
 
             query = query.OrderByDescending(po => po.CreatedAt);
@@ -179,6 +216,125 @@ namespace NB.Service.ProductionOrderService
             catch (Exception ex)
             {
                 return ApiResponse<ProductionOrder>.Fail($"Có lỗi xảy ra khi tạo đơn sản xuất: {ex.Message}", 500);
+            }
+        }
+
+        public async Task<ApiResponse<FullProductionOrderVM>> GetDetailById(int id)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    return ApiResponse<FullProductionOrderVM>.Fail("Id không hợp lệ", 400);
+                }
+
+                // Lấy thông tin production order
+                var detail = await GetByIdAsync(id);
+                if (detail == null)
+                {
+                    return ApiResponse<FullProductionOrderVM>.Fail("Không tìm thấy đơn sản xuất", 404);
+                }
+
+                var productionOrder = new FullProductionOrderVM
+                {
+                    Id = detail.Id,
+                    StartDate = detail.StartDate,
+                    EndDate = detail.EndDate,
+                    Status = detail.Status,
+                    Note = detail.Note,
+                    CreatedAt = detail.CreatedAt
+                };
+
+                // Gắn StatusName
+                if (detail.Status.HasValue)
+                {
+                    ProductionOrderStatus status = (ProductionOrderStatus)detail.Status.Value;
+                    productionOrder.StatusName = status.GetDescription();
+                }
+
+                // Lấy thông tin nhân viên phụ trách
+                if (detail.ResponsibleId.HasValue)
+                {
+                    var responsibleEmployee = await _userService.GetByIdAsync(detail.ResponsibleId.Value);
+                    productionOrder.ResponsibleEmployeeFullName = responsibleEmployee?.FullName;
+                }
+
+                // Lấy danh sách thành phẩm
+                var finishProducts = await _finishproductService.GetQueryable()
+                    .Where(f => f.ProductionId == id)
+                    .ToListAsync();
+
+                // Lấy danh sách nguyên liệu
+                var materials = await _materialService.GetQueryable()
+                    .Where(m => m.ProductionId == id)
+                    .ToListAsync();
+
+                // Lấy danh sách ProductId và WarehouseId để query một lần
+                var productIds = finishProducts.Select(f => f.ProductId)
+                    .Union(materials.Select(m => m.ProductId))
+                    .Distinct()
+                    .ToList();
+
+                var warehouseIds = finishProducts.Select(f => f.WarehouseId)
+                    .Union(materials.Select(m => m.WarehouseId))
+                    .Distinct()
+                    .ToList();
+
+                // Lấy thông tin sản phẩm
+                var products = await _productService.GetByIds(productIds);
+                var productsDict = products.Where(p => p != null).ToDictionary(p => p!.ProductId, p => p!);
+
+                // Lấy thông tin kho
+                var warehouses = await _warehouseService.GetByListWarehouseId(warehouseIds);
+                var warehousesDict = warehouses.Where(w => w != null).ToDictionary(w => w!.WarehouseId, w => w!);
+
+                // Map thành phẩm
+                var finishProductDetails = finishProducts.Select(fp =>
+                {
+                    var product = productsDict.ContainsKey(fp.ProductId) ? productsDict[fp.ProductId] : null;
+                    var warehouse = warehousesDict.ContainsKey(fp.WarehouseId) ? warehousesDict[fp.WarehouseId] : null;
+                    return new FinishProductDetailDto
+                    {
+                        Id = fp.Id,
+                        ProductId = fp.ProductId,
+                        ProductName = product?.ProductName ?? "N/A",
+                        ProductCode = product?.ProductCode ?? "N/A",
+                        WarehouseId = fp.WarehouseId,
+                        WarehouseName = warehouse?.WarehouseName ?? "N/A",
+                        Quantity = fp.Quantity,
+                        WeightPerUnit = product?.WeightPerUnit ?? 0,
+                        CreatedAt = fp.CreatedAt
+                    };
+                }).ToList();
+
+                // Map nguyên liệu
+                var materialDetails = materials.Select(m =>
+                {
+                    var product = productsDict.ContainsKey(m.ProductId) ? productsDict[m.ProductId] : null;
+                    var warehouse = warehousesDict.ContainsKey(m.WarehouseId) ? warehousesDict[m.WarehouseId] : null;
+                    return new MaterialDetailDto
+                    {
+                        Id = m.Id,
+                        ProductId = m.ProductId,
+                        ProductName = product?.ProductName ?? "N/A",
+                        ProductCode = product?.ProductCode ?? "N/A",
+                        WarehouseId = m.WarehouseId,
+                        WarehouseName = warehouse?.WarehouseName ?? "N/A",
+                        Quantity = m.Quantity,
+                        WeightPerUnit = product?.WeightPerUnit ?? 0,
+                        CreatedAt = m.CreatedAt,
+                        LastUpdated = m.LastUpdated
+                    };
+                }).ToList();
+
+                productionOrder.FinishProducts = finishProductDetails;
+                productionOrder.Materials = materialDetails;
+
+                return ApiResponse<FullProductionOrderVM>.Ok(productionOrder);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<FullProductionOrderVM>.Fail($"Có lỗi xảy ra khi lấy chi tiết đơn sản xuất: {ex.Message}", 500);
             }
         }
     }

@@ -2,6 +2,7 @@
 using NB.Service.Common;
 using NB.Service.Dto;
 using NB.Service.ProductionOrderService.Dto;
+using NB.Service.ProductionOrderService.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,8 @@ namespace NB.Service.ProductionOrderService
     public interface IProductionOrderService : IService<ProductionOrder>
     {
         Task<PagedList<ProductionOrderDto>> GetData(ProductionOrderSearch search);
+        Task<PagedList<ProductionOrderDto>> GetDataByResponsibleId(int responsibleId, ProductionOrderSearch search);
         Task<ApiResponse<ProductionOrder>> CreateProductionOrderAsync(ProductionRequest request);
+        Task<ApiResponse<FullProductionOrderVM>> GetDetailById(int id);
     }
 }
