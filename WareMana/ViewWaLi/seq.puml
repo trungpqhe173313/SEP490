@@ -1,0 +1,37 @@
+@startuml
+
+actor User
+participant ":WarehouseUI" as UI
+participant ":WarehouseController" as Controller
+participant ":IWarehouseService" as Service
+participant ":IRepository<Warehouse>" as Repo
+participant ":NutriBarnContext" as DbContext
+
+activate User
+User -> UI: 1. Yêu cầu xem danh sách kho hàng
+activate UI
+UI -> Controller: 2.1 POST /api/Warehouse/get-data\n(body: WarehouseSearch with null keyword)
+activate Controller
+Controller -> Service: 2.2 GetData(search)
+activate Service
+Service -> Repo: 2.3 GetQueryable()
+activate Repo
+Repo -> DbContext: 2.4 Tạo IQueryable<Warehouse>
+DbContext --> Repo: 2.5 IQueryable<Warehouse>
+deactivate DbContext
+Repo --> Service: 2.6 IQueryable<Warehouse>
+deactivate Repo
+
+Service -> Repo: 2.7 Lấy dữ liệu và phân trang từ DB\n(CreateAsync for PagedList)
+activate Repo
+Repo --> Service: 2.8 PagedList<Warehouse>
+deactivate Repo
+
+Service -> Controller: 2.9 ApiResponse<PagedList<Warehouse>>
+deactivate Service
+Controller -> UI: 2.10 200 OK (JSON data)
+deactivate Controller
+UI -> User: 3 Hiển thị danh sách kho hàng
+deactivate UI
+deactivate User
+@enduml

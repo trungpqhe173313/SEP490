@@ -1,0 +1,41 @@
+@startuml
+
+actor "Warehouse Manager" as WM
+boundary "UI (Web/App)" as UI
+participant "CategoryController" as Ctrl
+participant "CategoryService" as CatSvc
+participant "Service<Category> (base)" as BaseSvc
+participant "Repository<Category>" as Repo
+database "DB (NutriBarnContext)" as DB
+
+WM -> UI : 1. Nhấn nút "Tạo Category"
+UI --> WM : 2. Hiển thị form tạo mới
+
+WM -> UI : 3. Nhập thông tin\nvà nhấn nút "Lưu"
+UI -> Ctrl : 4. POST /api/categories/CreateCategory\n(Body chứa: CategoryCreateVM)
+
+Ctrl -> CatSvc : 4.1 GetByName(model.CategoryName)\n(Kiểm tra tên đã tồn tại chưa)
+CatSvc -> DB : 4.2 Query Category by name
+DB --> CatSvc : 4.3 Trả về CategoryDto? (null nếu chưa có)
+
+alt Tên Category đã tồn tại
+    CatSvc --> Ctrl : 4.4b Trả về CategoryDto
+    Ctrl --> UI : 4.5b 400 BadRequest: Tên danh mục đã tồn tại
+    UI --> WM : 5b Hiển thị lỗi trên form
+else Tên Category chưa tồn tại
+    Ctrl -> Ctrl : 4.4 Tạo mới đối tượng CategoryDto từ model
+    Ctrl -> CatSvc : 4.5 CreateAsync(newCategory)
+    CatSvc -> BaseSvc : 4.6 CreateAsync(newCategory)
+    BaseSvc -> Repo : 4.7 Add(newCategory)
+    Repo -> DB : 4.8. Thêm entity vào DbSet (chưa commit)
+    BaseSvc -> Repo : 4.9 SaveAsync()
+    Repo -> DB : 4.10 Execute INSERT command & SaveChanges
+    DB --> Repo : 4.11 OK
+    Repo --> BaseSvc : 4.12 OK
+    BaseSvc --> CatSvc : 4.13 OK
+    CatSvc --> Ctrl : 4.14 OK
+    Ctrl --> UI : 4.15 200 OK (ApiResponse chứa CategoryDto vừa tạo)
+    UI --> WM : 5. Hiển thị thông báo tạo thành công
+end
+
+@enduml

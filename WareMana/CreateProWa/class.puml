@@ -1,0 +1,53 @@
+@startuml
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class ProductController <<controller>> {
+  - _productService: IProductService
+  + CreateProduct(model: ProductCreateVM): Task<IActionResult>
+}
+
+interface IProductService {
+  + CreateAsync(entity: Product): Task
+}
+class "Service" as ServiceProduct <<base>> {
+  - _repository: IRepositoryProduct
+  + CreateAsync(entity: Product): Task
+}
+interface "IRepository" as IRepositoryProduct {
+  + Add(entity: Product): Product
+  + SaveAsync(): Task
+}
+
+class Product {
+  + ProductId: int
+  + ProductName: string
+  + Description: string
+  + CategoryId: int
+}
+class ProductCreateVM {
+  + ProductName: string
+  + Description: string
+  + CategoryId: int
+}
+
+' Relationships
+UIService ..> ProductController : calls API
+UIService ..> ProductCreateVM : sends
+ProductController ..> ApiResponse : returns
+ProductController ..> ProductCreateVM : uses
+ProductController --> IProductService : uses
+IProductService <|.. ServiceProduct
+ServiceProduct --> IRepositoryProduct : uses
+ServiceProduct ..> Product : uses
+IRepositoryProduct ..> Product : uses
+
+@enduml

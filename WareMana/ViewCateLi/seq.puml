@@ -1,0 +1,34 @@
+@startuml
+
+
+actor "Warehouse Manager" as WM
+boundary "UI (Web/App)" as UI
+participant "CategoryController" as Ctrl
+participant "CategoryService" as CatSvc
+participant "Service<Category> (base)" as BaseSvc
+participant "Repository<Category>" as Repo
+database "DB (NutriBarnContext)" as DB
+participant "PagedList" as Paged
+
+WM -> UI : 1. Ấn vào nút "Xem danh mục"
+UI -> Ctrl : 2. POST /api/categories/GetData\n(Body chứa: CategorySearch)
+Ctrl -> CatSvc : 2.1 GetData()
+
+CatSvc -> BaseSvc : 2.2 GetQueryable()
+BaseSvc -> Repo : 2.3 GetQueryable()
+Repo -> DB : 2.4 Tạo IQueryable<Category> từ DbSet
+DB --> Repo : 2.5 Trả về IQueryable<Category>
+Repo --> BaseSvc : 2.6 Trả về IQueryable<Category>
+BaseSvc --> CatSvc : 2.7 Trả về IQueryable<Category>
+
+CatSvc -> DB : 2.8 Execute query (ToListAsync) & map to DTO
+DB --> CatSvc : 2.9 Trả về List<CategoryDto>
+
+CatSvc --> Ctrl : 2.10 Trả về List<CategoryDto>
+
+Paged --> Ctrl : 2.11 Trả về PagedList<CategoryDto>
+
+Ctrl --> UI : 2.12 200 OK (ApiResponse chứa PagedList)
+UI --> WM : 3. Hiển thị danh sách Category đã được phân trang
+
+@enduml

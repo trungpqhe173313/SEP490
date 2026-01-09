@@ -1,0 +1,25 @@
+@startuml
+
+
+class StockInputController {
+  + GetData(StockInputSearch search)
+}
+interface IStockInputService {
+  + GetData(StockInputSearch search)
+}
+class StockInputSearch {
+  + Keyword: string
+  + FromDate: DateTime?
+  + ToDate: DateTime?
+  + Page: int
+}
+entity StockInput {
+  + Supplier: Supplier
+  + Warehouse: Warehouse
+}
+class "PagedList<StockInput>"
+
+StockInputController ..> IStockInputService
+IStockInputService ..> StockInputSearch : uses
+IStockInputService ..> "PagedList<StockInput>" : returns
+@enduml

@@ -1,0 +1,45 @@
+@startuml
+
+actor "Admin" as Admin
+boundary "UI (Web/App)" as UI
+participant "CustomerController" as Ctrl
+participant "CustomerService" as Svc
+participant "Service<Customer> (base)" as BaseSvc
+participant "Repository<Customer>" as Repo
+database "DB (NutriBarnContext)" as DB
+
+Admin -> UI : 1. Nhấn nút "Tạo mới Khách hàng"
+UI --> Admin : 2. Hiển thị form tạo mới
+
+Admin -> UI : 3. Điền thông tin và nhấn "Lưu"
+UI -> Ctrl : 4.1 POST /api/customers/CreateCustomer\n(Body chứa: CustomerCreateVM)
+
+
+Ctrl -> Svc : 4.2 GetByEmail(model.Email)
+Svc -> DB : 4.3 Query Customer by Email
+DB --> Svc : 4.4 Trả về Customer? (null nếu chưa có)
+Svc --> Ctrl : 4.5 Trả về Customer?
+
+alt Email đã tồn tại
+    Ctrl --> UI : 4.6 400 BadRequest: "Email khách hàng đã tồn tại"
+    UI --> Admin : 4.7 Hiển thị lỗi
+else Email chưa tồn tại
+
+    Ctrl -> Ctrl : 4.6 Tạo mới entity `Customer` từ `CustomerCreateVM`
+
+    Ctrl -> Svc : 5.1 CreateAsync(newCustomer)
+    Svc -> BaseSvc : 5.2 CreateAsync(newCustomer)
+    BaseSvc -> Repo : 5.3 Add(newCustomer)
+    Repo -> DB : 5.4 Thêm entity vào DbSet (chưa commit)
+    BaseSvc -> Repo : 5.5 SaveAsync()
+    Repo -> DB : 5.6 Execute INSERT & SaveChanges
+    DB --> Repo : 5.7 OK
+    Repo --> BaseSvc : 5.8 OK
+    BaseSvc --> Svc : 5.9 OK
+    Svc --> Ctrl : 5.10 OK
+
+    Ctrl --> UI : 6.1 200 OK (ApiResponse chứa dữ liệu Customer)
+    UI --> Admin : 6.2 Hiển thị thông báo "Tạo thành công"
+end
+
+@enduml

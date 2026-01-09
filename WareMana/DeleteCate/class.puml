@@ -1,0 +1,52 @@
+@startuml
+
+' Controllers
+class CategoryController <<controller>> {
+  - _categoryService: ICategoryService
+  .. Methods ..
+  + DeleteCategory(id: int): Task<IActionResult>
+}
+
+' Services
+interface ICategoryService {
+  + GetById(id: int): Task<CategoryDto>
+  + UpdateAsync(entity: CategoryDto): Task
+}
+class CategoryService <<service>> {
+  .. Methods ..
+  + GetById(id: int): Task<CategoryDto>
+}
+class "Service" as ServiceCategory <<base>> {
+  - _repository: IRepositoryCategory
+  .. Methods ..
+  + UpdateAsync(entity: Category): Task
+}
+
+' Repositories
+interface "IRepository" as IRepositoryCategory {
+  + Update(entity: Category): void
+  + SaveAsync(): Task
+}
+class "Repository" as RepositoryCategory {
+  .. Methods ..
+  + Update(entity: Category): void
+  + SaveAsync(): Task
+}
+
+' DTOs / Entities
+class Category {
+  + CategoryId: int
+  + CategoryName: string
+  + IsActive: bool
+}
+class CategoryDto
+CategoryDto --|> Category
+
+' Relationships
+CategoryController --> ICategoryService : uses
+CategoryService ..|> ICategoryService
+CategoryService --|> ServiceCategory
+ServiceCategory --> IRepositoryCategory : uses
+RepositoryCategory ..|> IRepositoryCategory
+
+@enduml

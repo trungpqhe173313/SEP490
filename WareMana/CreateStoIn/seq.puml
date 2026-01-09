@@ -1,0 +1,54 @@
+@startuml
+title Create Stock Input Sequence Diagram (Fully Matched)
+autonumber
+actor "Warehouse Manager" as User
+participant "UI Service" as UIService
+participant ":StockInputController" as Controller
+participant ":IStockInputService" as Service
+participant ":StockInput" as EntityHeader
+participant ":StockInputDetail" as EntityDetail
+participant ":Inventory" as EntityInventory
+' 1. User initiates action
+User -> UIService : Input Data (Supplier, Warehouse, Products)
+activate UIService
+
+' 2. UI Service calls Controller
+UIService -> Controller : CreateStockInput(vm: StockInputCreateVM)
+activate Controller
+
+' 3. Controller delegates to Service
+Controller -> Service : CreateStockInput(vm)
+activate Service
+
+' 4. Service creates StockInput Header
+Service -> EntityHeader : <<create>> (from vm)
+activate EntityHeader
+EntityHeader --> Service : new StockInput
+deactivate EntityHeader
+
+' 5. Loop to process details
+loop For each detail in vm.Details
+    ' 5a. Service creates StockInputDetail
+    Service -> EntityDetail : <<create>> (from detail)
+    activate EntityDetail
+    EntityDetail --> Service : new StockInputDetail
+    deactivate EntityDetail
+
+    ' 5b. Service updates Inventory
+    Service -> EntityInventory : Update Quantity (Increase)
+    activate EntityInventory
+    EntityInventory --> Service : Updated Inventory
+    deactivate EntityInventory
+end
+
+' 6. Return success up the chain
+Service --> Controller : void (Success)
+deactivate Service
+
+Controller --> UIService : void (Success)
+deactivate Controller
+
+UIService --> User : Show Success Message
+deactivate UIService
+
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+
+
+actor "Admin"
+participant "Screen" as UI
+participant ":ContractController" as SIC
+participant ":IContractService" as CS
+
+Admin -> UI : 1. Clicks on a contract to see details
+activate UI
+UI -> SIC : 2.1 GET /api/contract/GetById/{id}
+activate SIC
+
+SIC -> CS : 2.2 GetByIdAsync(id)
+activate CS
+CS --> SIC : 2.3 Return Contract object
+deactivate CS
+
+SIC --> UI : 2.4 Return contract data
+deactivate SIC
+UI --> Admin : 2.5 Display contract details
+deactivate UI
+@enduml

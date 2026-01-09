@@ -1,0 +1,53 @@
+@startuml
+autonumber
+
+actor "Warehouse Manager" as WM
+participant "Screen" as UI
+participant ":StockOutputController" as SIC
+participant ":ITransactionService" as TS
+participant ":IWarehouseService" as WS
+participant ":IUserService" as US
+participant ":ITransactionDetailService" as TDS
+participant ":IProductService" as PS
+' --- Workflow ---
+
+WM -> UI : Clicks on an order to see details
+activate UI
+UI -> SIC : GET /api/stockoutput/GetDetail/{Id}
+activate SIC
+
+' --- Data Retrieval ---
+SIC -> TS : GetByTransactionId(Id)
+activate TS
+TS --> SIC : Return Transaction object
+deactivate TS
+
+SIC -> WS : GetById(warehouseId)
+activate WS
+WS --> SIC : Return Warehouse name
+deactivate WS
+
+SIC -> US : GetByIdAsync(customerId)
+activate US
+US --> SIC : Return Customer details
+deactivate US
+
+SIC -> TDS : GetByTransactionId(Id)
+activate TDS
+TDS --> SIC : Return List<TransactionDetail>
+deactivate TDS
+
+SIC -> PS : GetById(productId)
+activate PS
+PS --> SIC : Return Product name
+deactivate PS
+
+' --- Data Processing & Response ---
+SIC -> SIC : Assemble FullTransactionExportVM
+SIC --> UI : Return assembled data
+deactivate SIC
+
+UI --> WM : Display order details
+deactivate UI
+
+@enduml

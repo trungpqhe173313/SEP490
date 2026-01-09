@@ -1,0 +1,53 @@
+@startuml
+title Add New Task Class Diagram
+
+class JobController {
+    - _jobService : IJobService
+    + CreateJob(dto: CreateJobDto) : Task<IActionResult>
+}
+
+interface IJobService {
+    + CreateJobAsync(dto: CreateJobDto) : Task<JobDto>
+}
+
+class JobService {
+    + CreateJobAsync(dto: CreateJobDto) : Task<JobDto>
+}
+
+class CreateJobDto {
+    + JobName : string
+    + PayType : string
+    + Rate : decimal
+}
+
+class JobDto {
+    + Id : int
+    + JobName : string
+    + PayType : string
+    + Rate : decimal
+    + IsActive : bool?
+    + CreatedAt : DateTime?
+}
+
+class Job {
+    + Id : int
+    + JobName : string
+    + PayType : string
+    + Rate : decimal
+    + IsActive : bool
+    + CreatedAt : DateTime
+}
+
+class ApiResponse {
+    + {static} Ok(data: object) : ApiResponse
+    + {static} Fail(message: string) : ApiResponse
+}
+
+JobController --> IJobService
+IJobService <|.. JobService
+JobController ..> CreateJobDto : uses
+JobController ..> JobDto : returns
+JobService ..> Job : creates
+JobController ..> ApiResponse : returns
+
+@enduml

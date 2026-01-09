@@ -1,0 +1,23 @@
+@startuml
+
+
+actor "Warehouse Manager" as WM
+participant "Screen" as UI
+participant ":PriceListController" as PLC
+participant ":PriceListService" as PLS
+
+WM -> UI : 1 Views Price List page
+activate UI
+UI -> PLC : 2.1 POST /api/pricelist/GetData(search)
+activate PLC
+
+PLC -> PLS : 2.2 GetAllAsync(search)
+activate PLS
+PLS --> PLC : 2.3 Return PagedList<PriceList>
+deactivate PLS
+
+PLC --> UI : 2.4 Return PagedList
+deactivate PLC
+UI --> WM : 3 Display list of price lists
+deactivate UI
+@enduml

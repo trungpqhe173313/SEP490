@@ -1,0 +1,45 @@
+@startuml
+title View Task Detail Class Diagram
+
+class JobController {
+    - _jobService : IJobService
+    + GetJobById(id: int) : Task<IActionResult>
+}
+
+interface IJobService {
+    + GetJobByIdAsync(id: int) : Task<JobDto>
+}
+
+class JobService {
+    + GetJobByIdAsync(id: int) : Task<JobDto>
+}
+
+class JobDto {
+    + Id : int
+    + JobName : string
+    + PayType : string
+    + Rate : decimal
+    + IsActive : bool?
+    + CreatedAt : DateTime?
+}
+
+class Job {
+    + Id : int
+    + JobName : string
+    + PayType : string
+    + Rate : decimal
+    + IsActive : bool
+}
+
+class ApiResponse {
+    + {static} Ok(data: object) : ApiResponse
+    + {static} Fail(message: string) : ApiResponse
+}
+
+JobController --> IJobService
+IJobService <|.. JobService
+JobController ..> JobDto : returns
+JobService ..> Job : manages
+JobController ..> ApiResponse : returns
+
+@enduml

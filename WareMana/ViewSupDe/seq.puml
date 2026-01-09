@@ -1,0 +1,40 @@
+@startuml
+title Sequence Diagram - View Supplier Details (Happy Path)
+autonumber
+
+actor "Warehouse Manager" as User
+participant "UI Service" as UI
+participant "SupplierController" as Ctrl
+participant "SupplierService" as Svc
+participant "SupplierRepository" as Repo
+database "Database" as DB
+
+User -> UI : Chọn nhà cung cấp và nhấn "Xem chi tiết"
+UI -> Ctrl : GET /api/suppliers/GetBySupplierId/{id}
+activate Ctrl
+
+Ctrl -> Svc : GetBySupplierId(id)
+activate Svc
+
+Svc -> Repo : GetQueryable()
+activate Repo
+Repo --> Svc : IQueryable<Supplier>
+deactivate Repo
+
+Svc -> Svc : Build Query (Where SupplierId == id)
+Svc -> Svc : Select new SupplierDto
+
+Svc -> DB : Execute Query (FirstOrDefaultAsync)
+activate DB
+DB --> Svc : SupplierDto
+deactivate DB
+
+Svc --> Ctrl : SupplierDto
+deactivate Svc
+
+Ctrl --> UI : Ok(ApiResponse<SupplierDto>)
+deactivate Ctrl
+
+UI --> User : Hiển thị thông tin chi tiết nhà cung cấp
+
+@enduml

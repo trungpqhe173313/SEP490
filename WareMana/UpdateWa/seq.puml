@@ -1,0 +1,48 @@
+@startuml
+
+actor "Warehouse Manager" as Manager
+participant "WarehouseUI" as UI
+participant "WarehouseController" as Controller
+participant "IWarehouseService" as Service
+
+
+activate Manager
+Manager -> UI: 1. Nhấn nút "Chỉnh sửa"
+activate UI
+UI -> Controller: 2.1 Gửi yêu cầu lấy dữ liệu (GET /api/Warehouse/{id})
+activate Controller
+Controller -> Service: 2.2 **GetById(id)**
+activate Service
+Service --> Controller: 2.3 Trả về ApiResponse<**Warehouse**>
+deactivate Service
+Controller --> UI: 2.4 200 OK (JSON data)
+deactivate Controller
+UI -> Manager: 2.5 Hiển thị form với thông tin kho hàng
+
+
+Manager -> UI: 3 Chỉnh sửa thông tin và nhấn "Lưu"
+UI -> Controller: 4.1 Gửi yêu cầu cập nhật (PUT /api/Warehouse/update) với **WarehouseUpdateVM**
+activate Controller
+
+alt 
+    Controller -> Service: 4.2 **UpdateWarehouse(vm)**
+    activate Service
+    Service --> Controller: 4.3 Trả về ApiResponse<string> (Success)
+    deactivate Service
+    Controller --> UI: 4.4 200 OK
+    deactivate Controller
+    UI -> Manager: 5 Hiển thị thông báo thành công
+    deactivate UI
+else 
+    Controller -> Service: 4.2b **UpdateWarehouse(vm)**
+    activate Service
+    Service --> Controller: 4.3b Trả về ApiResponse<string> (Fail)
+    deactivate Service
+    Controller --> UI: 4.4b Phản hồi lỗi
+    deactivate Controller
+    UI -> Manager: 5b Hiển thị thông báo lỗi
+    deactivate UI
+end
+
+deactivate Manager
+@enduml

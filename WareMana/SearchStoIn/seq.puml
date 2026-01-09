@@ -1,0 +1,60 @@
+@startuml
+title Sequence Diagram - Search Stock Input
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":StockInputController" as Controller
+participant ":TransactionService" as TransactionService
+participant ":WarehouseService" as WarehouseService
+participant ":SupplierService" as SupplierService
+participant "Database" as DB
+
+' Step 1: User initiates search
+Manager -> Controller: POST /api/stockinput/GetData(search)
+activate Controller
+
+' Step 2: Controller calls service to get raw data
+Controller -> TransactionService: GetData(search)
+activate TransactionService
+
+' Step 3: Service builds query and executes
+TransactionService -> DB: Query Transactions (Filter by Type='Import', Date, Status...)
+activate DB
+DB --> TransactionService: List<Transaction>
+deactivate DB
+
+' Step 4: Service returns paged result
+TransactionService --> Controller: PagedList<TransactionDto>
+deactivate TransactionService
+
+' Step 5: Loop to enrich data (Warehouse & Supplier names)
+loop For each TransactionDto in result
+    ' Get Warehouse Name
+    Controller -> WarehouseService: GetById(WarehouseId)
+    activate WarehouseService
+    WarehouseService -> DB: Query Warehouse
+    activate DB
+    DB --> WarehouseService: Warehouse Entity
+    deactivate DB
+    WarehouseService --> Controller: WarehouseDto
+    deactivate WarehouseService
+
+    ' Get Supplier Name
+    Controller -> SupplierService: GetBySupplierId(SupplierId)
+    activate SupplierService
+    SupplierService -> DB: Query Supplier
+    activate DB
+    DB --> SupplierService: Supplier Entity
+    deactivate DB
+    SupplierService --> Controller: SupplierDto
+    deactivate SupplierService
+
+    ' Map to View Model
+    Controller -> Controller: Create TransactionOutputVM
+end
+
+' Step 6: Return final result
+Controller --> Manager: Ok(PagedList<TransactionOutputVM>)
+deactivate Controller
+
+@enduml

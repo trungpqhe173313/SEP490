@@ -1,0 +1,79 @@
+@startuml
+autonumber
+actor "Warehouse Manager" as User
+participant ":Create Production Order" as View
+participant ":ProductionController" as Controller
+participant ":ProductService" as ProdService
+participant ":ProductionOrderService" as POService
+participant ":FinishproductService" as FPService
+participant ":MaterialService" as MatService
+database "Database" as DB
+
+activate User
+User -> View : Enter Production Details\n(Material, Quantity, Finish Products)
+User -> View : Click "Create"
+activate View
+
+View -> Controller : POST /api/production/CreateProductionOrder
+activate Controller
+
+Controller -> Controller : Validate Request Data
+
+
+
+    Controller -> ProdService : GetByIdAsync(MaterialProductId)
+    activate ProdService
+    ProdService -> DB : Query Product
+    DB --> ProdService : Return Product
+    ProdService --> Controller : Product Entity
+    deactivate ProdService
+
+    Controller -> ProdService : GetByIds(ListFinishProductIds)
+    activate ProdService
+    ProdService -> DB : Query Products
+    DB --> ProdService : Return List<Product>
+    ProdService --> Controller : List<Product>
+    deactivate ProdService
+
+
+
+    Controller -> Controller : Map to ProductionOrder Entity\n(Status = Pending)
+    Controller -> POService : CreateAsync(ProductionOrder)
+    activate POService
+    POService -> DB : Insert ProductionOrder
+    activate DB
+    DB --> POService : Return Id
+    deactivate DB
+    POService --> Controller : Task Completed
+    deactivate POService
+
+
+
+    loop For each Finish Product
+        Controller -> Controller : Calculate TotalWeight
+        Controller -> FPService : CreateAsync(Finishproduct)
+        activate FPService
+        
+        FPService -> DB : Insert Finishproduct
+        FPService --> Controller : Task Completed
+        deactivate FPService
+    end
+
+
+
+    Controller -> Controller : Calculate TotalWeight
+    Controller -> MatService : CreateAsync(Material)
+    activate MatService
+    
+    MatService -> DB : Insert Material
+    MatService --> Controller : Task Completed
+    deactivate MatService
+
+
+Controller --> View : ApiResponse (Success)
+deactivate Controller
+
+View --> User : Show Success Message
+deactivate View
+deactivate User
+@enduml

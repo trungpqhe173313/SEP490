@@ -1,0 +1,39 @@
+@startuml
+
+actor "Admin" as Admin
+boundary "UI (Web/App)" as UI
+participant "SupplierController" as Ctrl
+participant "SupplierService" as Svc
+participant "Service<Supplier> (base)" as BaseSvc
+participant "Repository<Supplier>" as Repo
+database "DB (NutriBarnContext)" as DB
+
+Admin -> UI : 1. Nhấn nút "Xóa" trên một nhà cung cấp
+UI -> Ctrl : 2.1 DELETE /api/suppliers/DeleteSupplier/{id}
+
+Ctrl -> Svc : 2.2 GetById(id) (Kiểm tra sự tồn tại)
+Svc -> DB : 2.3 Query Supplier by Id
+DB --> Svc : 2.4 Trả về Supplier?
+
+alt Nhà cung cấp không tồn tại
+    Svc --> Ctrl : 3.1b Trả về null
+    Ctrl --> UI : 3.2b 404 NotFound: "Không tìm thấy nhà cung cấp"
+    UI --> Admin : 3.3b Hiển thị lỗi
+else Nhà cung cấp tồn tại
+    Ctrl -> Ctrl : 2.5 Cập nhật: supplier.IsActive = false
+    
+    Ctrl -> Svc : 2.6 UpdateAsync(supplier)
+    Svc -> BaseSvc : 2.7 UpdateAsync(supplier)
+    BaseSvc -> Repo : 2.8 Update(supplier) (Đánh dấu entity là Modified)
+    BaseSvc -> Repo : 2.9 SaveAsync()
+    Repo -> DB : 2.10 Execute UPDATE & SaveChanges
+    DB --> Repo : 2.11 OK
+    Repo --> BaseSvc : 2.12 OK
+    BaseSvc --> Svc : 2.13 OK
+    Svc --> Ctrl : 2.14 OK
+    
+    Ctrl --> UI : 3.1 200 OK (ApiResponse: "Xóa nhà cung cấp thành công")
+    UI --> Admin : 3.2 Hiển thị thông báo thành công
+end
+
+@enduml

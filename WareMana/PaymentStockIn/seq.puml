@@ -1,0 +1,91 @@
+@startuml
+autonumber
+title Sequence Diagram - Payment Stock Input 
+actor "Warehouse Manager" as WM
+participant "StockInputController" as C
+participant "TransactionService" as TS
+participant "FinancialTransactionService" as FTS
+participant "Database" as DB
+
+' --- Bước 1: Xem chi tiết phiếu nhập ---
+
+    WM -> C : GetDetail(Id)
+    activate C
+
+    C -> TS : GetByTransactionId(Id)
+    activate TS
+    TS -> DB : Query Transaction
+    activate DB
+    DB --> TS : Transaction Data
+    deactivate DB
+    TS --> C : Transaction Entity
+    deactivate TS
+
+    C -> C : Map Entity to FullTransactionVM
+    C --> WM : Ok(FullTransactionVM)
+    deactivate C
+
+
+' --- Bước 2: Thực hiện thanh toán ---
+
+    WM -> C : CreatePartialPayment(transactionId, model)
+    activate C
+
+    C -> TS : GetByTransactionId(transactionId)
+    activate TS
+    TS -> DB : Query Transaction
+    activate DB
+    DB --> TS : Transaction Data
+    deactivate DB
+    TS --> C : Transaction
+    deactivate TS
+
+    C -> FTS : GetByRelatedTransactionID(transactionId)
+    activate FTS
+    FTS -> DB : Query FinancialTransactions
+    activate DB
+    DB --> FTS : List<FinancialTransaction>
+    deactivate DB
+    FTS --> C : financialTransactions
+    deactivate FTS
+
+    C -> C : Calculate totalPaid
+    C -> C : Calculate totalAfterPayment = totalPaid + newPaymentAmount
+
+    C -> C : Map model to FinancialTransaction
+    C -> C : Set Amount = -newPaymentAmount
+    C -> C : Set Type = "ThanhToanNhanHang"
+    C -> C : Set TransactionDate = DateTime.Now
+
+    C -> FTS : CreateAsync(financialTransactionEntity)
+    activate FTS
+    FTS -> DB : Insert FinancialTransaction
+    activate DB
+    DB --> FTS : Success
+    deactivate DB
+    FTS --> C : Success
+    deactivate FTS
+
+    C -> C : Check if fully paid (tolerance < 0.01)
+    
+    alt Fully Paid (totalAfterPayment >= TotalCost)
+    autonumber 28
+        C -> C : transaction.Status = paidInFull
+    else Partially Paid
+    autonumber 28.1
+        C -> C : transaction.Status = partiallyPaid
+    end
+autonumber 29
+    C -> TS : UpdateAsync(transaction)
+    activate TS
+    TS -> DB : Update Transaction Status
+    activate DB
+    DB --> TS : Success
+    deactivate DB
+TS --> C : Success
+deactivate TS
+
+C --> WM : Ok("Cập nhật đơn hàng thành công")
+deactivate C
+
+@enduml

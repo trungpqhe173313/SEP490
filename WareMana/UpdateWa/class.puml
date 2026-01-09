@@ -1,0 +1,46 @@
+@startuml
+
+' Các lớp tham gia vào quá trình '
+class WarehouseController {
+  - IWarehouseService _warehouseService
+  + GetById(int id): Task<ApiResponse<Warehouse>>
+  + UpdateWarehouse(WarehouseUpdateVM vm): Task<ApiResponse<string>>
+}
+
+interface IWarehouseService {
+  + GetById(int id): Task<ApiResponse<Warehouse>>
+  + UpdateWarehouse(WarehouseUpdateVM vm): Task<ApiResponse<string>>
+}
+
+class WarehouseService {
+  - IRepository<Warehouse> _repository
+  + GetById(int id): Task<ApiResponse<Warehouse>>
+  + UpdateWarehouse(WarehouseUpdateVM vm): Task<ApiResponse<string>>
+}
+
+' Lớp đầu vào và thực thể '
+class WarehouseUpdateVM {
+  + Id: int
+  + Name: string
+  + Address: string
+}
+
+class Warehouse {
+  + Id: int
+  + Name: string
+  + Address: string
+  + IsActive: bool
+}
+
+' Lớp phản hồi chung '
+class "ApiResponse<T>" as ApiResponse
+
+' Mối quan hệ giữa các lớp '
+WarehouseController ..> IWarehouseService
+WarehouseService .up.|> IWarehouseService
+
+WarehouseController ..> WarehouseUpdateVM : uses >
+IWarehouseService ..> WarehouseUpdateVM : uses >
+IWarehouseService ..> Warehouse : returns in >
+IWarehouseService ..> ApiResponse : returns >
+@enduml

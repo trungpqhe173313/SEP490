@@ -1,0 +1,36 @@
+@startuml
+
+actor "WarehouseManager" as Manager
+participant "UI"
+participant ":StockInputController" as Controller
+participant ":IStockInputService" as Service
+
+activate Manager
+Manager -> UI: 1. Yêu cầu xem chi tiết phiếu nhập
+activate UI
+UI -> Controller: 2. GET /api/StockInput/{id}
+activate Controller
+
+alt 
+autonumber 3
+    Controller -> Service: GetByIdAsync(id)
+    activate Service
+    Service --> Controller: ApiResponse.Success(StockInput with Details)
+    deactivate Service
+    Controller --> UI: 200 OK
+    deactivate Controller
+    UI -> Manager: Hiển thị chi tiết phiếu nhập
+    deactivate UI
+else 
+autonumber 3.1
+    Controller -> Service: GetByIdAsync(id)
+    activate Service
+    Service --> Controller: ApiResponse.Fail("Không tìm thấy")
+    deactivate Service
+    Controller --> UI: Phản hồi lỗi
+    deactivate Controller
+    UI -> Manager: Hiển thị thông báo lỗi
+    deactivate UI
+end
+deactivate Manager
+@enduml

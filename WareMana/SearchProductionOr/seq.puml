@@ -1,0 +1,47 @@
+@startuml
+autonumber
+actor "Warehouse Manager" as User
+participant ":Search Production Order" as View
+participant ":ProductionController" as Controller
+participant ":ProductionOrderService" as Service
+participant ":ProductionOrderRepository" as Repository
+database "Database" as DB
+
+activate User
+User -> View : Enter Search Keywords / Select Filters\n(Code, Status, Date Range)
+activate View
+
+View -> Controller : POST /api/production/GetData
+activate Controller
+
+Controller -> Service : GetData(search)
+activate Service
+
+Service -> Repository : GetQueryable()
+activate Repository
+Repository --> Service : IQueryable<ProductionOrder>
+deactivate Repository
+
+Service -> Service : Apply Search Filters
+
+Service -> Repository : Execute Query (with Pagination)
+activate Repository
+Repository -> DB : Select * From ProductionOrder Where ...
+activate DB
+DB --> Repository : Return Filtered Data
+deactivate DB
+Repository --> Service : List<ProductionOrder>
+deactivate Repository
+
+Service -> Service : Map to ProductionOrderDto
+Service --> Controller : PagedList<ProductionOrderDto>
+deactivate Service
+
+Controller -> Controller : Enrich Data (StatusName)
+Controller --> View : ApiResponse<PagedList<ProductionOrderDto>>
+deactivate Controller
+
+View --> User : Display Search Results
+deactivate View
+deactivate User
+@enduml

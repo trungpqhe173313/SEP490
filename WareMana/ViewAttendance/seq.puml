@@ -1,0 +1,62 @@
+@startuml
+title Sequence Diagram - View Employee Attendance 
+autonumber
+
+actor "Warehouse Manager" as User
+participant "UI Service" as UI
+participant "WorklogController" as Ctrl
+participant "WorklogService" as Svc
+participant "UserRepository" as UserRepo
+participant "UserRoleRepository" as RoleRepo
+participant "WorklogRepository" as WorklogRepo
+database "Database" as DB
+
+User -> UI : Chọn nhân viên và ngày, nhấn "Xem"
+UI -> Ctrl : POST /api/worklogs/GetData\n(GetWorklogsByEmployeeDto)
+activate Ctrl
+
+Ctrl -> Svc : GetWorklogsByEmployeeAndDateAsync(employeeId, workDate)
+activate Svc
+
+' --- Step 1: Validate Employee (Success) ---
+Svc -> UserRepo : GetQueryable().FirstOrDefault(u => u.UserId == employeeId)
+activate UserRepo
+UserRepo -> DB : Query User
+activate DB
+DB --> UserRepo : User Entity
+deactivate DB
+UserRepo --> Svc : User
+deactivate UserRepo
+
+' --- Step 2: Validate Role (Success) ---
+Svc -> RoleRepo : GetQueryable().Any(ur => ur.UserId == employeeId && RoleId == 3)
+activate RoleRepo
+RoleRepo -> DB : Check Role
+activate DB
+DB --> RoleRepo : true
+deactivate DB
+RoleRepo --> Svc : true
+deactivate RoleRepo
+
+' --- Step 3: Get Worklogs ---
+Svc -> WorklogRepo : GetQueryable()\n.Include(Job)\n.Where(EmployeeId, Date)\n.OrderBy(Date)
+activate WorklogRepo
+WorklogRepo -> DB : Query Worklogs with Job
+activate DB
+DB --> WorklogRepo : List<Worklog>
+deactivate DB
+WorklogRepo --> Svc : worklogs
+deactivate WorklogRepo
+
+' --- Step 4: Map to ViewModel ---
+Svc -> Svc : Map List<Worklog> to List<WorklogResponseVM>
+
+Svc --> Ctrl : List<WorklogResponseVM>
+deactivate Svc
+
+Ctrl --> UI : Ok(ApiResponse<List<WorklogResponseVM>>)
+deactivate Ctrl
+
+UI --> User : Hiển thị danh sách chấm công
+
+@enduml

@@ -1,0 +1,40 @@
+@startuml
+
+actor "Warehouse Manager" as WM
+boundary "UI (Web/App)" as UI
+participant "CategoryController" as Ctrl
+participant "CategoryService" as CatSvc
+participant "Service<Category> (base)" as BaseSvc
+participant "Repository<Category>" as Repo
+database "DB (NutriBarnContext)" as DB
+
+WM -> UI : 1. Nhấn nút "Xóa" trên một category
+UI -> Ctrl : 2.1 DELETE /api/categories/DeleteCategory/{id}
+
+Ctrl -> CatSvc : 2.2 GetById(id) (Kiểm tra sự tồn tại)
+CatSvc -> DB : 2.3 Query Category by Id
+DB --> CatSvc : 2.4 Trả về CategoryDto?
+
+alt Category không tồn tại
+    CatSvc --> Ctrl : 3.1b Trả về null
+    Ctrl --> UI : 3.2b 404 NotFound: Không tìm thấy danh mục
+    UI --> WM : 3.3b Hiển thị lỗi
+else Category tồn tại
+    
+    Ctrl -> Ctrl : 2.8 Cập nhật: category.IsActive = false
+    
+    Ctrl -> CatSvc : 2.9 UpdateAsync(category)
+    CatSvc -> BaseSvc : 2.10 UpdateAsync(category)
+    BaseSvc -> Repo : 2.11 Update(category) (Đánh dấu entity là Modified)
+    BaseSvc -> Repo : 2.12 SaveAsync()
+    Repo -> DB : 2.13 Execute UPDATE command & SaveChanges
+    DB --> Repo : 3.1 OK
+    Repo --> BaseSvc : 3.2 OK
+    BaseSvc --> CatSvc : 3.3 OK
+    CatSvc --> Ctrl : 3.4 OK
+    
+    Ctrl --> UI : 3.5 200 OK (ApiResponse: "Xóa danh mục thành công")
+    UI --> WM : 3.6 Hiển thị thông báo thành công và ẩn category khỏi danh sách
+end
+
+@enduml

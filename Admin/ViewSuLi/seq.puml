@@ -1,0 +1,26 @@
+@startuml
+
+
+actor "Admin" as Admin
+boundary "UI (Web/App)" as UI
+participant "SupplierController" as Ctrl
+participant "SupplierService" as Svc
+database "DB (NutriBarnContext)" as DB
+
+Admin -> UI : 1. Nhấn vào "Xem danh sách Nhà cung cấp"
+
+UI -> Ctrl : 2.1 GET /api/suppliers/GetData\n(Yêu cầu trang đầu tiên)
+
+Ctrl -> Svc : 2.2 GetData(search)
+
+Svc -> DB : 2.3 Execute query (COUNT và SELECT...SKIP...TAKE)
+
+DB --> Svc : 2.4 Trả về PagedList<SupplierDto>
+
+Svc --> Ctrl : 2.5 Trả về PagedList<SupplierDto>
+
+Ctrl --> UI : 2.6 200 OK (ApiResponse chứa danh sách)
+
+UI --> Admin : 3. Hiển thị trang đầu tiên của danh sách Nhà cung cấp
+
+@enduml

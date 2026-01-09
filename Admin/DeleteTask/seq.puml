@@ -1,0 +1,40 @@
+@startuml
+title Delete Task Sequence Diagram (Happy Path)
+autonumber
+actor "Admin" as User
+participant "UI (Web)" as UI
+participant "JobController" as Controller
+participant "IJobService" as Service
+participant "Database" as DB
+
+User -> UI : Click "Delete" on Task
+activate UI
+UI -> UI : Confirm Deletion Dialog
+User -> UI : Click "Confirm"
+
+UI -> Controller : DELETE /api/jobs/{id}
+activate Controller
+
+Controller -> Service : DeleteJobAsync(id)
+activate Service
+
+Service -> DB : Find(id)
+activate DB
+DB --> Service : Job Entity
+deactivate DB
+
+Service -> DB : Update(job)
+activate DB
+DB --> Service : Success
+deactivate DB
+
+Service --> Controller : true
+deactivate Service
+
+Controller --> UI : Ok(ApiResponse.Ok(true))
+deactivate Controller
+
+UI --> User : Show Success Message & Remove from List
+deactivate UI
+
+@enduml

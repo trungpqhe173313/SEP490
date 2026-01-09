@@ -1,0 +1,57 @@
+@startuml
+
+' Controllers
+class CategoryController <<controller>> {
+  - _categoryService: ICategoryService
+  .. Methods ..
+  + GetData(search: CategorySearch): Task<IActionResult>
+}
+
+' Services
+interface ICategoryService {
+  + GetData(): Task<List<CategoryDto>>
+}
+class CategoryService <<service>> {
+  .. Methods ..
+  + GetData(): Task<List<CategoryDto>>
+}
+class "Service" as ServiceCategory <<base>> {
+  - _repository: IRepositoryCategory
+  .. Methods ..
+  + GetQueryable(): IQueryable<Category>
+}
+
+' Repositories
+interface "IRepository" as IRepositoryCategory {
+  + GetQueryable(): IQueryable<Category>
+}
+class "Repository" as RepositoryCategory {
+  .. Methods ..
+  + GetQueryable(): IQueryable<Category>
+}
+
+' DTOs / Entities / Search
+class Category {
+  + CategoryId: int
+  + CategoryName: string
+}
+class CategoryDto
+CategoryDto --|> Category
+
+class SearchBase {
+  + PageIndex: int
+  + PageSize: int
+}
+class CategorySearch {
+  + CategoryName: string
+}
+CategorySearch --|> SearchBase
+
+' Relationships
+CategoryController --> ICategoryService : uses
+CategoryService ..|> ICategoryService
+CategoryService --|> ServiceCategory
+ServiceCategory --> IRepositoryCategory : uses
+RepositoryCategory ..|> IRepositoryCategory
+
+@enduml

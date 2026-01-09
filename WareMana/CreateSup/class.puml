@@ -1,0 +1,76 @@
+@startuml
+title Class Diagram - Create Supplier
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class SupplierController <<Controller>> {
+  - _supplierService: ISupplierService
+  - _mapper: IMapper
+  - _logger: ILogger<Supplier>
+  + CreateSupplier(model: SupplierCreateVM): Task<IActionResult>
+}
+
+interface ISupplierService {
+  + GetByEmail(email: string): Task<SupplierDto?>
+  + GetByPhone(phone: string): Task<SupplierDto?>
+  + CreateAsync(entity: Supplier): Task
+}
+
+class SupplierService <<Service>> {
+  + GetByEmail(email: string): Task<SupplierDto?>
+  + GetByPhone(phone: string): Task<SupplierDto?>
+}
+
+class "Service<Supplier>" as BaseService {
+  - _repository: IRepository<Supplier>
+  + CreateAsync(entity: Supplier): Task
+}
+
+interface "IRepository<T>" as IRepository {
+  + Add(entity: T): T
+  + SaveAsync(): Task
+}
+
+class SupplierCreateVM {
+  + SupplierName: string
+  + Email: string
+  + Phone: string
+}
+
+class Supplier {
+  + SupplierId: int
+  + SupplierName: string
+  + Phone: string
+  + Email: string
+  + IsActive: boolean
+  + CreatedAt: DateTime
+}
+
+class SupplierDto {
+  + SupplierId: int
+  + SupplierName: string
+  + Phone: string
+  + Email: string
+}
+
+' Relationships
+UIService ..> SupplierController : calls API
+UIService ..> SupplierCreateVM : sends
+SupplierController ..> ApiResponse : returns
+SupplierController --> ISupplierService : uses
+SupplierController ..> SupplierCreateVM : receives
+ISupplierService <|.. SupplierService
+SupplierService --|> BaseService
+BaseService --> IRepository : uses (Supplier)
+SupplierService ..> Supplier : creates
+SupplierService ..> SupplierDto : returns
+
+@enduml

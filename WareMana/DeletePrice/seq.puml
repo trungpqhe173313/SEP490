@@ -1,0 +1,28 @@
+@startuml
+
+
+actor "Warehouse Manager" as WM
+participant "Screen" as UI
+participant ":PriceListController" as PLC
+participant ":IPriceListService" as PLS
+
+WM -> UI : 1. Clicks "Delete" on a price list
+activate UI
+UI -> PLC : 2.1 DELETE /api/pricelist/Delete/{id}
+activate PLC
+
+PLC -> PLS : 2.2 GetByIdAsync(id)
+activate PLS
+PLS --> PLC : 2.3 Return existing PriceList
+deactivate PLS
+
+PLC -> PLS : 2.4 DeleteAsync(entity)
+activate PLS
+PLS --> PLC : 2.5 Confirmation
+deactivate PLS
+
+PLC --> UI : 2.6 Return success result
+deactivate PLC
+UI --> WM : 3. Display "Delete successful" message
+deactivate UI
+@enduml

@@ -1,0 +1,45 @@
+@startuml
+title Delete Financial Transaction Sequence Diagram (Happy Path)
+autonumber
+actor "Warehouse Manager" as User
+participant "UI (Web)" as UI
+participant ":FinancialTransactionController" as Controller
+participant ":IFinancialTransactionService" as Service
+participant "Database" as DB
+
+User -> UI : Click "Delete" on Transaction
+activate UI
+UI -> UI : Confirm Deletion Dialog
+User -> UI : Click "Confirm"
+
+UI -> Controller : DELETE /api/FinancialTransaction/DeleteFinancialTransaction/{Id}
+activate Controller
+
+Controller -> Service : GetByIdAsync(Id)
+activate Service
+Service -> DB : Find(Id)
+activate DB
+DB --> Service : FinancialTransaction Entity
+deactivate DB
+Service --> Controller : FinancialTransaction Entity
+deactivate Service
+
+
+
+Controller -> Service : DeleteAsync(entity)
+activate Service
+Service -> DB : Remove(entity)
+activate DB
+DB --> Service : Success
+deactivate DB
+Service --> Controller : Task Completed
+deactivate Service
+
+Controller --> UI : Ok(ApiResponse.Ok("Xóa giao dịch tài chính thành công"))
+deactivate Controller
+
+UI --> User : Show Success Message
+UI -> UI : Remove Item from List
+deactivate UI
+
+@enduml

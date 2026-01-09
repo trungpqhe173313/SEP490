@@ -1,0 +1,53 @@
+@startuml
+title Sequence Diagram - Create Financial Transaction Slip (Happy Path)
+autonumber
+
+actor "Accountant/Manager" as User
+participant "UI Service" as UI
+participant "FinancialTransactionController" as Ctrl
+participant "FinancialTransactionService" as Svc
+participant "FinancialTransactionRepository" as Repo
+database "Database" as DB
+
+User -> UI : Nhập thông tin phiếu thu/chi và nhấn "Lưu"
+UI -> Ctrl : POST /api/financialtransaction/CreateFinancialTransaction\n(FinancialTransactionCreateVM)
+activate Ctrl
+
+Ctrl -> Ctrl : Validate Model (Amount, Type)
+
+Ctrl -> Ctrl : Map VM to Entity
+Ctrl -> Ctrl : Set TransactionDate = Now
+
+alt Type == ChiKhac
+    Ctrl -> Ctrl : Set Amount = -Amount (Negative)
+    Ctrl -> Ctrl : Set Type = "ChiKhac"
+else Type == ThuKhac
+    Ctrl -> Ctrl : Set Amount = +Amount (Positive)
+    Ctrl -> Ctrl : Set Type = "ThuKhac"
+end
+
+Ctrl -> Svc : CreateAsync(entity)
+activate Svc
+Svc -> Repo : Add(entity)
+activate Repo
+Repo --> Svc : entity
+deactivate Repo
+
+Svc -> Repo : SaveAsync()
+activate Repo
+Repo -> DB : Insert FinancialTransaction
+activate DB
+DB --> Repo : Success
+deactivate DB
+Repo --> Svc : Task Completed
+deactivate Repo
+
+Svc --> Ctrl : Task Completed
+deactivate Svc
+
+Ctrl --> UI : Ok(ApiResponse.Ok("Tạo khoản thu chi thành công"))
+deactivate Ctrl
+
+UI --> User : Hiển thị thông báo thành công
+
+@enduml
