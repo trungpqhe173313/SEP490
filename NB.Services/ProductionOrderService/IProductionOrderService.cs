@@ -17,5 +17,8 @@ namespace NB.Service.ProductionOrderService
         Task<PagedList<ProductionOrderDto>> GetDataByResponsibleId(int responsibleId, ProductionOrderSearch search);
         Task<ApiResponse<ProductionOrder>> CreateProductionOrderAsync(ProductionRequest request);
         Task<ApiResponse<FullProductionOrderVM>> GetDetailById(int id);
+        Task<ApiResponse<object>> ChangeToProcessingAsync(int id, ChangeToProcessingRequest request, int userId);
+        Task<ApiResponse<object>> SubmitForApprovalAsync(int id, SubmitForApprovalRequest request, int userId);
+        Task<ApiResponse<object>> ChangeToRejectedAsync(int id, ChangeToRejectedRequest request);
     }
 }

@@ -16,6 +16,10 @@ namespace NB.Model.Enums
         [Description("Hoàn thành")]
         Finished,
         [Description("Hủy")]
-        Cancel
+        Cancel,
+        [Description("Chờ duyệt")]
+        WaitingApproval,
+        [Description("Từ chối")]
+        Rejected,
     }
 }
