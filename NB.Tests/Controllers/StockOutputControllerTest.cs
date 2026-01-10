@@ -10,6 +10,7 @@ using NB.API.Controllers;
 using NB.Model.Entities;
 using NB.Model.Enums;
 using NB.Service.Common;
+using NB.Service.Core;
 using NB.Service.Core.Mapper;
 using NB.Service.Dto;
 using NB.Service.FinancialTransactionService;
@@ -57,6 +58,8 @@ namespace NB.Test.Controllers
         private readonly Mock<IMapper> _mapperMock;
         private readonly StockOutputController _controller;
 
+        private readonly Mock<TransactionCodeGenerator> _transactionCodeGeneratorMock;
+
         public StockOutputControllerTest()
         {
             // Khởi tạo các mock objects
@@ -72,6 +75,7 @@ namespace NB.Test.Controllers
             _financialTransactionServiceMock = new Mock<IFinancialTransactionService>();
             _loggerMock = new Mock<ILogger<EmployeeController>>();
             _mapperMock = new Mock<IMapper>();
+            _transactionCodeGeneratorMock = new();
 
             // Khởi tạo controller với các dependencies đã mock
             _controller = new StockOutputController(
@@ -86,7 +90,8 @@ namespace NB.Test.Controllers
                 _returnTransactionDetailServiceMock.Object,
                 _financialTransactionServiceMock.Object,
                 _mapperMock.Object,
-                _loggerMock.Object
+                _loggerMock.Object,
+                _transactionCodeGeneratorMock.Object
             );
         }
 
