@@ -28,7 +28,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace NB.API.Controllers
 {
     [Route("api/production")]
-    [Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager,Employee")]
     public class ProductionController : Controller
     {
         private const int RawMaterialWarehouseId = 2; // Kho nguyên liệu mặc định
