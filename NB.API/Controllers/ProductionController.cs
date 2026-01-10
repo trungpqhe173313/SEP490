@@ -28,7 +28,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace NB.API.Controllers
 {
     [Route("api/production")]
-    [Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager,Employee")]
     public class ProductionController : Controller
     {
         private const int RawMaterialWarehouseId = 2; // Kho nguyên liệu mặc định
@@ -331,11 +331,13 @@ namespace NB.API.Controllers
         }
 
         /// <summary>
-        /// Chuyển đơn sản xuất sang trạng thái Finished
+        /// Chuyển đơn sản xuất sang trạng thái Finished (Manager phê duyệt)
         /// Cộng số lượng thành phẩm vào inventory và tạo stockBatch ở kho tổng (warehouseId = 1)
+        /// Số lượng lấy từ DB (đã được Employee cập nhật khi submit for approval)
         /// </summary>
         [HttpPut("ChangeToFinished/{productionOrderId}")]
-        public async Task<IActionResult> ChangeToFinished(int productionOrderId, [FromBody] FinishProductionRequest? request = null)
+        [Authorize(Roles = "Manager")]
+        public async Task<IActionResult> ChangeToFinished(int productionOrderId)
         {
             if (productionOrderId <= 0)
             {
@@ -351,10 +353,10 @@ namespace NB.API.Controllers
                     return NotFound(ApiResponse<string>.Fail("Không tìm thấy đơn sản xuất", 404));
                 }
 
-                // Kiểm tra trạng thái hiện tại phải là Processing
-                if (productionOrder.Status != (int)ProductionOrderStatus.Processing)
+                // Kiểm tra trạng thái hiện tại phải là WaitingApproval
+                if (productionOrder.Status != (int)ProductionOrderStatus.WaitingApproval)
                 {
-                    return BadRequest(ApiResponse<string>.Fail("Chỉ có thể chuyển đơn từ trạng thái Processing sang Finished", 400));
+                    return BadRequest(ApiResponse<string>.Fail("Chỉ có thể phê duyệt đơn đang chờ duyệt (WaitingApproval)", 400));
                 }
 
                 // Lấy danh sách thành phẩm của đơn sản xuất
@@ -372,36 +374,15 @@ namespace NB.API.Controllers
                 string batchCodePrefix = "BATCH-PROD";
                 int batchCounter = 1;
 
-                // Xử lý từng thành phẩm
+                // Xử lý từng thành phẩm với số lượng đã có sẵn trong DB
                 foreach (var finishProduct in finishProducts)
                 {
                     var productId = finishProduct.ProductId;
-                    // Lấy số lượng từ request nếu có, nếu không thì dùng số lượng mặc định
-                    int quantity = finishProduct.Quantity;
-                    bool quantityUpdated = false;
-                    if (request?.FinishProductQuantities != null)
-                    {
-                        var customQuantity = request.FinishProductQuantities
-                            .FirstOrDefault(fpq => fpq.ProductId == finishProduct.ProductId);
-                        if (customQuantity != null && customQuantity.Quantity.HasValue)
-                        {
-                            quantity = customQuantity.Quantity.Value;
-                            quantityUpdated = true;
-                        }
-                    }
+                    int quantity = finishProduct.Quantity; // Lấy số lượng từ DB
 
                     if (quantity <= 0)
                     {
                         continue; // Bỏ qua nếu số lượng <= 0
-                    }
-
-                    // Cập nhật số lượng thành phẩm trong bảng Finishproduct nếu có thay đổi
-                    if (quantityUpdated)
-                    {
-                        var product = await _productService.GetByIdAsync(finishProduct.ProductId);
-                        finishProduct.Quantity = quantity;
-                        finishProduct.TotalWeight = (product?.WeightPerUnit * quantity) ?? 0;
-                        await _finishproductService.UpdateAsync(finishProduct);
                     }
 
                     // Tạo BatchCode
@@ -479,12 +460,12 @@ namespace NB.API.Controllers
                     await _iotDeviceRepository.SaveAsync();
                 }
 
-                return Ok(ApiResponse<string>.Ok("Đơn sản xuất đã hoàn thành"));
+                return Ok(ApiResponse<string>.Ok("Đơn sản xuất đã được phê duyệt và hoàn thành"));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi chuyển đơn sản xuất sang Finished");
-                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi chuyển đơn sản xuất sang Finished"));
+                _logger.LogError(ex, "Lỗi khi phê duyệt đơn sản xuất");
+                return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi phê duyệt đơn sản xuất"));
             }
         }
 
@@ -868,6 +849,38 @@ namespace NB.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi lấy số lượng tồn kho nguyên liệu cho sản phẩm {ProductId}", request?.ProductId);
                 return BadRequest(ApiResponse<int>.Fail("Có lỗi xảy ra khi lấy số lượng tồn kho: " + ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Manager từ chối đơn sản xuất và yêu cầu làm lại
+        /// </summary>
+        [HttpPut("ChangeToRejected/{id}")]
+        [Authorize(Roles = "Manager")]
+        public async Task<IActionResult> ChangeToRejected(int id, [FromBody] ChangeToRejectedRequest request)
+        {
+            try
+            {
+                // Validate id
+                if (id <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Id không hợp lệ", 400));
+                }
+
+                // Gọi service xử lý logic
+                var result = await _productionOrderService.ChangeToRejectedAsync(id, request);
+
+                if (!result.Success)
+                {
+                    return StatusCode(result.StatusCode, result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Lỗi khi từ chối đơn sản xuất {id}");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra: " + ex.Message));
             }
         }
 

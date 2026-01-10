@@ -168,5 +168,81 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra khi lấy dữ liệu: " + ex.Message));
             }
         }
+
+        /// <summary>
+        /// Chuyển đơn sản xuất sang trạng thái đang xử lý
+        /// </summary>
+        [HttpPut("ChangeToProcessing/{id}")]
+        public async Task<IActionResult> ChangeToProcessing(int id, [FromBody] ChangeToProcessingRequest request)
+        {
+            try
+            {
+                // Validate id
+                if (id <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Id không hợp lệ", 400));
+                }
+
+                // Lấy UserId từ Claims
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                {
+                    return Unauthorized(ApiResponse<object>.Fail("Không thể xác định người dùng", 401));
+                }
+
+                // Gọi service xử lý logic
+                var result = await _productionOrderService.ChangeToProcessingAsync(id, request, userId);
+
+                if (!result.Success)
+                {
+                    return StatusCode(result.StatusCode, result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Lỗi khi chuyển đơn sản xuất {id} sang trạng thái đang xử lý");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra: " + ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Gửi đơn sản xuất để phê duyệt (cập nhật số lượng thành phẩm)
+        /// </summary>
+        [HttpPut("SubmitForApproval/{id}")]
+        public async Task<IActionResult> SubmitForApproval(int id, [FromBody] SubmitForApprovalRequest request)
+        {
+            try
+            {
+                // Validate id
+                if (id <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Id không hợp lệ", 400));
+                }
+
+                // Lấy UserId từ Claims
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                {
+                    return Unauthorized(ApiResponse<object>.Fail("Không thể xác định người dùng", 401));
+                }
+
+                // Gọi service xử lý logic
+                var result = await _productionOrderService.SubmitForApprovalAsync(id, request, userId);
+
+                if (!result.Success)
+                {
+                    return StatusCode(result.StatusCode, result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Lỗi khi gửi đơn sản xuất {id} để phê duyệt");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra: " + ex.Message));
+            }
+        }
     }
 }

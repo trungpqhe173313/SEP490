@@ -8,6 +8,7 @@ using NB.Service.Core.Mapper;
 using NB.Service.Dto;
 using NB.Service.FinishproductService;
 using NB.Service.FinishproductService.ViewModels;
+using NB.Service.IoTDeviceService;
 using NB.Service.MaterialService;
 using NB.Service.MaterialService.ViewModels;
 using NB.Service.ProductionOrderService.Dto;
@@ -32,6 +33,7 @@ namespace NB.Service.ProductionOrderService
         private readonly IProductService _productService;
         private readonly IUserService _userService;
         private readonly IWarehouseService _warehouseService;
+        private readonly IIoTDeviceService _iotDeviceService;
 
         public ProductionOrderService(
             IRepository<ProductionOrder> repository,
@@ -40,7 +42,8 @@ namespace NB.Service.ProductionOrderService
             IFinishproductService finishproductService,
             IProductService productService,
             IUserService userService,
-            IWarehouseService warehouseService) : base(repository)
+            IWarehouseService warehouseService,
+            IIoTDeviceService iotDeviceService) : base(repository)
         {
             _mapper = mapper;
             _materialService = materialService;
@@ -48,6 +51,7 @@ namespace NB.Service.ProductionOrderService
             _productService = productService;
             _userService = userService;
             _warehouseService = warehouseService;
+            _iotDeviceService = iotDeviceService;
         }
 
         public async Task<PagedList<ProductionOrderDto>> GetData(ProductionOrderSearch search)
@@ -335,6 +339,205 @@ namespace NB.Service.ProductionOrderService
             catch (Exception ex)
             {
                 return ApiResponse<FullProductionOrderVM>.Fail($"Có lỗi xảy ra khi lấy chi tiết đơn sản xuất: {ex.Message}", 500);
+            }
+        }
+
+        public async Task<ApiResponse<object>> ChangeToProcessingAsync(int id, ChangeToProcessingRequest request, int userId)
+        {
+            try
+            {
+                // Validate request
+                if (request == null || string.IsNullOrWhiteSpace(request.DeviceCode))
+                {
+                    return ApiResponse<object>.Fail("Mã thiết bị là bắt buộc", 400);
+                }
+
+                // Lấy đơn sản xuất
+                var productionOrder = await GetQueryable()
+                    .FirstOrDefaultAsync(po => po.Id == id);
+
+                if (productionOrder == null)
+                {
+                    return ApiResponse<object>.Fail("Không tìm thấy đơn sản xuất", 404);
+                }
+
+                // Kiểm tra quyền của nhân viên
+                if (productionOrder.ResponsibleId != userId)
+                {
+                    return ApiResponse<object>.Fail("Bạn không có quyền thay đổi trạng thái đơn sản xuất này", 403);
+                }
+
+                // Kiểm tra trạng thái hiện tại
+                if (productionOrder.Status != (int)ProductionOrderStatus.Pending)
+                {
+                    return ApiResponse<object>.Fail("Chỉ có thể chuyển sang trạng thái đang xử lý khi đơn đang ở trạng thái chờ xử lý", 400);
+                }
+
+                // Kiểm tra thiết bị IoT có tồn tại không
+                var device = await _iotDeviceService.GetQueryable()
+                    .FirstOrDefaultAsync(d => d.DeviceCode == request.DeviceCode);
+
+                if (device == null)
+                {
+                    return ApiResponse<object>.Fail("Không tìm thấy thiết bị với mã đã cung cấp", 404);
+                }
+
+                // Kiểm tra thiết bị đã được gán cho đơn sản xuất khác chưa
+                if (device.CurrentProductionId.HasValue && device.CurrentProductionId != id)
+                {
+                    return ApiResponse<object>.Fail("Thiết bị đã được gán cho đơn sản xuất khác", 400);
+                }
+
+                // Cập nhật trạng thái đơn sản xuất
+                productionOrder.Status = (int)ProductionOrderStatus.Processing;
+                productionOrder.StartDate = DateTime.Now;
+                // Cập nhật thiết bị IoT
+                device.CurrentProductionId = id;
+
+                await UpdateAsync(productionOrder);
+                await _iotDeviceService.UpdateAsync(device);
+
+                return ApiResponse<object>.Ok(new
+                {
+                    Id = productionOrder.Id,
+                    Status = productionOrder.Status,
+                    DeviceCode = device.DeviceCode,
+                    DeviceName = device.DeviceName,
+                    Message = "Đã chuyển đơn sản xuất sang trạng thái đang xử lý"
+                });
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<object>.Fail($"Có lỗi xảy ra khi thay đổi trạng thái đơn sản xuất: {ex.Message}", 500);
+            }
+        }
+
+        public async Task<ApiResponse<object>> SubmitForApprovalAsync(int id, SubmitForApprovalRequest request, int userId)
+        {
+            try
+            {
+                // Validate request
+                if (request == null || request.FinishProductQuantities == null || !request.FinishProductQuantities.Any())
+                {
+                    return ApiResponse<object>.Fail("Danh sách thành phẩm không được để trống", 400);
+                }
+
+                // Lấy đơn sản xuất
+                var productionOrder = await GetQueryable()
+                    .Include(po => po.Finishproducts)
+                    .FirstOrDefaultAsync(po => po.Id == id);
+
+                if (productionOrder == null)
+                {
+                    return ApiResponse<object>.Fail("Không tìm thấy đơn sản xuất", 404);
+                }
+
+                // Kiểm tra quyền của nhân viên
+                if (productionOrder.ResponsibleId != userId)
+                {
+                    return ApiResponse<object>.Fail("Bạn không có quyền cập nhật đơn sản xuất này", 403);
+                }
+
+                // Kiểm tra trạng thái hiện tại - chỉ chuyển từ Processing sang WaitingApproval
+                if (productionOrder.Status != (int)ProductionOrderStatus.Processing
+                    && productionOrder.Status != (int)ProductionOrderStatus.Rejected)
+                {
+                    return ApiResponse<object>.Fail("Chỉ có thể gửi phê duyệt khi đơn đang ở trạng thái Đang xử lý hoặc Bị từ chối", 400);
+                }
+
+                // Cập nhật số lượng thành phẩm
+                foreach (var finishProductQty in request.FinishProductQuantities)
+                {
+                    // Tìm finish product tương ứng
+                    var finishProduct = productionOrder.Finishproducts
+                        .FirstOrDefault(fp => fp.ProductId == finishProductQty.ProductId);
+
+                    if (finishProduct == null)
+                    {
+                        return ApiResponse<object>.Fail($"Không tìm thấy sản phẩm {finishProductQty.ProductId} trong đơn sản xuất", 400);
+                    }
+
+                    // Cập nhật số lượng nếu được cung cấp
+                    if (finishProductQty.Quantity.HasValue)
+                    {
+                        if (finishProductQty.Quantity.Value < 0)
+                        {
+                            return ApiResponse<object>.Fail("Số lượng không được âm", 400);
+                        }
+                        finishProduct.Quantity = finishProductQty.Quantity.Value;
+                        // Cập nhật trực tiếp finish product
+                        await _finishproductService.UpdateAsync(finishProduct);
+                    }
+                }
+
+                // Cập nhật trạng thái đơn sản xuất sang WaitingApproval
+                productionOrder.Status = (int)ProductionOrderStatus.WaitingApproval;
+
+                // Lưu thay đổi
+                await UpdateAsync(productionOrder);
+
+                return ApiResponse<object>.Ok(new
+                {
+                    Id = productionOrder.Id,
+                    Status = productionOrder.Status,
+                    StatusName = ProductionOrderStatus.WaitingApproval.GetDescription(),
+                    FinishProducts = productionOrder.Finishproducts.Select(fp => new
+                    {
+                        fp.ProductId,
+                        fp.Quantity
+                    }),
+                    Message = "Đã gửi đơn sản xuất để phê duyệt"
+                });
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<object>.Fail($"Có lỗi xảy ra khi gửi đơn sản xuất để phê duyệt: {ex.Message}", 500);
+            }
+        }
+
+        public async Task<ApiResponse<object>> ChangeToRejectedAsync(int id, ChangeToRejectedRequest request)
+        {
+            try
+            {
+                // Validate request
+                if (request == null || string.IsNullOrWhiteSpace(request.Note))
+                {
+                    return ApiResponse<object>.Fail("Lý do từ chối là bắt buộc", 400);
+                }
+
+                // Lấy đơn sản xuất
+                var productionOrder = await GetQueryable()
+                    .FirstOrDefaultAsync(po => po.Id == id);
+
+                if (productionOrder == null)
+                {
+                    return ApiResponse<object>.Fail("Không tìm thấy đơn sản xuất", 404);
+                }
+
+                // Kiểm tra trạng thái hiện tại - chỉ từ chối khi đang ở trạng thái WaitingApproval
+                if (productionOrder.Status != (int)ProductionOrderStatus.WaitingApproval)
+                {
+                    return ApiResponse<object>.Fail("Chỉ có thể từ chối đơn sản xuất đang chờ phê duyệt", 400);
+                }
+
+                // Cập nhật trạng thái và ghi chú
+                productionOrder.Status = (int)ProductionOrderStatus.Rejected;
+                productionOrder.Note = request.Note;
+
+                await UpdateAsync(productionOrder);
+
+                return ApiResponse<object>.Ok(new
+                {
+                    Id = productionOrder.Id,
+                    Status = productionOrder.Status,
+                    StatusName = ProductionOrderStatus.Rejected.GetDescription(),
+                    Note = productionOrder.Note,
+                    Message = "Đã từ chối đơn sản xuất. Nhân viên cần làm lại"
+                });
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<object>.Fail($"Có lỗi xảy ra khi từ chối đơn sản xuất: {ex.Message}", 500);
             }
         }
     }
