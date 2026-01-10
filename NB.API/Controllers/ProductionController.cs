@@ -871,5 +871,37 @@ namespace NB.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Manager từ chối đơn sản xuất và yêu cầu làm lại
+        /// </summary>
+        [HttpPut("ChangeToRejected/{id}")]
+        [Authorize(Roles = "Manager")]
+        public async Task<IActionResult> ChangeToRejected(int id, [FromBody] ChangeToRejectedRequest request)
+        {
+            try
+            {
+                // Validate id
+                if (id <= 0)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Id không hợp lệ", 400));
+                }
+
+                // Gọi service xử lý logic
+                var result = await _productionOrderService.ChangeToRejectedAsync(id, request);
+
+                if (!result.Success)
+                {
+                    return StatusCode(result.StatusCode, result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Lỗi khi từ chối đơn sản xuất {id}");
+                return BadRequest(ApiResponse<object>.Fail("Có lỗi xảy ra: " + ex.Message));
+            }
+        }
+
     }
 }
