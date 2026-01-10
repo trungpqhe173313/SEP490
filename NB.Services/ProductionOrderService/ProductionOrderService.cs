@@ -439,9 +439,10 @@ namespace NB.Service.ProductionOrderService
                 }
 
                 // Kiểm tra trạng thái hiện tại - chỉ chuyển từ Processing sang WaitingApproval
-                if (productionOrder.Status != (int)ProductionOrderStatus.Processing)
+                if (productionOrder.Status != (int)ProductionOrderStatus.Processing
+                    && productionOrder.Status != (int)ProductionOrderStatus.Rejected)
                 {
-                    return ApiResponse<object>.Fail("Chỉ có thể gửi phê duyệt khi đơn đang ở trạng thái đang xử lý", 400);
+                    return ApiResponse<object>.Fail("Chỉ có thể gửi phê duyệt khi đơn đang ở trạng thái Đang xử lý hoặc Bị từ chối", 400);
                 }
 
                 // Cập nhật số lượng thành phẩm
@@ -491,6 +492,52 @@ namespace NB.Service.ProductionOrderService
             catch (Exception ex)
             {
                 return ApiResponse<object>.Fail($"Có lỗi xảy ra khi gửi đơn sản xuất để phê duyệt: {ex.Message}", 500);
+            }
+        }
+
+        public async Task<ApiResponse<object>> ChangeToRejectedAsync(int id, ChangeToRejectedRequest request)
+        {
+            try
+            {
+                // Validate request
+                if (request == null || string.IsNullOrWhiteSpace(request.Note))
+                {
+                    return ApiResponse<object>.Fail("Lý do từ chối là bắt buộc", 400);
+                }
+
+                // Lấy đơn sản xuất
+                var productionOrder = await GetQueryable()
+                    .FirstOrDefaultAsync(po => po.Id == id);
+
+                if (productionOrder == null)
+                {
+                    return ApiResponse<object>.Fail("Không tìm thấy đơn sản xuất", 404);
+                }
+
+                // Kiểm tra trạng thái hiện tại - chỉ từ chối khi đang ở trạng thái WaitingApproval
+                if (productionOrder.Status != (int)ProductionOrderStatus.WaitingApproval)
+                {
+                    return ApiResponse<object>.Fail("Chỉ có thể từ chối đơn sản xuất đang chờ phê duyệt", 400);
+                }
+
+                // Cập nhật trạng thái và ghi chú
+                productionOrder.Status = (int)ProductionOrderStatus.Rejected;
+                productionOrder.Note = request.Note;
+
+                await UpdateAsync(productionOrder);
+
+                return ApiResponse<object>.Ok(new
+                {
+                    Id = productionOrder.Id,
+                    Status = productionOrder.Status,
+                    StatusName = ProductionOrderStatus.Rejected.GetDescription(),
+                    Note = productionOrder.Note,
+                    Message = "Đã từ chối đơn sản xuất. Nhân viên cần làm lại"
+                });
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<object>.Fail($"Có lỗi xảy ra khi từ chối đơn sản xuất: {ex.Message}", 500);
             }
         }
     }
