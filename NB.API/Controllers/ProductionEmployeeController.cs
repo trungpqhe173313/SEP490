@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using NB.Model.Enums;
 using NB.Service.Common;
 using NB.Service.Core.Enum;
@@ -181,6 +180,12 @@ namespace NB.API.Controllers
                 if (id <= 0)
                 {
                     return BadRequest(ApiResponse<object>.Fail("Id không hợp lệ", 400));
+                }
+
+                // Validate request
+                if (request == null || string.IsNullOrWhiteSpace(request.DeviceCode))
+                {
+                    return BadRequest(ApiResponse<object>.Fail("DeviceCode là bắt buộc", 400));
                 }
 
                 // Lấy UserId từ Claims

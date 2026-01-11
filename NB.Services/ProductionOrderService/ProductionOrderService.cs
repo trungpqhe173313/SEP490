@@ -8,12 +8,14 @@ using NB.Service.Core.Mapper;
 using NB.Service.Dto;
 using NB.Service.FinishproductService;
 using NB.Service.FinishproductService.ViewModels;
+using NB.Service.InventoryService;
 using NB.Service.IoTDeviceService;
 using NB.Service.MaterialService;
 using NB.Service.MaterialService.ViewModels;
 using NB.Service.ProductionOrderService.Dto;
 using NB.Service.ProductionOrderService.ViewModels;
 using NB.Service.ProductService;
+using NB.Service.StockBatchService;
 using NB.Service.UserService;
 using NB.Service.WarehouseService;
 using System;
@@ -34,6 +36,8 @@ namespace NB.Service.ProductionOrderService
         private readonly IUserService _userService;
         private readonly IWarehouseService _warehouseService;
         private readonly IIoTDeviceService _iotDeviceService;
+        private readonly IInventoryService _inventoryService;
+        private readonly IStockBatchService _stockBatchService;
 
         public ProductionOrderService(
             IRepository<ProductionOrder> repository,
@@ -43,7 +47,9 @@ namespace NB.Service.ProductionOrderService
             IProductService productService,
             IUserService userService,
             IWarehouseService warehouseService,
-            IIoTDeviceService iotDeviceService) : base(repository)
+            IIoTDeviceService iotDeviceService,
+            IInventoryService inventoryService,
+            IStockBatchService stockBatchService) : base(repository)
         {
             _mapper = mapper;
             _materialService = materialService;
@@ -52,6 +58,8 @@ namespace NB.Service.ProductionOrderService
             _userService = userService;
             _warehouseService = warehouseService;
             _iotDeviceService = iotDeviceService;
+            _inventoryService = inventoryService;
+            _stockBatchService = stockBatchService;
         }
 
         public async Task<PagedList<ProductionOrderDto>> GetData(ProductionOrderSearch search)
@@ -373,7 +381,119 @@ namespace NB.Service.ProductionOrderService
                     return ApiResponse<object>.Fail("Chỉ có thể chuyển sang trạng thái đang xử lý khi đơn đang ở trạng thái chờ xử lý", 400);
                 }
 
-                // Kiểm tra thiết bị IoT có tồn tại không
+                // Kiểm tra xem đã có đơn nào đang Processing chưa
+                var existingProcessingOrder = await GetQueryable()
+                    .Where(po => po.Status == (int)ProductionOrderStatus.Processing && po.Id != id)
+                    .FirstOrDefaultAsync();
+
+                if (existingProcessingOrder != null)
+                {
+                    return ApiResponse<object>.Fail($"Đã có đơn sản xuất #{existingProcessingOrder.Id} đang ở trạng thái Processing. Vui lòng hoàn thành đơn đó trước.", 409);
+                }
+
+                // Lấy danh sách nguyên liệu
+                var materials = await _materialService.GetQueryable()
+                    .Where(m => m.ProductionId == id)
+                    .ToListAsync();
+
+                if (!materials.Any())
+                {
+                    return ApiResponse<object>.Fail("Đơn sản xuất không có nguyên liệu", 400);
+                }
+
+                var inventoryUpdates = new Dictionary<int, Inventory>();
+                var stockBatchUpdates = new Dictionary<int, StockBatch>();
+
+                // Xử lý từng nguyên liệu
+                foreach (var material in materials)
+                {
+                    var productId = material.ProductId;
+                    var quantity = material.Quantity;
+
+                    // Kiểm tra tồn kho
+                    var inventoryDto = await _inventoryService.GetByWarehouseAndProductId(RawMaterialWarehouseId, productId);
+                    if (inventoryDto == null)
+                    {
+                        var product = await _productService.GetByIdAsync(productId);
+                        return ApiResponse<object>.Fail($"Không tìm thấy sản phẩm '{product?.ProductName ?? productId.ToString()}' trong kho nguyên liệu.", 404);
+                    }
+
+                    if ((inventoryDto.Quantity ?? 0) < quantity)
+                    {
+                        var product = await _productService.GetByIdAsync(productId);
+                        return ApiResponse<object>.Fail($"Sản phẩm '{product?.ProductName ?? productId.ToString()}' trong kho nguyên liệu chỉ còn {inventoryDto.Quantity}, không đủ {quantity} yêu cầu.", 400);
+                    }
+
+                    // Lấy StockBatch theo FIFO
+                    var listStockBatch = await _stockBatchService.GetByProductIdForOrder(new List<int> { productId });
+                    if (listStockBatch == null || !listStockBatch.Any())
+                    {
+                        return ApiResponse<object>.Fail($"Không tìm thấy lô hàng khả dụng cho sản phẩm {productId} trong kho nguyên liệu.", 404);
+                    }
+
+                    var batches = listStockBatch
+                        .Where(sb => sb.ProductId == productId
+                            && sb.WarehouseId == RawMaterialWarehouseId
+                            && ((sb.QuantityIn ?? 0) > (sb.QuantityOut ?? 0))
+                            && (sb.ExpireDate == null || sb.ExpireDate > DateTime.Today))
+                        .OrderBy(sb => sb.ImportDate)
+                        .ToList();
+
+                    decimal remaining = quantity;
+                    foreach (var batch in batches)
+                    {
+                        if (remaining <= 0) break;
+                        decimal available = ((batch.QuantityIn ?? 0) - (batch.QuantityOut ?? 0));
+                        if (available <= 0) continue;
+
+                        decimal take = Math.Min(available, remaining);
+
+                        if (stockBatchUpdates.ContainsKey(batch.BatchId))
+                        {
+                            stockBatchUpdates[batch.BatchId].QuantityOut += take;
+                        }
+                        else
+                        {
+                            var batchEntity = await _stockBatchService.GetByIdAsync(batch.BatchId);
+                            if (batchEntity != null)
+                            {
+                                batchEntity.QuantityOut += take;
+                                batchEntity.LastUpdated = DateTime.Now;
+                                stockBatchUpdates[batch.BatchId] = batchEntity;
+                            }
+                        }
+                        remaining -= take;
+                    }
+
+                    if (remaining > 0)
+                    {
+                        var product = await _productService.GetByIdAsync(productId);
+                        return ApiResponse<object>.Fail($"Không đủ hàng trong các lô cho sản phẩm '{product?.ProductName ?? productId.ToString()}'", 400);
+                    }
+
+                    // Cập nhật Inventory
+                    var inventoryEntity = await _inventoryService.GetEntityByWarehouseAndProductIdAsync(RawMaterialWarehouseId, productId);
+                    if (inventoryEntity != null)
+                    {
+                        inventoryEntity.Quantity -= quantity;
+                        inventoryEntity.LastUpdated = DateTime.Now;
+                        inventoryUpdates[productId] = inventoryEntity;
+                    }
+                }
+
+                // Thực hiện update tất cả Inventory
+                foreach (var inventory in inventoryUpdates.Values)
+                {
+                    await _inventoryService.UpdateNoTracking(inventory);
+                }
+
+                // Thực hiện update tất cả StockBatch
+                foreach (var stockBatch in stockBatchUpdates.Values)
+                {
+                    await _stockBatchService.UpdateNoTracking(stockBatch);
+                }
+
+                // Kiểm tra thiết bị IoT
                 var device = await _iotDeviceService.GetQueryable()
                     .FirstOrDefaultAsync(d => d.DeviceCode == request.DeviceCode);
 
@@ -382,7 +502,6 @@ namespace NB.Service.ProductionOrderService
                     return ApiResponse<object>.Fail("Không tìm thấy thiết bị với mã đã cung cấp", 404);
                 }
 
-                // Kiểm tra thiết bị đã được gán cho đơn sản xuất khác chưa
                 if (device.CurrentProductionId.HasValue && device.CurrentProductionId != id)
                 {
                     return ApiResponse<object>.Fail("Thiết bị đã được gán cho đơn sản xuất khác", 400);
@@ -391,6 +510,7 @@ namespace NB.Service.ProductionOrderService
                 // Cập nhật trạng thái đơn sản xuất
                 productionOrder.Status = (int)ProductionOrderStatus.Processing;
                 productionOrder.StartDate = DateTime.Now;
+
                 // Cập nhật thiết bị IoT
                 device.CurrentProductionId = id;
 
