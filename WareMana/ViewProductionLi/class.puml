@@ -1,0 +1,45 @@
+@startuml
+class ProductionController {
+    - _productionOrderService : IProductionOrderService
+    - _mapper : IMapper
+    + GetData(search : ProductionOrderSearch) : Task_IActionResult
+}
+
+interface IProductionOrderService {
+    + GetData(search : ProductionOrderSearch) : Task_PagedList_ProductionOrderDto
+}
+
+class ProductionOrderService {
+    - _productionOrderRepository : IProductionOrderRepository
+    - _mapper : IMapper
+    + GetData(search : ProductionOrderSearch) : Task_PagedList_ProductionOrderDto
+}
+
+class ProductionOrderSearch {
+    + PageIndex : int
+    + PageSize : int
+    + SearchTerm : string
+    + Status : int?
+    + FromDate : DateTime?
+    + ToDate : DateTime?
+}
+
+class ProductionOrderDto {
+    + Id : int
+    + StartDate : DateTime?
+    + EndDate : DateTime?
+    + Status : int?
+    + StatusName : string
+    + Note : string
+    + CreatedAt : DateTime
+}
+
+class ApiResponse {
+    + Data : T
+    + IsSuccess : bool
+    + Message : string
+    + StatusCode : int
+}
+
+ProductionController --> IProductionOrderService
+ProductionOrderService ..|> IProductionOrderService

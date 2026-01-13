@@ -1,0 +1,82 @@
+@startuml
+title Class Diagram - View Financial Transaction Details
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class FinancialTransactionController <<Controller>> {
+  - _financialTransactionService: IFinancialTransactionService
+  - _userService: IUserService
+  - _logger: ILogger<FinancialTransactionController>
+  + GetDetail(Id: int): Task<IActionResult>
+}
+
+interface IFinancialTransactionService {
+  + GetByIdAsync(id: int): Task<FinancialTransactionDto?>
+}
+
+interface IUserService {
+  + GetByUserId(id: int): Task<UserDto?>
+}
+
+class FinancialTransactionService <<Service>> {
+  + GetByIdAsync(id: int): Task<FinancialTransactionDto?>
+}
+
+class "Service<FinancialTransaction>" as BaseService {
+  - _repository: IRepository<FinancialTransaction>
+  + GetQueryable(): IQueryable<FinancialTransaction>
+}
+
+interface "IRepository<T>" as IRepository {
+  + GetQueryable(): IQueryable<T>
+}
+
+class FinancialTransactionDto {
+  + FinancialTransactionId: int
+  + Type: string
+  + Amount: decimal
+  + Description: string
+  + PaymentMethod: string
+  + TransactionDate: DateTime
+  + CreatedBy: int?
+  + TypeName: string?
+  + TypeInt: int?
+  + CreatedByName: string?
+}
+
+class FinancialTransaction {
+  + FinancialTransactionId: int
+  + Type: string
+  + Amount: decimal
+  + Description: string
+  + PaymentMethod: string
+  + TransactionDate: DateTime
+  + CreatedBy: int?
+}
+
+class UserDto {
+  + UserId: int
+  + FullName: string
+  + Username: string
+}
+
+' Relationships
+UIService ..> FinancialTransactionController : calls API
+FinancialTransactionController ..> ApiResponse : returns
+FinancialTransactionController --> IFinancialTransactionService : uses
+FinancialTransactionController --> IUserService : uses
+IFinancialTransactionService <|.. FinancialTransactionService
+FinancialTransactionService --|> BaseService
+BaseService --> IRepository : uses (FinancialTransaction)
+FinancialTransactionService ..> FinancialTransaction : reads
+FinancialTransactionService ..> FinancialTransactionDto : returns
+
+@enduml

@@ -1,0 +1,98 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+left to right direction
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+' Controller
+class StockOutputController {
+    +CreateOrder(userId: int, or: OrderRequest)
+}
+
+' Service Interfaces
+interface IUserService {
+    + GetByIdAsync(id: int): Task<User>
+}
+
+interface IProductService {
+    + GetById(id: int): Task<Product>
+}
+
+interface IInventoryService {
+    + GetByProductAndWarehouse(productId: int, warehouseId: int): Task<Inventory>
+    + UpdateAsync(inventory: Inventory): Task
+}
+
+interface ITransactionService {
+    + CreateAsync(transaction: Transaction): Task
+}
+
+interface ITransactionDetailService {
+    + CreateAsync(detail: TransactionDetail): Task
+}
+
+interface IStockBatchService {
+    + GetByProductAndWarehouse(productId: int, warehouseId: int): Task<List<StockBatch>>
+    + UpdateAsync(batch: StockBatch): Task
+}
+
+' Entity/DTO Classes
+class User {
+    +UserId: int
+}
+class Product {
+    +ProductId: int
+}
+class Inventory {
+    +ProductId: int
+    +Quantity: int
+}
+class Transaction {
+    +TransactionId: int
+    +CustomerId: int
+    +WarehouseId: int
+    +Status: int
+}
+class TransactionDetail {
+    +TransactionId: int
+    +ProductId: int
+    +Quantity: int
+    +UnitPrice: decimal
+}
+
+' --- Relations ---
+
+' UI calls Controller
+UIService ..> StockOutputController : calls API
+StockOutputController ..> ApiResponse : returns
+
+' Controller uses Services
+StockOutputController ..> IUserService : uses
+StockOutputController ..> IProductService : uses
+StockOutputController ..> IInventoryService : uses
+StockOutputController ..> ITransactionService : uses
+StockOutputController ..> ITransactionDetailService : uses
+StockOutputController ..> IStockBatchService : uses
+
+' Services manage Entities
+IUserService ..> User : manages
+IProductService ..> Product : manages
+IInventoryService ..> Inventory : manages
+ITransactionService ..> Transaction : manages
+ITransactionDetailService ..> TransactionDetail : manages
+
+' Relationships between Entities
+Transaction "1" -- "1..*" TransactionDetail : contains
+Transaction -- User : for (customer)
+Inventory -- Product : tracks stock of
+
+@enduml

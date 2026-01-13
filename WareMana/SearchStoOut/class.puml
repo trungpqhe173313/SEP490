@@ -1,0 +1,48 @@
+@startuml
+title Class Diagram - Search Stock Output
+
+class StockOutputController {
+    - _transactionService : ITransactionService
+    - _warehouseService : IWarehouseService
+    - _userService : IUserService
+    + GetData(search: TransactionSearch) : Task<IActionResult>
+}
+
+interface ITransactionService {
+    + GetDataForExport(search: TransactionSearch) : Task<PagedList<TransactionDto>>
+}
+
+interface IWarehouseService {
+    + GetByListWarehouseId(ids: List<int>) : Task<List<WarehouseDto>>
+}
+
+interface IUserService {
+    + GetAll() : List<UserDto>
+}
+
+class TransactionSearch {
+    + Type : string
+    + CustomerId : int?
+    + WarehouseId : int?
+    + Status : int?
+    + TransactionFromDate : DateTime?
+    + TransactionToDate : DateTime?
+}
+
+class TransactionDto {
+    + TransactionId : int
+    + FullName : string
+    + WarehouseName : string
+    + StatusName : string
+    + TotalCost : decimal?
+    + TransactionDate : DateTime
+}
+
+' Relationships
+StockOutputController --> ITransactionService
+StockOutputController --> IWarehouseService
+StockOutputController --> IUserService
+StockOutputController ..> TransactionSearch : uses
+StockOutputController ..> TransactionDto : returns
+
+@enduml

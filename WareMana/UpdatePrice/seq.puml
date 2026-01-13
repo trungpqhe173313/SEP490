@@ -1,0 +1,39 @@
+@startuml
+
+actor "Warehouse Manager" as WM
+participant "Screen" as UI
+participant ":PriceListController" as PLC
+participant ":IPriceListService" as PLS
+
+WM -> UI : 1. Clicks "Edit" on a price list
+activate UI
+UI -> PLC : 2.1 GET /api/pricelist/GetById/{id}
+activate PLC
+
+PLC -> PLS : 2.2 GetByIdAsync(id)
+activate PLS
+PLS --> PLC
+deactivate PLS
+
+PLC --> UI : 2.3 Return existing data
+deactivate PLC
+UI -> UI : 2.4 Display form populated with data
+deactivate UI
+
+WM -> UI : 3 Clicks "Save Changes"
+activate UI
+UI -> PLC : 4.1 PUT /api/pricelist/Update/{id}(dto)
+activate PLC
+
+' Note: The code for Update in the controller might also re-fetch the entity first.
+' This diagram simplifies it to a direct update call.
+PLC -> PLS : 4.2 UpdateAsync(entity)
+activate PLS
+PLS --> PLC : 4.3 Confirmation
+deactivate PLS
+
+PLC --> UI : 4.4 Return success result
+deactivate PLC
+UI --> WM : 5 Display "Update successful" message
+deactivate UI
+@enduml

@@ -1,0 +1,64 @@
+@startuml
+title Sequence Diagram - Return Stock Output List (Search Export Returns)
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":ReturnOrderController" as Controller
+participant ":ReturnTransactionService" as ReturnService
+participant ":WarehouseService" as WarehouseService
+participant ":UserService" as UserService
+participant "Database" as DB
+
+' Step 1: User Request (Search for Export Returns)
+Manager -> Controller: POST /api/returnorder/GetData(search)
+
+activate Controller
+
+' Step 2: Get Raw Data
+Controller -> ReturnService: GetData(search)
+activate ReturnService
+ReturnService -> DB: Query ReturnTransactions (Type='Export')
+activate DB
+DB --> ReturnService: PagedList<ReturnOrderDto>
+deactivate DB
+ReturnService --> Controller: result
+deactivate ReturnService
+
+' Step 3: Bulk Fetch Warehouses
+Controller -> Controller: Extract listWarehouseId
+Controller -> WarehouseService: GetByListWarehouseId(listWarehouseId)
+activate WarehouseService
+WarehouseService -> DB: Query Warehouses
+activate DB
+DB --> WarehouseService: List<Warehouse>
+deactivate DB
+WarehouseService --> Controller: listWareHouse
+deactivate WarehouseService
+
+' Step 4: Bulk Fetch Customers (Users)
+Controller -> Controller: Extract listCustomerId (from result items)
+Controller -> UserService: GetAll()
+activate UserService
+UserService -> DB: Query Users
+activate DB
+DB --> UserService: List<User>
+deactivate DB
+UserService --> Controller: listUser
+deactivate UserService
+
+' Step 5: Enrich Data Loop
+loop For each ReturnOrderDto in result
+    ' Map Warehouse Name
+    Controller -> Controller: Find Warehouse in listWareHouse
+    Controller -> Controller: item.WarehouseName = warehouse.WarehouseName
+
+    ' Map Customer Name
+    Controller -> Controller: Find User in listUser (by CustomerId)
+    Controller -> Controller: item.CustomerName = user.FullName
+end
+
+' Step 6: Response
+Controller --> Manager: Ok(PagedList<ReturnOrderDto>)
+deactivate Controller
+
+@enduml

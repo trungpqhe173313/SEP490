@@ -1,0 +1,57 @@
+@startuml
+title Sequence Diagram - Search Stock Batch
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":StockInputController" as Controller
+participant ":StockBatchService" as BatchService
+participant ":TransactionDetailService" as DetailService
+participant ":ProductService" as ProductService
+participant "Database" as DB
+
+' Step 1: User initiates search with criteria
+Manager -> Controller: POST /api/stockinput/GetStockBatch(search)
+
+activate Controller
+
+' Step 2: Service executes filtered query
+Controller -> BatchService: GetData(search)
+activate BatchService
+BatchService -> DB: Query StockBatches (WHERE TransactionId=... AND ...)
+activate DB
+DB --> BatchService: PagedList<StockBatchDto>
+deactivate DB
+BatchService --> Controller: pagedResult
+deactivate BatchService
+
+' Step 3: Handle Empty Results
+alt No Batches Found
+    Controller --> Manager: NotFound("Không tìm thấy lô hàng nào")
+end
+
+' Step 4: Fetch Related Data for Enrichment
+Controller -> DetailService: GetByTransactionId(search.TransactionId)
+activate DetailService
+DetailService -> DB: Query Details
+activate DB
+DB --> DetailService: List<TransactionDetail>
+deactivate DB
+DetailService --> Controller: details
+deactivate DetailService
+
+' Step 5: Map Data
+loop For each Batch
+    Controller -> Controller: Map UnitPrice from details
+    Controller -> ProductService: GetById(ProductId)
+    activate ProductService
+    ProductService --> Controller: product
+    deactivate ProductService
+    Controller -> Controller: Map WeightPerUnit
+    Controller -> Controller: Format Status & IsActive
+end
+
+' Step 6: Return Filtered & Enriched List
+Controller --> Manager: Ok(PagedList<StockOutputVM>)
+deactivate Controller
+
+@enduml

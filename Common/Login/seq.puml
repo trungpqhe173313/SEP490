@@ -1,0 +1,33 @@
+@startuml
+autonumber
+actor User
+participant "Web UI" as UI
+participant "AccountController" as Controller
+participant "AccountService : IAccountService" as Service
+participant "UserRepository : IUserRepository" as Repo
+participant "NutriBarnContext (EF)" as Db
+participant "JwtService : IJwtService" as Jwt
+
+User -> UI : Enter username/password and click Login
+UI -> Controller : POST /api/account/login(loginDto)
+Controller -> Service : Login(loginDto)
+Service -> Repo : GetByUsername(loginDto.Username)
+Repo -> Db : SELECT * FROM Users WHERE Username = ...
+Db --> Repo : User entity
+Repo --> Service : Return User
+Service -> Service : Verify password (hash compare)
+alt password ok
+  Service -> Jwt : GenerateAccessToken(user)
+  Jwt -> Jwt : Create claims, sign token
+  Jwt --> Service : accessToken, expires
+  Service -> Repo : Save/Update refresh token (optional)
+  Repo --> Service : refresh token saved
+  Service --> Controller : LoginResponse{accessToken, refreshToken, userInfo}
+  Controller --> UI : 200 OK + LoginResponse
+  UI --> User : Show success and store tokens
+else password invalid
+  Service --> Controller : error (401)
+  Controller --> UI : 401 Unauthorized
+  UI --> User : Show error message
+end
+@enduml

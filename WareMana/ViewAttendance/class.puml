@@ -1,0 +1,96 @@
+@startuml
+title Class Diagram - View Employee Attendance
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class WorklogController <<Controller>> {
+  - _worklogService: IWorklogService
+  - _logger: ILogger<WorklogController>
+  + GetWorklogsByEmployeeAndDate(dto: GetWorklogsByEmployeeDto): Task<IActionResult>
+}
+
+interface IWorklogService {
+  + GetWorklogsByEmployeeAndDateAsync(employeeId: int, workDate: DateTime): Task<List<WorklogResponseVM>>
+}
+
+class WorklogService <<Service>> {
+  - _userRepository: IRepository<User>
+  - _userRoleRepository: IRepository<UserRole>
+  + GetWorklogsByEmployeeAndDateAsync(employeeId: int, workDate: DateTime): Task<List<WorklogResponseVM>>
+}
+
+class "Service<Worklog>" as BaseService {
+  - _repository: IRepository<Worklog>
+  + GetQueryable(): IQueryable<Worklog>
+}
+
+interface "IRepository<T>" as IRepository {
+  + GetQueryable(): IQueryable<T>
+}
+
+class GetWorklogsByEmployeeDto {
+  + EmployeeId: int
+  + WorkDate: DateTime
+}
+
+class WorklogResponseVM {
+  + Id: int
+  + EmployeeId: int
+  + EmployeeName: string
+  + JobId: int
+  + JobName: string
+  + PayType: string
+  + Quantity: decimal
+  + Rate: decimal
+  + TotalAmount: decimal
+  + Note: string
+  + WorkDate: DateTime
+  + IsActive: boolean
+}
+
+class Worklog {
+  + Id: int
+  + EmployeeId: int
+  + JobId: int
+  + Quantity: decimal
+  + Rate: decimal
+  + WorkDate: DateTime
+  + IsActive: boolean
+  + Job: Job
+}
+
+class Job {
+  + Id: int
+  + JobName: string
+  + PayType: string
+}
+
+class User {
+  + UserId: int
+  + FullName: string
+}
+
+' Relationships
+UIService ..> WorklogController : calls API
+UIService ..> GetWorklogsByEmployeeDto : sends
+WorklogController ..> ApiResponse : returns
+WorklogController --> IWorklogService : uses
+WorklogController ..> GetWorklogsByEmployeeDto : receives
+IWorklogService <|.. WorklogService
+WorklogService --|> BaseService
+WorklogService --> IRepository : uses (User, UserRole)
+BaseService --> IRepository : uses (Worklog)
+WorklogService ..> Worklog : reads
+WorklogService ..> Job : reads
+WorklogService ..> User : reads
+WorklogService ..> WorklogResponseVM : returns
+
+@enduml

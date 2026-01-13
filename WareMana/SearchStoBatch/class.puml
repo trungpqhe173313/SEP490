@@ -1,0 +1,30 @@
+@startuml
+title Class Diagram - Search Stock Batch
+
+class StockInputController {
+    + GetStockBatch(search: StockBatchSearch) : Task<IActionResult>
+}
+
+class StockBatchSearch {
+    + TransactionId : int
+    + WarehouseId : int?
+    + ProductId : int?
+    + BatchCode : string
+    + PageIndex : int
+    + PageSize : int
+}
+
+interface IStockBatchService {
+    + GetData(search: StockBatchSearch) : Task<PagedList<StockBatchDto>>
+}
+
+class StockBatchService {
+    + GetData(search: StockBatchSearch) : Task<PagedList<StockBatchDto>>
+}
+
+' Relationships
+StockInputController --> IStockBatchService
+StockInputController ..> StockBatchSearch : uses
+StockBatchService ..|> IStockBatchService
+
+@enduml

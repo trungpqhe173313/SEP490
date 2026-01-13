@@ -1,0 +1,60 @@
+@startuml
+title Sequence Diagram - View Transaction Slip List (Happy Path)
+autonumber
+
+actor "Warehouse Manager" as User
+participant "UI Service" as UI
+participant "StockInputController" as Ctrl
+participant "TransactionService" as TransSvc
+participant "WarehouseService" as WhSvc
+participant "SupplierService" as SupSvc
+participant "TransactionRepository" as Repo
+database "Database" as DB
+
+User -> UI : Xem danh sách phiếu giao dịch
+UI -> Ctrl : POST /api/stockinput/GetData\n(TransactionSearch)
+activate Ctrl
+
+Ctrl -> TransSvc : GetData(search)
+activate TransSvc
+TransSvc -> Repo : GetQueryable()
+activate Repo
+Repo --> TransSvc : IQueryable<Transaction>
+deactivate Repo
+TransSvc -> DB : Execute Query (Filter by Type, Date, Status...)
+activate DB
+DB --> TransSvc : List<TransactionDto>
+deactivate DB
+TransSvc --> Ctrl : PagedList<TransactionDto>
+deactivate TransSvc
+
+loop For each item in PagedList
+    Ctrl -> WhSvc : GetById(item.WarehouseId)
+    activate WhSvc
+    WhSvc -> DB : Query Warehouse
+    activate DB
+    DB --> WhSvc : WarehouseDto
+    deactivate DB
+    WhSvc --> Ctrl : WarehouseDto
+    deactivate WhSvc
+
+    Ctrl -> SupSvc : GetBySupplierId(item.SupplierId)
+    activate SupSvc
+    SupSvc -> DB : Query Supplier
+    activate DB
+    DB --> SupSvc : SupplierDto
+    deactivate DB
+    SupSvc --> Ctrl : SupplierDto
+    deactivate SupSvc
+
+    Ctrl -> Ctrl : Create TransactionOutputVM
+end
+
+Ctrl -> Ctrl : Create PagedList<TransactionOutputVM>
+
+Ctrl --> UI : Ok(ApiResponse<PagedList<TransactionOutputVM>>)
+deactivate Ctrl
+
+UI --> User : Hiển thị danh sách phiếu giao dịch
+
+@enduml

@@ -1,0 +1,65 @@
+@startuml
+title Search Financial Transaction Class Diagram
+
+class UIService {
+    + searchFinancialTransactions(searchParams: FinancialTransactionSearch) : Promise<ApiResponse<PagedList<FinancialTransactionDto>>>
+}
+
+class FinancialTransactionController {
+    - _financialTransactionService : IFinancialTransactionService
+    - _userService : IUserService
+    + GetData(search: FinancialTransactionSearch) : Task<IActionResult>
+}
+
+interface IFinancialTransactionService {
+    + GetData(search: FinancialTransactionSearch) : Task<PagedList<FinancialTransactionDto>>
+}
+
+class FinancialTransactionService {
+    + GetData(search: FinancialTransactionSearch) : Task<PagedList<FinancialTransactionDto>>
+}
+
+interface IUserService {
+    + GetQueryable() : IQueryable<User>
+}
+
+class FinancialTransactionSearch {
+    + Type : int?
+    + RelatedTransactionId : int?
+    + PayrollId : int?
+    + CreatedBy : int?
+    + TransactionFromDate : DateTime?
+    + TransactionToDate : DateTime?
+    + PageIndex : int
+    + PageSize : int
+}
+
+class FinancialTransactionDto {
+    + TypeName : string
+    + CreatedByName : string
+    + TypeInt : int?
+}
+
+class FinancialTransaction {
+    + Id : int
+    + Type : string
+    + Amount : decimal
+    + Description : string
+    + TransactionDate : DateTime
+}
+
+class ApiResponse {
+    + {static} Ok(data: object) : ApiResponse
+    + {static} Fail(message: string) : ApiResponse
+}
+
+UIService ..> FinancialTransactionController : calls API
+FinancialTransactionController --> IFinancialTransactionService
+FinancialTransactionController --> IUserService
+IFinancialTransactionService <|.. FinancialTransactionService
+FinancialTransactionController ..> FinancialTransactionSearch : uses
+FinancialTransactionController ..> FinancialTransactionDto : returns
+FinancialTransactionDto --|> FinancialTransaction
+FinancialTransactionController ..> ApiResponse : returns
+
+@enduml

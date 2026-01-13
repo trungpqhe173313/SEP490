@@ -1,0 +1,18 @@
+@startuml
+title Class Diagram - Download Stock Input Template
+
+class StockInputController {
+    + DownloadTemplate() : IActionResult
+    + ImportFromExcel(file: IFormFile) : Task<IActionResult>
+}
+
+class ExcelTemplateGenerator {
+    + {static} GenerateStockInputTemplate() : MemoryStream
+    + {static} GenerateProductImportTemplate() : MemoryStream
+    + {static} GenerateWarehouseTemplate() : MemoryStream
+}
+
+' Relationship
+StockInputController ..> ExcelTemplateGenerator : uses >
+
+@enduml

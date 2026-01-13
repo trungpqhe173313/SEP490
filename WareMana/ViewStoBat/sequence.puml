@@ -1,0 +1,41 @@
+@startuml
+
+actor "Warehouse Manager" as Actor
+participant "Screen" as UI
+participant "StockInputController" as SIC
+participant "IStockBatchService" as SBS
+participant "ITransactionDetailService" as TDS
+participant "IProductService" as PS
+
+' --- Workflow ---
+
+Actor -> UI : 1. Clicks "View Batches" on a stock input form
+activate UI
+UI -> SIC : 2.1 POST /api/stockinput/GetStockBatch(search)
+activate SIC
+
+' --- Data Retrieval ---
+SIC -> SBS : 2.2 GetData(search)
+activate SBS
+SBS --> SIC : 2.3 Return PagedList<StockBatchDto>
+deactivate SBS
+
+SIC -> TDS : 2.4 GetByTransactionId(transactionId)
+activate TDS
+TDS --> SIC : 2.5 Return List<TransactionDetail>
+deactivate TDS
+
+SIC -> PS : 2.6 GetById(productId)
+activate PS
+PS --> SIC : 2.7 Return Product details (e.g., WeightPerUnit)
+deactivate PS
+
+' --- Data Processing & Response ---
+SIC -> SIC : 2.8 Assemble final list of StockOutputVM
+SIC --> UI : 2.9 Return assembled PagedList
+deactivate SIC
+
+UI --> Actor : 2.10 Display list of stock batches
+deactivate UI
+
+@enduml

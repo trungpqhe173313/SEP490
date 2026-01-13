@@ -1,0 +1,37 @@
+@startuml
+title Delete Financial Transaction Class Diagram
+
+class FinancialTransactionController {
+    - _financialTransactionService : IFinancialTransactionService
+    + DeleteFinancialTransaction(Id: int) : Task<IActionResult>
+}
+
+interface IFinancialTransactionService {
+    + GetByIdAsync(id: int) : Task<FinancialTransaction>
+    + DeleteAsync(entity: FinancialTransaction) : Task
+}
+
+class FinancialTransactionService {
+    + GetByIdAsync(id: int) : Task<FinancialTransaction>
+    + DeleteAsync(entity: FinancialTransaction) : Task
+}
+
+class FinancialTransaction {
+    + Id : int
+    + Type : string
+    + Amount : decimal
+    + Description : string
+    + TransactionDate : DateTime
+}
+
+class ApiResponse {
+    + {static} Ok(data: object) : ApiResponse
+    + {static} Fail(message: string) : ApiResponse
+}
+
+FinancialTransactionController --> IFinancialTransactionService
+IFinancialTransactionService <|.. FinancialTransactionService
+FinancialTransactionController ..> ApiResponse : returns
+FinancialTransactionService ..> FinancialTransaction : manages
+
+@enduml

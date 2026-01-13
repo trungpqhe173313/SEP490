@@ -1,0 +1,19 @@
+@startuml
+title Class Diagram - Download Product Template
+
+class ProductController {
+    + DownloadProductTemplate() : IActionResult
+    + ImportProduct(file: IFormFile) : Task<IActionResult>
+}
+
+class ExcelTemplateGenerator {
+    + {static} GenerateProductImportTemplate() : MemoryStream
+    + {static} GenerateWarehouseTemplate() : MemoryStream
+    + {static} GenerateStockInputTemplate() : MemoryStream
+}
+
+' Relationship
+ProductController ..> ExcelTemplateGenerator : uses >
+
+
+@enduml

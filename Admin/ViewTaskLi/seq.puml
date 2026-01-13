@@ -1,0 +1,38 @@
+@startuml
+title View Task List Sequence Diagram
+autonumber
+actor "Admin" as User
+participant "UI Component" as UI
+participant "UIService" as UIService
+participant "JobController" as Controller
+participant "IJobService" as Service
+participant "Database" as DB
+
+User -> UI : Access Task List Page
+activate UI
+UI -> UIService : getTasks()
+activate UIService
+
+UIService -> Controller : GET /api/jobs
+activate Controller
+
+Controller -> Service : GetAllJobsAsync()
+activate Service
+Service -> DB : Query All Jobs
+activate DB
+DB --> Service : List<Job>
+deactivate DB
+Service --> Controller : List<JobDto>
+deactivate Service
+
+Controller --> UIService : Ok(ApiResponse.Ok(jobs))
+deactivate Controller
+
+UIService --> UI : Return Data
+deactivate UIService
+
+UI -> UI : Render Task List
+UI --> User : Show Task List
+deactivate UI
+
+@enduml

@@ -1,0 +1,76 @@
+@startuml
+title Class Diagram - Create Financial Transaction Slip
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class FinancialTransactionController <<Controller>> {
+  - _financialTransactionService: IFinancialTransactionService
+  - _mapper: IMapper
+  - _logger: ILogger<FinancialTransactionController>
+  + CreateFinancialTransaction(model: FinancialTransactionCreateVM): Task<IActionResult>
+}
+
+interface IFinancialTransactionService {
+  + CreateAsync(entity: FinancialTransaction): Task
+}
+
+class FinancialTransactionService <<Service>> {
+  + CreateAsync(entity: FinancialTransaction): Task
+}
+
+class "Service<FinancialTransaction>" as BaseService {
+  - _repository: IRepository<FinancialTransaction>
+  + CreateAsync(entity: FinancialTransaction): Task
+}
+
+interface "IRepository<T>" as IRepository {
+  + Add(entity: T): T
+  + SaveAsync(): Task
+}
+
+class FinancialTransactionCreateVM {
+  + Type: int?
+  + Amount: decimal?
+  + Description: string?
+  + PaymentMethod: string
+  + CreatedBy: int?
+}
+
+class FinancialTransaction {
+  + FinancialTransactionId: int
+  + Type: string
+  + Amount: decimal
+  + Description: string
+  + PaymentMethod: string
+  + TransactionDate: DateTime
+  + CreatedBy: int?
+}
+
+enum FinancialTransactionType {
+  ThuKhac
+  ChiKhac
+  UngLuong
+  ThanhToanLuong
+  ...
+}
+
+' Relationships
+UIService ..> FinancialTransactionController : calls API
+UIService ..> FinancialTransactionCreateVM : sends
+FinancialTransactionController ..> ApiResponse : returns
+FinancialTransactionController --> IFinancialTransactionService : uses
+FinancialTransactionController ..> FinancialTransactionCreateVM : receives
+IFinancialTransactionService <|.. FinancialTransactionService
+FinancialTransactionService --|> BaseService
+BaseService --> IRepository : uses (FinancialTransaction)
+FinancialTransactionService ..> FinancialTransaction : creates
+
+@enduml

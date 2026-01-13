@@ -1,0 +1,84 @@
+@startuml
+
+' Controllers
+class CategoryController <<controller>> {
+  - _categoryService: ICategoryService
+  - _logger: ILogger
+  .. Methods ..
+  + GetData(search: CategorySearch): Task<IActionResult>
+  + GetById(id: int): Task<IActionResult>
+  + CreateCategory(model: CategoryCreateVM): Task<IActionResult>
+  + UpdateCategory(id: int, model: CategoryUpdateVM): Task<IActionResult>
+  + DeleteCategory(id: int): Task<IActionResult>
+}
+
+' Services
+interface ICategoryService {
+  + GetData(): Task<List<CategoryDto>>
+  + GetById(id: int): Task<CategoryDto>
+  + GetByName(name: string): Task<CategoryDto>
+}
+interface IServiceCategory {
+  + GetQueryable(): IQueryable<Category>
+  + CreateAsync(entity: Category): Task
+  + UpdateAsync(entity: Category): Task
+}
+class ServiceCategory <<base>> {
+  - _repository: IRepositoryCategory
+  .. Methods ..
+  + GetQueryable(): IQueryable<Category>
+  + CreateAsync(entity: Category): Task
+  + UpdateAsync(entity: Category): Task
+}
+class CategoryService <<service>> {
+  .. Methods ..
+  + GetData(): Task<List<CategoryDto>>
+  + GetById(id: int): Task<CategoryDto>
+  + GetByName(name: string): Task<CategoryDto>
+}
+
+' Repositories
+interface IRepositoryCategory {
+  + GetQueryable(): IQueryable<Category>
+  + Add(entity: Category): Category
+  + Update(entity: Category): void
+  + SaveAsync(): Task
+}
+class RepositoryCategory {
+  - _entities: DbContext
+  - _dbset: DbSet
+  .. Methods ..
+  + GetQueryable(): IQueryable<Category>
+  + Add(entity: Category): Category
+  + Update(entity: Category): void
+  + SaveAsync(): Task
+}
+
+' DTOs / Entities / Search
+class Category {
+  + CategoryId: int
+  + CategoryName: string
+  + Description: string
+  + IsActive: bool
+}
+class CategoryDto
+CategoryDto --|> Category
+
+class SearchBase {
+  + PageIndex: int
+  + PageSize: int
+}
+class CategorySearch {
+  + CategoryName: string
+}
+CategorySearch --|> SearchBase
+
+' Relationships
+CategoryController --> ICategoryService : uses
+CategoryService ..|> ICategoryService
+CategoryService --|> ServiceCategory
+ServiceCategory ..|> IServiceCategory
+ServiceCategory --> IRepositoryCategory : uses
+RepositoryCategory ..|> IRepositoryCategory
+
+@enduml

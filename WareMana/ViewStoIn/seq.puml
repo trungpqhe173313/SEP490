@@ -1,0 +1,24 @@
+@startuml
+autonumber
+actor "Warehouse Manager" as WarehouseManager
+participant "UI"
+participant ":StockInputController" as Controller
+participant ":IStockInputService" as Service
+
+activate WarehouseManager
+WarehouseManager -> UI: Yêu cầu xem danh sách phiếu nhập
+activate UI
+UI -> Controller: POST /api/StockInput/get-data
+activate Controller
+
+    Controller -> Service: GetData(search)
+    activate Service
+    Service --> Controller: ApiResponse.Success(PagedList<StockInput>)
+    deactivate Service
+    Controller --> UI: 200 OK
+    deactivate Controller
+    UI -> WarehouseManager: Hiển thị danh sách phiếu nhập
+    deactivate UI
+
+deactivate WarehouseManager
+@enduml

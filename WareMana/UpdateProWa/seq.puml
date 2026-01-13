@@ -1,0 +1,41 @@
+@startuml
+autonumber
+actor "User" as User
+boundary "UI" as UI
+participant "ASP.NET Core Pipeline" as Pipeline
+participant ":ProductController" as Ctrl
+participant ":ProductService" as Svc
+database "DB" as DB
+
+User -> UI : Nhấn "Chỉnh sửa" trên một sản phẩm
+UI -> Ctrl : Lấy dữ liệu sản phẩm để hiển thị
+Ctrl --> UI : Trả về dữ liệu
+UI --> User : Hiển thị form chỉnh sửa với thông tin đã có
+
+User -> UI : Sửa thông tin và nhấn "Lưu"
+UI -> Pipeline : PUT /api/products/UpdateProduct/{Id}\n(Body chứa: ProductUpdateVM)
+
+Pipeline -> Ctrl : Gọi action UpdateProduct(Id, model)
+
+alt Dữ liệu không hợp lệ 
+    Ctrl -> Ctrl : Kiểm tra `!ModelState.IsValid` -> true
+    Ctrl --> UI : 400 BadRequest (chứa lỗi từ ModelState)
+    UI --> User : Hiển thị thông báo lỗi
+else Dữ liệu hợp lệ
+    Ctrl -> Svc : GetById(Id) (Lấy entity gốc)
+    Svc -> DB : Query Product by Id
+    DB --> Svc : Trả về Product
+    Svc --> Ctrl : Trả về Product
+
+    Ctrl -> Ctrl : Cập nhật các thuộc tính của `product` từ `ProductUpdateVM`
+
+    Ctrl -> Svc : UpdateAsync(product)
+    Svc -> DB : Execute UPDATE command
+    DB --> Svc : OK
+    Svc --> Ctrl : OK
+
+    Ctrl --> UI : 200 OK (ApiResponse chứa dữ liệu đã cập nhật)
+    UI --> User : Hiển thị thông báo "Cập nhật thành công"
+end
+
+@enduml

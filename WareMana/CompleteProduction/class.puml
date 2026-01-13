@@ -1,0 +1,103 @@
+@startuml
+title Class Diagram - Complete Production Order
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class ProductionController <<Controller>> {
+  - _productionOrderService: IProductionOrderService
+  - _finishproductService: IFinishproductService
+  - _stockBatchService: IStockBatchService
+  - _inventoryService: IInventoryService
+  - _productService: IProductService
+  - _mapper: IMapper
+  + ChangeToFinished(productionOrderId: int, request: FinishProductionRequest?): Task<IActionResult>
+}
+
+class FinishProductionRequest {
+  + FinishProductQuantities: List<FinishProductQuantity>?
+}
+
+class FinishProductQuantity {
+  + ProductId: int
+  + Quantity: int?
+}
+
+interface IProductionOrderService {
+  + GetByIdAsync(id: int): Task<ProductionOrder>
+  + UpdateAsync(entity: ProductionOrder): Task
+}
+
+interface IFinishproductService {
+  + GetQueryable(): IQueryable<Finishproduct>
+  + UpdateAsync(entity: Finishproduct): Task
+}
+
+interface IStockBatchService {
+  + GetByName(name: string): Task<StockBatch>
+  + CreateAsync(entity: StockBatch): Task
+  + UpdateNoTracking(entity: StockBatch): Task
+}
+
+interface IInventoryService {
+  + GetEntityByWarehouseAndProductIdAsync(warehouseId: int, productId: int): Task<Inventory>
+  + CreateAsync(entity: Inventory): Task
+  + UpdateNoTracking(entity: Inventory): Task
+}
+
+interface IProductService {
+  + GetByIdAsync(id: int): Task<Product>
+}
+
+class ProductionOrder {
+  + Id: int
+  + Status: int
+  + EndDate: DateTime?
+}
+
+class Finishproduct {
+  + Id: int
+  + ProductionId: int
+  + ProductId: int
+  + Quantity: int
+  + TotalWeight: decimal?
+}
+
+class StockBatch {
+  + BatchId: int
+  + BatchCode: string
+  + QuantityIn: int
+  + ProductionFinishId: int
+}
+
+class Inventory {
+  + ProductId: int
+  + WarehouseId: int
+  + Quantity: int
+  + LastUpdated: DateTime
+}
+
+' Relationships
+UIService ..> ProductionController : calls API
+UIService ..> FinishProductionRequest : sends
+ProductionController ..> ApiResponse : returns
+ProductionController --> IProductionOrderService : uses
+ProductionController --> IFinishproductService : uses
+ProductionController --> IStockBatchService : uses
+ProductionController --> IInventoryService : uses
+ProductionController --> IProductService : uses
+ProductionController ..> FinishProductionRequest : receives
+FinishProductionRequest *-- FinishProductQuantity : contains
+IProductionOrderService ..> ProductionOrder : manages
+IFinishproductService ..> Finishproduct : manages
+IStockBatchService ..> StockBatch : manages
+IInventoryService ..> Inventory : manages
+
+@enduml

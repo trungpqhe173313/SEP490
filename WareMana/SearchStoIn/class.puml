@@ -1,0 +1,54 @@
+@startuml
+title Class Diagram - Search Stock Input
+
+class StockInputController {
+    - _transactionService : ITransactionService
+    - _warehouseService : IWarehouseService
+    - _supplierService : ISupplierService
+    + GetData(search : TransactionSearch) : Task<IActionResult>
+}
+
+interface ITransactionService {
+    + GetData(search : TransactionSearch) : Task<PagedList<TransactionDto>>
+}
+
+class TransactionService {
+    + GetData(search : TransactionSearch) : Task<PagedList<TransactionDto>>
+}
+
+interface IWarehouseService {
+    + GetById(id : int) : Task<WarehouseDto>
+}
+
+interface ISupplierService {
+    + GetBySupplierId(id : int) : Task<SupplierDto>
+}
+
+class TransactionSearch {
+    + SupplierId : int?
+    + WarehouseId : int?
+    + Status : int?
+    + Type : string
+    + TransactionFromDate : DateTime?
+    + TransactionToDate : DateTime?
+}
+
+class TransactionOutputVM {
+    + TransactionId : int
+    + WarehouseName : string
+    + SupplierName : string
+    + Type : string
+    + Status : int?
+    + TotalCost : decimal?
+    + Note : string
+}
+
+' Relationships
+StockInputController --> ITransactionService
+StockInputController --> IWarehouseService
+StockInputController --> ISupplierService
+TransactionService ..|> ITransactionService
+StockInputController ..> TransactionSearch : uses
+StockInputController ..> TransactionOutputVM : returns
+
+@enduml

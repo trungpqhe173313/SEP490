@@ -1,0 +1,49 @@
+@startuml
+title Edit Financial Transaction Class Diagram
+
+class FinancialTransactionController {
+    - _financialTransactionService : IFinancialTransactionService
+    + UpdateFinancialTransaction(Id: int, model: FinancialTransactionUpdateVM) : Task<IActionResult>
+}
+
+interface IFinancialTransactionService {
+    + GetByIdAsync(id: int) : Task<FinancialTransaction>
+    + UpdateAsync(entity: FinancialTransaction) : Task
+}
+
+class FinancialTransactionService {
+    + GetByIdAsync(id: int) : Task<FinancialTransaction>
+    + UpdateAsync(entity: FinancialTransaction) : Task
+}
+
+class FinancialTransactionUpdateVM {
+    + Type : FinancialTransactionType
+    + Amount : decimal
+    + Description : string
+    + TransactionDate : DateTime
+    + PaymentMethod : string
+    + ReferenceCode : string
+}
+
+class FinancialTransaction {
+    + Id : int
+    + Type : string
+    + Amount : decimal
+    + Description : string
+    + TransactionDate : DateTime
+    + PaymentMethod : string
+    + ReferenceCode : string
+}
+
+class ApiResponse {
+    + {static} Ok(data: object) : ApiResponse
+    + {static} Fail(message: string) : ApiResponse
+}
+
+FinancialTransactionController --> IFinancialTransactionService
+IFinancialTransactionService <|.. FinancialTransactionService
+FinancialTransactionController ..> FinancialTransactionUpdateVM : uses
+FinancialTransactionController ..> ApiResponse : returns
+FinancialTransactionService ..> FinancialTransaction : manages
+
+@enduml

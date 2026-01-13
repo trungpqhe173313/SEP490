@@ -1,0 +1,18 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+
+class ContractController {
+    +Delete(id: int)
+}
+interface IContractService {
+    +GetByIdAsync(id)
+    +DeleteAsync(entity)
+}
+class Contract {
+    +Id: int
+}
+
+ContractController ..> IContractService : uses
+IContractService ..> Contract : manages
+@enduml

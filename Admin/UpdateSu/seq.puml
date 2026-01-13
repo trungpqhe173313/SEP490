@@ -1,0 +1,44 @@
+@startuml
+
+actor "Admin" as Admin
+boundary "UI (Web/App)" as UI
+participant "SupplierController" as Ctrl
+participant "SupplierService" as Svc
+participant "Service<Supplier> (base)" as BaseSvc
+participant "Repository<Supplier>" as Repo
+database "DB (NutriBarnContext)" as DB
+
+Admin -> UI : 1. Nhấn nút "Chỉnh sửa" trên một nhà cung cấp
+UI -> Ctrl : 2.1 GET /api/suppliers/GetById/{id} (Lấy dữ liệu để hiển thị)
+Ctrl --> UI : 2.2 Trả về dữ liệu nhà cung cấp
+UI --> Admin : 2.3 Hiển thị form chỉnh sửa với thông tin đã có
+
+Admin -> UI : 3 Thay đổi thông tin và nhấn "Lưu"
+UI -> Ctrl : 4.1 PUT /api/suppliers/UpdateSupplier/{Id}\n(Body chứa: SupplierEditVM)
+
+Ctrl -> Svc : 4.2 GetById(Id)
+Svc -> DB : 4.3 Query Supplier by Id
+DB --> Svc : 4.4 Trả về Supplier?
+Svc --> Ctrl : 4.5 Trả về Supplier?
+
+alt Nhà cung cấp không tồn tại
+    Ctrl --> UI : 6.1b 400 BadRequest: "Không tìm thấy nhà cung cấp"
+    UI --> Admin : 6.2b Hiển thị lỗi
+else Nhà cung cấp tồn tại
+    Ctrl -> Ctrl : 5.1 Cập nhật các thuộc tính của `supplier` từ `SupplierEditVM`
+    
+    Ctrl -> Svc : 5.2 UpdateAsync(supplier)
+    Svc -> BaseSvc : 5.3 UpdateAsync(supplier)
+    BaseSvc -> Repo : 5.4 Update(supplier) (Đánh dấu entity là Modified)
+    BaseSvc -> Repo : 5.5 SaveAsync()
+    Repo -> DB : 5.6 Execute UPDATE & SaveChanges
+    DB --> Repo : 5.7 OK
+    Repo --> BaseSvc : 5.8 OK
+    BaseSvc --> Svc : 5.9 OK
+    Svc --> Ctrl : 5.10 OK
+    
+    Ctrl --> UI : 6.1 200 OK (ApiResponse chứa dữ liệu đã cập nhật)
+    UI --> Admin : 6.2 Hiển thị thông báo "Cập nhật thành công"
+end
+
+@enduml

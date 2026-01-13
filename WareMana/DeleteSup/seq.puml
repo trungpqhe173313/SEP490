@@ -1,0 +1,55 @@
+@startuml
+title Sequence Diagram - Delete Supplier (Happy Path)
+autonumber
+
+actor "Warehouse Manager" as User
+participant "UI Service" as UI
+participant "SupplierController" as Ctrl
+participant "SupplierService" as Svc
+participant "SupplierRepository" as Repo
+database "Database" as DB
+
+User -> UI : Chọn nhà cung cấp và nhấn "Xóa"
+UI -> Ctrl : DELETE /api/suppliers/DeleteSupplier/{id}
+activate Ctrl
+
+Ctrl -> Svc : GetByIdAsync(id)
+activate Svc
+Svc -> Repo : GetByIdAsync(id)
+activate Repo
+Repo -> DB : Query Supplier by Id
+activate DB
+DB --> Repo : Supplier Entity
+deactivate DB
+Repo --> Svc : Supplier Entity
+deactivate Repo
+Svc --> Ctrl : Supplier Entity
+deactivate Svc
+
+Ctrl -> Ctrl : Set entity.IsActive = false
+
+Ctrl -> Svc : UpdateAsync(entity)
+activate Svc
+Svc -> Repo : Update(entity)
+activate Repo
+Repo --> Svc : void
+deactivate Repo
+
+Svc -> Repo : SaveAsync()
+activate Repo
+Repo -> DB : Update Supplier (IsActive = false)
+activate DB
+DB --> Repo : Success
+deactivate DB
+Repo --> Svc : Task Completed
+deactivate Repo
+
+Svc --> Ctrl : Task Completed
+deactivate Svc
+
+Ctrl --> UI : Ok(ApiResponse<bool>.Ok(true))
+deactivate Ctrl
+
+UI --> User : Hiển thị thông báo "Xóa thành công"
+
+@enduml

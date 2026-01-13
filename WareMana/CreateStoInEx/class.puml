@@ -1,0 +1,79 @@
+@startuml
+
+' Direction de la mise en page
+left to right direction
+
+' Skin parameters pour une meilleure lisibilité
+skinparam classAttributeIconSize 0
+
+' Définition des classes
+class StockInputController {
+    +ImportFromExcel(IFormFile file)
+}
+
+' Représentation groupée de la couche Service
+class "Service Layer" as Services {
+    ' (Represents all services like
+    ' ITransactionService, IProductService, etc.)
+}
+
+class Transaction {
+    +TransactionId: int
+    +Type: string
+    +Status: int
+    +TransactionDate: DateTime
+}
+
+class TransactionDetail {
+    +Quantity: int
+    +UnitPrice: decimal
+}
+
+class StockBatch {
+    +BatchCode: string
+    +ImportDate: DateTime
+    +ExpireDate: DateTime
+    +QuantityIn: int
+}
+
+class Inventory {
+    +Quantity: int
+    +AverageCost: decimal
+}
+
+class Product {
+    +ProductId: int
+    +ProductName: string
+}
+
+class Warehouse {
+    +WarehouseId: int
+    +WarehouseName: string
+}
+
+class Supplier {
+    +SupplierId: int
+    +SupplierName: string
+}
+
+' Relations
+StockInputController ..> Services : uses
+Services ..> Transaction : manages
+Services ..> TransactionDetail : manages
+Services ..> StockBatch : manages
+Services ..> Inventory : manages
+
+' Relations entre les entités
+Transaction -- TransactionDetail : contains
+Transaction -- StockBatch : creates
+Transaction -- Supplier : from
+Transaction -- Warehouse : to
+
+TransactionDetail -- Product : of
+
+StockBatch -- Product : of
+
+Inventory -- Product : tracks
+Inventory -- Warehouse : in
+
+@enduml

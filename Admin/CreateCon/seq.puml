@@ -1,0 +1,31 @@
+@startuml
+
+
+actor "Admin"
+participant "Screen" as UI
+participant ":ContractController" as SIC
+participant ":IContractService" as CS
+
+' --- Workflow ---
+
+Admin -> UI : 1. Clicks "Create New Contract" button
+activate UI
+UI -> UI : 2. Displays the contract creation form
+deactivate UI
+
+Admin -> UI : 3. Fill in contract details and clicks "Submit" button
+activate UI
+UI -> SIC : 4. POST /api/contract/Create(dto)
+activate SIC
+
+SIC -> CS : 4.1 CreateAsync(entity)
+activate CS
+CS --> SIC : 4.2 Confirmation
+deactivate CS
+
+SIC --> UI : 4.3 Return success result
+deactivate SIC
+UI --> Admin : 5. Display "Create successful" message
+deactivate UI
+
+@enduml
