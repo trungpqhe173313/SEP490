@@ -24,6 +24,7 @@ using NB.Service.StockBatchService.Dto;
 using NB.Service.TransactionDetailService;
 using NB.Service.TransactionDetailService.Dto;
 using NB.Service.TransactionDetailService.ViewModels;
+using NB.Repository.Common;
 using NB.Service.TransactionService;
 using NB.Service.TransactionService.Dto;
 using NB.Service.TransactionService.ViewModels;
@@ -32,6 +33,7 @@ using NB.Service.UserService.Dto;
 using NB.Service.WarehouseService;
 using NB.Service.WarehouseService.Dto;
 using Xunit;
+using NB.Test.Helpers;
 
 namespace NB.Test.Controllers
 {
@@ -49,8 +51,9 @@ namespace NB.Test.Controllers
         private readonly Mock<IReturnTransactionDetailService> _returnTransactionDetailServiceMock;
         private readonly Mock<ILogger<EmployeeController>> _loggerMock;
         private readonly Mock<IMapper> _mapperMock;
+        private readonly Mock<IRepository<Transaction>> _transactionRepositoryMock;
         private readonly StockTransferController _controller;
-        private readonly Mock<TransactionCodeGenerator> _transactionCodeGeneratorMock = new();
+        private readonly TransactionCodeGenerator _transactionCodeGenerator;
 
         public StockTransferControllerTest()
         {
@@ -66,7 +69,11 @@ namespace NB.Test.Controllers
             _returnTransactionDetailServiceMock = new Mock<IReturnTransactionDetailService>();
             _loggerMock = new Mock<ILogger<EmployeeController>>();
             _mapperMock = new Mock<IMapper>();
-            _transactionCodeGeneratorMock = new();
+            _transactionRepositoryMock = new Mock<IRepository<Transaction>>();
+            _transactionRepositoryMock
+                .Setup(r => r.GetQueryable())
+                .Returns(new TestAsyncEnumerable<Transaction>(new List<Transaction>()));
+            _transactionCodeGenerator = new TransactionCodeGenerator(_transactionRepositoryMock.Object);
 
             // Khởi tạo controller với các dependencies đã mock
             _controller = new StockTransferController(
@@ -81,7 +88,7 @@ namespace NB.Test.Controllers
                 _returnTransactionDetailServiceMock.Object,
                 _mapperMock.Object,
                 _loggerMock.Object,
-                _transactionCodeGeneratorMock.Object
+                _transactionCodeGenerator
             );
         }
 
@@ -386,6 +393,7 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: Id = 1
             int transactionId = 1;
+            int responsibleId = 1;
 
             // MOCK DATA: Transaction tồn tại
             var transactionDto = new TransactionDto
@@ -716,6 +724,7 @@ namespace NB.Test.Controllers
         {
             // Arrange
             int transactionId = 1;
+            int responsibleId = 1;
 
             // Setup mock để throw exception
             _transactionServiceMock
@@ -1675,6 +1684,7 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: ListProductOrder = null
             int transactionId = 1;
+            int responsibleId = 1;
             var transferRequest = new TransferRequest
             {
                 ListProductOrder = null!,
@@ -1715,6 +1725,7 @@ namespace NB.Test.Controllers
         {
             // Arrange - INPUT: WarehouseId == WarehouseInId
             int transactionId = 1;
+            int responsibleId = 1;
             var transferRequest = new TransferRequest
             {
                 ListProductOrder = new List<ProductOrder>
@@ -1875,7 +1886,8 @@ namespace NB.Test.Controllers
             {
                 TransactionId = 1,
                 Type = "Transfer",
-                Status = (int)TransactionStatus.transferred
+                Status = (int)TransactionStatus.transferred,
+                ResponsibleId = 1
             };
             _transactionServiceMock
                 .Setup(s => s.GetByIdAsync(1))
@@ -1929,7 +1941,8 @@ namespace NB.Test.Controllers
             {
                 TransactionId = 1,
                 Type = "Transfer",
-                Status = (int)TransactionStatus.cancel
+                Status = (int)TransactionStatus.cancel,
+                ResponsibleId = 1
             };
             _transactionServiceMock
                 .Setup(s => s.GetByIdAsync(1))
@@ -2452,8 +2465,12 @@ namespace NB.Test.Controllers
             {
                 TransactionId = 1,
                 Type = "Transfer",
-                Status = (int)TransactionStatus.transferred
+                Status = (int)TransactionStatus.transferred,
+                ResponsibleId = responsibleId
             };
+            _userServiceMock
+                .Setup(s => s.GetByUserId(responsibleId))
+                .ReturnsAsync(new UserDto { UserId = responsibleId, FullName = "Responsible User" });
             _transactionServiceMock
                 .Setup(s => s.GetByIdAsync(1))
                 .ReturnsAsync(transaction);
@@ -2498,8 +2515,12 @@ namespace NB.Test.Controllers
             {
                 TransactionId = 1,
                 Type = "Transfer",
-                Status = (int)TransactionStatus.cancel
+                Status = (int)TransactionStatus.cancel,
+                ResponsibleId = responsibleId
             };
+            _userServiceMock
+                .Setup(s => s.GetByUserId(responsibleId))
+                .ReturnsAsync(new UserDto { UserId = responsibleId, FullName = "Responsible User" });
             _transactionServiceMock
                 .Setup(s => s.GetByIdAsync(1))
                 .ReturnsAsync(transaction);
@@ -2544,7 +2565,8 @@ namespace NB.Test.Controllers
             {
                 TransactionId = 1,
                 Type = "Transfer",
-                Status = (int)TransactionStatus.draft
+                Status = (int)TransactionStatus.draft,
+                ResponsibleId = responsibleId
             };
             _transactionServiceMock
                 .Setup(s => s.GetByIdAsync(1))
