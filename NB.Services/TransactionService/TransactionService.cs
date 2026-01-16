@@ -63,7 +63,8 @@ namespace NB.Service.TransactionService
                             TransactionDate = t.TransactionDate,
                             Note = t.Note,
                             TotalCost = t.TotalCost,
-                            ResponsibleId = t.ResponsibleId
+                            ResponsibleId = t.ResponsibleId,
+                            TransactionCode = t.TransactionCode
                         };
             return await query.ToListAsync();
         }
@@ -85,7 +86,8 @@ namespace NB.Service.TransactionService
                             TransactionDate = t.TransactionDate,
                             Note = t.Note,
                             TotalCost = t.TotalCost,
-                            ResponsibleId = t.ResponsibleId
+                            ResponsibleId = t.ResponsibleId,
+                            TransactionCode = t.TransactionCode
                         };
             if (search != null)
             {
@@ -147,7 +149,8 @@ namespace NB.Service.TransactionService
                             Note = t.Note,
                             TotalCost = t.TotalCost,
                             PriceListId = t.PriceListId,
-                            ResponsibleId = t.ResponsibleId
+                            ResponsibleId = t.ResponsibleId,
+                            TransactionCode = t.TransactionCode
                         };
 
             return await query.FirstOrDefaultAsync();
@@ -171,7 +174,8 @@ namespace NB.Service.TransactionService
                             TransactionDate = t.TransactionDate,
                             Note = t.Note,
                             TotalCost = t.TotalCost,
-                            ResponsibleId = t.ResponsibleId
+                            ResponsibleId = t.ResponsibleId,
+                            TransactionCode = t.TransactionCode
                         };
             if (search != null)
             {
@@ -250,7 +254,8 @@ namespace NB.Service.TransactionService
                             Note = t.Note,
                             TotalCost = t.TotalCost,
                             PriceListId = t.PriceListId,
-                            ResponsibleId = t.ResponsibleId
+                            ResponsibleId = t.ResponsibleId,
+                            TransactionCode = t.TransactionCode
                         };
             if(search != null)
             {
