@@ -21,6 +21,7 @@ namespace NB.Service.ReturnTransactionService.Dto
         public int? SupplierId { get; set; }
         public string? SupplierName { get; set; }
         public int? Status { get; set; }
+        public string? TransactionCode { get; set; }
     }
 }
 

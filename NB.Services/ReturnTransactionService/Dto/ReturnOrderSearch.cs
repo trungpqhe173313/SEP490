@@ -11,6 +11,7 @@ namespace NB.Service.ReturnTransactionService.Dto
     {
         public string? Type { get; set; } // "Import" hoặc "Export"
         public int? TransactionId { get; set; }
+        public string? TransactionCode { get; set; }
     }
 }
 
