@@ -305,6 +305,13 @@ namespace NB.Service.TransactionService
                 {
                     query = query.Where(t => t.ResponsibleId == search.ResponsibleId);
                 }
+                if (!string.IsNullOrEmpty(search.TransactionCode))
+                {
+                    var keyword = search.TransactionCode.Trim();
+                    query = query.Where(t =>
+                        EF.Functions.Collate(t.TransactionCode, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
+                }
             }
 
             query = query.OrderByDescending(t => t.TransactionDate);
