@@ -155,7 +155,8 @@ namespace NB.API.Controllers
                         ResponsiblePhone = item.ResponsibleId.HasValue && responsibleDict.ContainsKey(item.ResponsibleId.Value)
                             ? responsibleDict[item.ResponsibleId.Value].phone
                             : null,
-                        ExpireDate = expireDate
+                        ExpireDate = expireDate,
+                        TransactionCode = item.TransactionCode
                     });
                 }
 

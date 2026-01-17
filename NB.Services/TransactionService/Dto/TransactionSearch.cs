@@ -17,5 +17,6 @@ namespace NB.Service.TransactionService.Dto
         public DateTime? TransactionFromDate { get; set; }
         public DateTime? TransactionToDate { get; set; }
         public int? ResponsibleId { get; set; }
+        public string? TransactionCode { get; set; }
     }
 }

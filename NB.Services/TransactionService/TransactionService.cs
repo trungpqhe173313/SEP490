@@ -64,7 +64,8 @@ namespace NB.Service.TransactionService
                             Note = t.Note,
                             TotalCost = t.TotalCost,
                             ResponsibleId = t.ResponsibleId,
-                            TransactionCode = t.TransactionCode
+                            TransactionCode = t.TransactionCode,
+                            TransactionQr = t.TransactionQr,
                         };
             return await query.ToListAsync();
         }
@@ -87,7 +88,8 @@ namespace NB.Service.TransactionService
                             Note = t.Note,
                             TotalCost = t.TotalCost,
                             ResponsibleId = t.ResponsibleId,
-                            TransactionCode = t.TransactionCode
+                            TransactionCode = t.TransactionCode,
+                            TransactionQr = t.TransactionQr
                         };
             if (search != null)
             {
@@ -148,9 +150,10 @@ namespace NB.Service.TransactionService
                             TransactionDate = t.TransactionDate,
                             Note = t.Note,
                             TotalCost = t.TotalCost,
+                            TransactionCode = t.TransactionCode,
+                            TransactionQr = t.TransactionQr,
                             PriceListId = t.PriceListId,
                             ResponsibleId = t.ResponsibleId,
-                            TransactionCode = t.TransactionCode
                         };
 
             return await query.FirstOrDefaultAsync();
@@ -175,7 +178,8 @@ namespace NB.Service.TransactionService
                             Note = t.Note,
                             TotalCost = t.TotalCost,
                             ResponsibleId = t.ResponsibleId,
-                            TransactionCode = t.TransactionCode
+                            TransactionCode = t.TransactionCode,
+                            TransactionQr = t.TransactionQr
                         };
             if (search != null)
             {
@@ -229,11 +233,18 @@ namespace NB.Service.TransactionService
                 {
                     query = query.Where(t => t.ResponsibleId == search.ResponsibleId);
                 }
+                if (!string.IsNullOrEmpty(search.TransactionCode))
+                {
+                    var keyword = search.TransactionCode.Trim();
+                    query = query.Where(t =>
+                        EF.Functions.Collate(t.TransactionCode, "SQL_Latin1_General_CP1_CI_AI")
+                    .Contains(keyword));
+                }
             }
 
             query = query.OrderByDescending(t => t.TransactionDate);
             return await PagedList<TransactionDto>.CreateAsync(query, search);
-        }
+        }   
 
     
 
@@ -253,9 +264,10 @@ namespace NB.Service.TransactionService
                             TransactionDate = t.TransactionDate,
                             Note = t.Note,
                             TotalCost = t.TotalCost,
+                            TransactionCode = t.TransactionCode,
+                            TransactionQr = t.TransactionQr,
                             PriceListId = t.PriceListId,
-                            ResponsibleId = t.ResponsibleId,
-                            TransactionCode = t.TransactionCode
+                            ResponsibleId = t.ResponsibleId
                         };
             if(search != null)
             {
