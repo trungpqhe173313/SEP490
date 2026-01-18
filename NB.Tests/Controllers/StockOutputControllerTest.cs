@@ -457,7 +457,7 @@ namespace NB.Test.Controllers
         /// - Status: 400 Bad Request
         /// </summary>
         [Fact]
-        public async Task GetDetail_WhenExceptionThrown_ReturnsBadRequest()
+        public async Task TCID06_GetDetail_WhenExceptionThrown_ReturnsBadRequest()
         {
             // Arrange
             int transactionId = 1;
@@ -1925,7 +1925,7 @@ namespace NB.Test.Controllers
         }
 
         /// <summary>
-        /// TCID08_1: UpdateToOrderStatus - Request null
+        /// TCID10: UpdateToOrderStatus - Request null
         ///
         /// PRECONDITION:
         /// - transactionId > 0 (O)
@@ -1941,7 +1941,7 @@ namespace NB.Test.Controllers
         /// - Status: 400 Bad Request
         /// </summary>
         [Fact]
-        public async Task TCID08_1_UpdateToOrder_NullRequest_ReturnsBadRequest()
+        public async Task TCID10_UpdateToOrder_NullRequest_ReturnsBadRequest()
         {
             // Arrange
             int transactionId = 1;
@@ -2129,6 +2129,132 @@ namespace NB.Test.Controllers
             Assert.False(response.Success);
             Assert.NotNull(response.Error);
             Assert.Equal("Không tìm thấy sản phẩm nào", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID11: UpdateToOrderStatus - Warehouse của đơn hàng không tồn tại
+        ///
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái draft (O)
+        /// - WarehouseId của transaction không có dữ liệu (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 21
+        /// - request.ResponsibleId hợp lệ
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy kho của đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID11_UpdateToOrder_WarehouseNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            int transactionId = 21;
+            int warehouseId = 999;
+            int responsibleId = 1;
+            var request = new UpdateToOrderStatusRequest { ResponsibleId = responsibleId };
+            var txDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                WarehouseId = warehouseId,
+                Status = (int)TransactionStatus.draft
+            };
+
+            var detail = new TransactionDetailDto { Id = 1, ProductId = 10, Quantity = 2 };
+
+            _transactionServiceMock.Setup(s => s.GetByTransactionId(transactionId)).ReturnsAsync(txDto);
+            _transactionDetailServiceMock.Setup(s => s.GetByTransactionId(transactionId)).ReturnsAsync(new List<TransactionDetailDto> { detail });
+
+            _productServiceMock
+                .Setup(s => s.GetByIds(It.IsAny<List<int>>()))
+                .ReturnsAsync(new List<ProductDto> { new ProductDto { ProductId = detail.ProductId } });
+
+            var responsibleUser = new UserDto { UserId = responsibleId, FullName = "Responsible User" };
+            _userServiceMock.Setup(s => s.GetByUserId(responsibleId)).ReturnsAsync(responsibleUser);
+
+            _warehouseServiceMock
+                .Setup(s => s.GetByIdAsync(warehouseId))
+                .ReturnsAsync((WarehouseDto?)null);
+
+            // Act
+            var result = await _controller.UpdateToOrderStatus(transactionId, request);
+
+            // Assert
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(notFoundResult.Value);
+
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Không tìm thấy kho của đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID12: UpdateToOrderStatus - Sản phẩm không có trong kho
+        ///
+        /// PRECONDITION:
+        /// - Transaction tồn tại và ở trạng thái draft (O)
+        /// - Product tồn tại (O)
+        /// - Inventory của kho trả về null cho product này (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 22
+        /// - request.ResponsibleId hợp lệ
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Không tìm thấy sản phẩm '{productName}' trong kho '{warehouseName}'"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID12_UpdateToOrder_ProductNotInWarehouse_ReturnsBadRequest()
+        {
+            // Arrange
+            int transactionId = 22;
+            int warehouseId = 5;
+            int responsibleId = 2;
+            int productId = 100;
+            const string productName = "Sản phẩm thiếu";
+            var request = new UpdateToOrderStatusRequest { ResponsibleId = responsibleId };
+            var txDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                WarehouseId = warehouseId,
+                Status = (int)TransactionStatus.draft
+            };
+            var details = new List<TransactionDetailDto>
+            {
+                new TransactionDetailDto { Id = 1, ProductId = productId, Quantity = 3 }
+            };
+
+            var warehouseDto = new WarehouseDto { WarehouseId = warehouseId, WarehouseName = "Kho thiếu hàng" };
+            var productDto = new ProductDto { ProductId = productId, ProductName = productName };
+
+            _transactionServiceMock.Setup(s => s.GetByTransactionId(transactionId)).ReturnsAsync(txDto);
+            _transactionDetailServiceMock.Setup(s => s.GetByTransactionId(transactionId)).ReturnsAsync(details);
+            _productServiceMock.Setup(s => s.GetByIds(It.IsAny<List<int>>())).ReturnsAsync(new List<ProductDto> { productDto });
+            _productServiceMock.Setup(s => s.GetByIdAsync(productId)).ReturnsAsync(productDto);
+            _warehouseServiceMock.Setup(s => s.GetByIdAsync(warehouseId)).ReturnsAsync(warehouseDto);
+            _inventoryServiceMock
+                .Setup(s => s.GetByWarehouseAndProductIds(warehouseId, It.IsAny<List<int>>()))
+                .ReturnsAsync(new List<InventoryDto>()); // Không có sản phẩm trong kho
+
+            var responsibleUser = new UserDto { UserId = responsibleId, FullName = "Responsible User" };
+            _userServiceMock.Setup(s => s.GetByUserId(responsibleId)).ReturnsAsync(responsibleUser);
+
+            // Act
+            var result = await _controller.UpdateToOrderStatus(transactionId, request);
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<InventoryDto>>(badRequestResult.Value);
+
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal($"Không tìm thấy sản phẩm '{productName}' trong kho '{warehouseDto.WarehouseName}'", response.Error.Message);
             Assert.Equal(400, response.StatusCode);
         }
 
@@ -2377,6 +2503,655 @@ namespace NB.Test.Controllers
             
             Assert.False(response.Success);
             Assert.NotNull(response.Error);
+            Assert.Equal("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        #endregion
+
+        #region UpdateToDoneStatus Tests
+
+        /// <summary>
+        /// TCID01: UpdateToDoneStatus - TransactionId không hợp lệ
+        ///
+        /// PRECONDITION:
+        /// - transactionId <= 0 (▼)
+        /// - request hợp lệ (O)
+        ///
+        /// INPUT:
+        /// - transactionId: 0
+        /// - request.ResponsibleId = 1
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Transaction ID không hợp lệ"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID01_UpdateToDone_InvalidTransactionId_ReturnsBadRequest()
+        {
+            // Arrange
+            int transactionId = 0;
+            var request = new UpdateToDoneStatusRequest { ResponsibleId = 1 };
+
+            // Act
+            var result = await _controller.UpdateToDoneStatus(transactionId, request);
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Transaction ID không hợp lệ", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID02: UpdateToDoneStatus - Request null
+        ///
+        /// PRECONDITION:
+        /// - transactionId > 0 (O)
+        /// - request = null (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 1
+        /// - request: null
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Request không hợp lệ"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID02_UpdateToDone_NullRequest_ReturnsBadRequest()
+        {
+            // Arrange
+            int transactionId = 1;
+
+            // Act
+            var result = await _controller.UpdateToDoneStatus(transactionId, null);
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Request không hợp lệ", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID03: UpdateToDoneStatus - ResponsibleId không hợp lệ
+        ///
+        /// PRECONDITION:
+        /// - transactionId > 0 (O)
+        /// - request.ResponsibleId <= 0 (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 1
+        /// - request.ResponsibleId = 0
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "UserId người chịu trách nhiệm không hợp lệ"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID03_UpdateToDone_InvalidResponsibleId_ReturnsBadRequest()
+        {
+            // Arrange
+            int transactionId = 1;
+            var request = new UpdateToDoneStatusRequest { ResponsibleId = 0 };
+
+            // Act
+            var result = await _controller.UpdateToDoneStatus(transactionId, request);
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("UserId người chịu trách nhiệm không hợp lệ", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID04: UpdateToDoneStatus - Transaction không tồn tại
+        ///
+        /// PRECONDITION:
+        /// - transactionId > 0 (O)
+        /// - transactionService trả về null (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 1
+        /// - request.ResponsibleId = 1
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID04_UpdateToDone_TransactionNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            int transactionId = 1;
+            var request = new UpdateToDoneStatusRequest { ResponsibleId = 1 };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync((TransactionDto?)null);
+
+            // Act
+            var result = await _controller.UpdateToDoneStatus(transactionId, request);
+
+            // Assert
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<TransactionDto>>(notFoundResult.Value);
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Không tìm thấy đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID05: UpdateToDoneStatus - Đơn hàng không ở trạng thái delivering
+        ///
+        /// PRECONDITION:
+        /// - transaction tồn tại (O)
+        /// - transaction.Status != delivering (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 2
+        /// - request.ResponsibleId = 1
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Đơn hàng không trong trạng thái đang giao"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID05_UpdateToDone_NotDeliveringStatus_ReturnsBadRequest()
+        {
+            // Arrange
+            int transactionId = 2;
+            int responsibleId = 1;
+            var request = new UpdateToDoneStatusRequest { ResponsibleId = responsibleId };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                ResponsibleId = responsibleId
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Act
+            var result = await _controller.UpdateToDoneStatus(transactionId, request);
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Đơn hàng không trong trạng thái đang giao", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID06: UpdateToDoneStatus - Không có quyền xác nhận (responsibleId khác)
+        ///
+        /// PRECONDITION:
+        /// - transaction tồn tại, Status = delivering (O)
+        /// - transaction.ResponsibleId != request.ResponsibleId (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 3
+        /// - request.ResponsibleId = 1
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Bạn không có quyền xác nhận hoàn thành đơn hàng này."
+        /// - Type: A (Abnormal)
+        /// - Status: 403 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID06_UpdateToDone_InvalidResponsible_ReturnsBadRequest()
+        {
+            // Arrange
+            int transactionId = 3;
+            int responsibleId = 1;
+            var request = new UpdateToDoneStatusRequest { ResponsibleId = responsibleId };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.delivering,
+                ResponsibleId = 9
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+
+            // Act
+            var result = await _controller.UpdateToDoneStatus(transactionId, request);
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Bạn không có quyền xác nhận hoàn thành đơn hàng này.", response.Error.Message);
+            Assert.Equal(403, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID07: UpdateToDoneStatus - Thành công
+        ///
+        /// PRECONDITION:
+        /// - transaction tồn tại, Status = delivering (O)
+        /// - ResponsibleId đúng (O)
+        ///
+        /// INPUT:
+        /// - transactionId: 4
+        /// - request.ResponsibleId = 5
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: Ok với message "Cập nhật đơn hàng thành công"
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TCID07_UpdateToDone_Success_ReturnsOk()
+        {
+            // Arrange
+            int transactionId = 4;
+            int responsibleId = 5;
+            var request = new UpdateToDoneStatusRequest { ResponsibleId = responsibleId };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.delivering,
+                ResponsibleId = responsibleId
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _controller.UpdateToDoneStatus(transactionId, request);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
+            Assert.True(response.Success);
+            Assert.Equal("Cập nhật đơn hàng thành công", response.Data);
+        }
+
+        /// <summary>
+        /// TCID08: UpdateToDoneStatus - Exception xảy ra khi cập nhật
+        ///
+        /// PRECONDITION:
+        /// - transaction tồn tại, Status = delivering (O)
+        /// - ResponsibleId đúng (O)
+        /// - service UpdateAsync ném exception (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 5
+        /// - request.ResponsibleId = 6
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID08_UpdateToDone_ExceptionThrown_ReturnsBadRequest()
+        {
+            // Arrange
+            int transactionId = 5;
+            int responsibleId = 6;
+            var request = new UpdateToDoneStatusRequest { ResponsibleId = responsibleId };
+
+            var transactionDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.delivering,
+                ResponsibleId = responsibleId
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(transactionDto);
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .ThrowsAsync(new Exception("DB error"));
+
+            // Act
+            var result = await _controller.UpdateToDoneStatus(transactionId, request);
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            Assert.False(response.Success);
+            Assert.NotNull(response.Error);
+            Assert.Equal("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        #endregion
+
+        #region UpdateToDeliveringStatus Tests
+
+        /// <summary>
+        /// TCID01: UpdateToDeliveringStatus - TransactionId không hợp lệ
+        ///
+        /// PRECONDITION:
+        /// - transactionId <= 0 (▼)
+        /// - request hợp lệ (O)
+        ///
+        /// INPUT:
+        /// - transactionId: 0
+        /// - request.ResponsibleId = 1
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Transaction ID không hợp lệ"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID01_UpdateToDelivering_InvalidTransactionId_ReturnsBadRequest()
+        {
+            int transactionId = 0;
+            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = 1 };
+
+            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
+
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
+            Assert.False(response.Success);
+            Assert.Equal("Transaction ID không hợp lệ", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID02: UpdateToDeliveringStatus - Request null
+        ///
+        /// PRECONDITION:
+        /// - transactionId > 0 (O)
+        /// - request = null (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 1
+        /// - request: null
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Request không hợp lệ"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID02_UpdateToDelivering_NullRequest_ReturnsBadRequest()
+        {
+            int transactionId = 1;
+
+            var result = await _controller.UpdateToDeliveringStatus(transactionId, null);
+
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
+            Assert.False(response.Success);
+            Assert.Equal("Request không hợp lệ", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID03: UpdateToDeliveringStatus - ResponsibleId không hợp lệ
+        ///
+        /// PRECONDITION:
+        /// - transactionId > 0 (O)
+        /// - request.ResponsibleId <= 0 (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 1
+        /// - request.ResponsibleId = 0
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "UserId người chịu trách nhiệm không hợp lệ"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID03_UpdateToDelivering_InvalidResponsibleId_ReturnsBadRequest()
+        {
+            int transactionId = 1;
+            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = 0 };
+
+            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
+
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
+            Assert.False(response.Success);
+            Assert.Equal("UserId người chịu trách nhiệm không hợp lệ", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID04: UpdateToDeliveringStatus - Transaction không tồn tại
+        ///
+        /// PRECONDITION:
+        /// - transactionId > 0 (O)
+        /// - transactionService trả về null (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 1
+        /// - request.ResponsibleId = 1
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: NotFound với message "Không tìm thấy đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCID04_UpdateToDelivering_TransactionNotFound_ReturnsNotFound()
+        {
+            int transactionId = 1;
+            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = 1 };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync((TransactionDto?)null);
+
+            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
+
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<TransactionDto>>(notFoundResult.Value);
+            Assert.False(response.Success);
+            Assert.Equal("Không tìm thấy đơn hàng", response.Error.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID05: UpdateToDeliveringStatus - Đơn hàng không ở trạng thái nháp
+        ///
+        /// PRECONDITION:
+        /// - transaction tồn tại (O)
+        /// - transaction.Status != order (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 2
+        /// - request.ResponsibleId = 1
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Đơn hàng không trong trạng thái nháp"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID05_UpdateToDelivering_NotInOrderStatus_ReturnsBadRequest()
+        {
+            int transactionId = 2;
+            int responsibleId = 1;
+            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = responsibleId };
+
+            var txDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.draft,
+                ResponsibleId = responsibleId
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(txDto);
+
+            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
+
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            Assert.False(response.Success);
+            Assert.Equal("Đơn hàng không trong trạng thái nháp", response.Error.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID06: UpdateToDeliveringStatus - Không có quyền xác nhận giao hàng
+        ///
+        /// PRECONDITION:
+        /// - transaction tồn tại, Status = order (O)
+        /// - transaction.ResponsibleId != request.ResponsibleId (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 3
+        /// - request.ResponsibleId = 1
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Bạn không có quyền xác nhận giao hàng cho đơn hàng này."
+        /// - Type: A (Abnormal)
+        /// - Status: 403 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID06_UpdateToDelivering_InvalidResponsible_ReturnsBadRequest()
+        {
+            int transactionId = 3;
+            int responsibleId = 1;
+            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = responsibleId };
+
+            var txDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                ResponsibleId = 9
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(txDto);
+
+            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
+
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
+            Assert.False(response.Success);
+            Assert.Equal("Bạn không có quyền xác nhận giao hàng cho đơn hàng này.", response.Error.Message);
+            Assert.Equal(403, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCID07: UpdateToDeliveringStatus - Thành công
+        ///
+        /// PRECONDITION:
+        /// - transaction tồn tại, Status = order (O)
+        /// - ResponsibleId đúng (O)
+        ///
+        /// INPUT:
+        /// - transactionId: 4
+        /// - request.ResponsibleId = 2
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: Ok với message "Cập nhật đơn hàng thành công"
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TCID07_UpdateToDelivering_Success_ReturnsOk()
+        {
+            int transactionId = 4;
+            int responsibleId = 2;
+            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = responsibleId };
+
+            var txDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                ResponsibleId = responsibleId
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(txDto);
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .Returns(Task.CompletedTask);
+
+            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
+
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
+            Assert.True(response.Success);
+            Assert.Equal("Cập nhật đơn hàng thành công", response.Data);
+        }
+
+        /// <summary>
+        /// TCID08: UpdateToDeliveringStatus - Exception xảy ra
+        ///
+        /// PRECONDITION:
+        /// - transaction tồn tại, Status = order
+        /// - ResponsibleId đúng
+        /// - UpdateAsync ném exception (▼)
+        ///
+        /// INPUT:
+        /// - transactionId: 5
+        /// - request.ResponsibleId = 3
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Return: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCID08_UpdateToDelivering_ExceptionThrown_ReturnsBadRequest()
+        {
+            int transactionId = 5;
+            int responsibleId = 3;
+            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = responsibleId };
+
+            var txDto = new TransactionDto
+            {
+                TransactionId = transactionId,
+                Status = (int)TransactionStatus.order,
+                ResponsibleId = responsibleId
+            };
+
+            _transactionServiceMock
+                .Setup(s => s.GetByTransactionId(transactionId))
+                .ReturnsAsync(txDto);
+            _transactionServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
+                .ThrowsAsync(new Exception("DB error"));
+
+            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
+
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            Assert.False(response.Success);
             Assert.Equal("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng", response.Error.Message);
             Assert.Equal(400, response.StatusCode);
         }
@@ -3380,292 +4155,6 @@ namespace NB.Test.Controllers
             Assert.False(response.Success);
             Assert.NotNull(response.Error);
             Assert.Equal("Có lỗi xảy ra khi cập nhật đơn hàng", response.Error.Message);
-            Assert.Equal(400, response.StatusCode);
-        }
-
-        #endregion
-
-        #region UpdateToDoneStatus Tests
-
-        /// <summary>
-        /// TCID01: UpdateToDoneStatus - Transaction không tồn tại
-        /// 
-        /// PRECONDITION:
-        /// - Transaction với transactionId không tồn tại
-        /// 
-        /// INPUT:
-        /// - transactionId: 999
-        /// 
-        /// EXPECTED OUTPUT:
-        /// - Return: NotFound với message "Không tìm thấy đơn hàng"
-        /// - Type: A (Abnormal)
-        /// - Status: 404 Not Found
-        /// </summary>
-        [Fact]
-        public async Task TCID01_UpdateToDone_TransactionNotFound_ReturnsNotFound()
-        {
-            // Arrange - INPUT: Transaction không tồn tại
-            int transactionId = 999;
-            var request = new UpdateToDoneStatusRequest { ResponsibleId = 1 };
-
-            _transactionServiceMock
-                .Setup(s => s.GetByTransactionId(transactionId))
-                .ReturnsAsync((TransactionDto?)null);
-
-            // Act
-            var result = await _controller.UpdateToDoneStatus(transactionId, request);
-
-            // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy đơn hàng"
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<TransactionDto>>(notFoundResult.Value);
-            
-            Assert.False(response.Success);
-            Assert.NotNull(response.Error);
-            Assert.Equal("Không tìm thấy đơn hàng", response.Error.Message);
-            Assert.Equal(404, response.StatusCode);
-        }
-
-        /// <summary>
-        /// TCID02: UpdateToDoneStatus - Thành công
-        /// 
-        /// PRECONDITION:
-        /// - Transaction tồn tại
-        /// 
-        /// INPUT:
-        /// - transactionId: 1
-        /// 
-        /// EXPECTED OUTPUT:
-        /// - Return: Ok với message "Cập nhật đơn hàng thành công"
-        /// - Type: N (Normal)
-        /// - Status: 200 OK
-        /// </summary>
-        [Fact]
-        public async Task TCID02_UpdateToDone_Success_ReturnsOk()
-        {
-            // Arrange - INPUT: Transaction tồn tại
-            int transactionId = 1;
-            int responsibleId = 1;
-            var request = new UpdateToDoneStatusRequest { ResponsibleId = responsibleId };
-            var transactionDto = new TransactionDto
-            {
-                TransactionId = transactionId,
-                Status = (int)TransactionStatus.delivering, // Phải là delivering để có thể update to done
-                WarehouseId = 1,
-                ResponsibleId = responsibleId
-            };
-
-            _transactionServiceMock
-                .Setup(s => s.GetByTransactionId(transactionId))
-                .ReturnsAsync(transactionDto);
-
-            _transactionServiceMock
-                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
-                .Returns(Task.CompletedTask);
-
-            // Act
-            var result = await _controller.UpdateToDoneStatus(transactionId, request);
-
-            // Assert - EXPECTED OUTPUT: Ok với message "Cập nhật đơn hàng thành công"
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
-            
-            Assert.True(response.Success);
-            Assert.NotNull(response.Data);
-            Assert.Equal("Cập nhật đơn hàng thành công", response.Data);
-        }
-
-        /// <summary>
-        /// TCID03: UpdateToDoneStatus - Exception xảy ra
-        /// 
-        /// PRECONDITION:
-        /// - Transaction tồn tại
-        /// - Exception xảy ra khi update
-        /// 
-        /// INPUT:
-        /// - transactionId: 1
-        /// 
-        /// EXPECTED OUTPUT:
-        /// - Return: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
-        /// - Type: A (Abnormal)
-        /// - Status: 400 Bad Request
-        /// </summary>
-        [Fact]
-        public async Task TCID03_UpdateToDone_ExceptionThrown_ReturnsBadRequest()
-        {
-            // Arrange - INPUT: Exception sẽ xảy ra
-            int transactionId = 1;
-            int responsibleId = 1;
-            var request = new UpdateToDoneStatusRequest { ResponsibleId = responsibleId };
-            var transactionDto = new TransactionDto
-            {
-                TransactionId = transactionId,
-                Status = (int)TransactionStatus.delivering, // Phải là delivering để có thể update to done
-                WarehouseId = 1,
-                ResponsibleId = responsibleId
-            };
-
-            _transactionServiceMock
-                .Setup(s => s.GetByTransactionId(transactionId))
-                .ReturnsAsync(transactionDto);
-
-            // Throw exception khi update
-            _transactionServiceMock
-                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
-                .ThrowsAsync(new Exception("DB error"));
-
-            // Act
-            var result = await _controller.UpdateToDoneStatus(transactionId, request);
-
-            // Assert - EXPECTED OUTPUT: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
-            
-            Assert.False(response.Success);
-            Assert.NotNull(response.Error);
-            Assert.Equal("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng", response.Error.Message);
-            Assert.Equal(400, response.StatusCode);
-        }
-
-        #endregion
-
-        #region UpdateToDeliveringStatus Tests
-
-        /// <summary>
-        /// TCID01: UpdateToDeliveringStatus - Transaction không tồn tại
-        /// 
-        /// PRECONDITION:
-        /// - Transaction với transactionId không tồn tại
-        /// 
-        /// INPUT:
-        /// - transactionId: 999
-        /// 
-        /// EXPECTED OUTPUT:
-        /// - Return: NotFound với message "Không tìm thấy đơn hàng"
-        /// - Type: A (Abnormal)
-        /// - Status: 404 Not Found
-        /// </summary>
-        [Fact]
-        public async Task TCID01_UpdateToDelivering_TransactionNotFound_ReturnsNotFound()
-        {
-            // Arrange - INPUT: Transaction không tồn tại
-            int transactionId = 999;
-            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = 1 };
-
-            _transactionServiceMock
-                .Setup(s => s.GetByTransactionId(transactionId))
-                .ReturnsAsync((TransactionDto?)null);
-
-            // Act
-            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
-
-            // Assert - EXPECTED OUTPUT: NotFound với message "Không tìm thấy đơn hàng"
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<TransactionDto>>(notFoundResult.Value);
-            
-            Assert.False(response.Success);
-            Assert.NotNull(response.Error);
-            Assert.Equal("Không tìm thấy đơn hàng", response.Error.Message);
-            Assert.Equal(404, response.StatusCode);
-        }
-
-        /// <summary>
-        /// TCID02: UpdateToDeliveringStatus - Thành công
-        /// 
-        /// PRECONDITION:
-        /// - Transaction tồn tại
-        /// 
-        /// INPUT:
-        /// - transactionId: 1
-        /// 
-        /// EXPECTED OUTPUT:
-        /// - Return: Ok với message "Cập nhật đơn hàng thành công"
-        /// - Type: N (Normal)
-        /// - Status: 200 OK
-        /// </summary>
-        [Fact]
-        public async Task TCID02_UpdateToDelivering_Success_ReturnsOk()
-        {
-            // Arrange - INPUT: Transaction tồn tại
-            int transactionId = 1;
-            int responsibleId = 1;
-            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = responsibleId };
-            var transactionDto = new TransactionDto
-            {
-                TransactionId = transactionId,
-                Status = (int)TransactionStatus.order,
-                WarehouseId = 1,
-                ResponsibleId = responsibleId
-            };
-
-            _transactionServiceMock
-                .Setup(s => s.GetByTransactionId(transactionId))
-                .ReturnsAsync(transactionDto);
-
-            _transactionServiceMock
-                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
-                .Returns(Task.CompletedTask);
-
-            // Act
-            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
-
-            // Assert - EXPECTED OUTPUT: Ok với message "Cập nhật đơn hàng thành công"
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<string>>(okResult.Value);
-            
-            Assert.True(response.Success);
-            Assert.NotNull(response.Data);
-            Assert.Equal("Cập nhật đơn hàng thành công", response.Data);
-        }
-
-        /// <summary>
-        /// TCID03: UpdateToDeliveringStatus - Exception xảy ra
-        /// 
-        /// PRECONDITION:
-        /// - Transaction tồn tại
-        /// - Exception xảy ra khi update
-        /// 
-        /// INPUT:
-        /// - transactionId: 1
-        /// 
-        /// EXPECTED OUTPUT:
-        /// - Return: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
-        /// - Type: A (Abnormal)
-        /// - Status: 400 Bad Request
-        /// </summary>
-        [Fact]
-        public async Task TCID03_UpdateToDelivering_ExceptionThrown_ReturnsBadRequest()
-        {
-            // Arrange - INPUT: Exception sẽ xảy ra
-            int transactionId = 1;
-            int responsibleId = 1;
-            var request = new UpdateToDeliveringStatusRequest { ResponsibleId = responsibleId };
-            var transactionDto = new TransactionDto
-            {
-                TransactionId = transactionId,
-                Status = (int)TransactionStatus.order,
-                WarehouseId = 1,
-                ResponsibleId = responsibleId
-            };
-
-            _transactionServiceMock
-                .Setup(s => s.GetByTransactionId(transactionId))
-                .ReturnsAsync(transactionDto);
-
-            // Throw exception khi update
-            _transactionServiceMock
-                .Setup(s => s.UpdateAsync(It.IsAny<Transaction>()))
-                .ThrowsAsync(new Exception("DB error"));
-
-            // Act
-            var result = await _controller.UpdateToDeliveringStatus(transactionId, request);
-
-            // Assert - EXPECTED OUTPUT: BadRequest với message "Có lỗi xảy ra khi cập nhật trạng thái đơn hàng"
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
-            
-            Assert.False(response.Success);
-            Assert.NotNull(response.Error);
-            Assert.Equal("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng", response.Error.Message);
             Assert.Equal(400, response.StatusCode);
         }
 
@@ -5147,7 +5636,7 @@ namespace NB.Test.Controllers
         }
 
         /// <summary>
-        /// TCID08: ReturnOrder trả hết sản phẩm trong đơn
+        /// TCID09: ReturnOrder trả hết sản phẩm trong đơn
         /// 
         /// PRECONDITION:
         /// - Transaction tồn tại, Status = done, và currentDetails bao gồm toàn bộ sản phẩm
@@ -5163,7 +5652,7 @@ namespace NB.Test.Controllers
         /// - Các inventory, stockbatch được cập nhật
         /// </summary>
         [Fact]
-        public async Task TCID08_ReturnOrder_ReturnAllProducts_ReturnsOk()
+        public async Task TCID09_ReturnOrder_ReturnAllProducts_ReturnsOk()
         {
             int transactionId = 1;
             int warehouseId = 1;
@@ -5297,7 +5786,7 @@ namespace NB.Test.Controllers
         }
 
         /// <summary>
-        /// TCID09: ReturnOrder trả một phần sản phẩm
+        /// TCID08: ReturnOrder trả một phần sản phẩm
         /// 
         /// PRECONDITION:
         /// - Transaction tồn tại và Status = done
@@ -5315,7 +5804,7 @@ namespace NB.Test.Controllers
         /// - Chi tiết đơn hàng được cập nhật
         /// </summary>
         [Fact]
-        public async Task TCID09_ReturnOrder_PartialReturn_AdjustsTotalsAndDetails()
+        public async Task TCID08_ReturnOrder_PartialReturn_AdjustsTotalsAndDetails()
         {
             int transactionId = 1;
             int warehouseId = 1;
