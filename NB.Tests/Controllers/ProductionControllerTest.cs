@@ -14,6 +14,7 @@ using NB.Model.Entities;
 using NB.Model.Enums;
 using NB.Repository.Common;
 using NB.Service.Common;
+using NB.Service.Core.Enum;
 using NB.Service.Dto;
 using NB.Service.Core.Mapper;
 using NB.Service.FinishproductService;
@@ -26,11 +27,14 @@ using NB.Service.ProductService;
 using NB.Service.ProductService.Dto;
 using NB.Service.ProductionOrderService;
 using NB.Service.ProductionOrderService.Dto;
+using NB.Service.ProductionOrderService.ViewModels;
 using NB.Service.StockBatchService;
 using NB.Service.StockBatchService.Dto;
 using NB.Service.StockBatchService.ViewModels;
-using NB.Service.WarehouseService;
 using NB.Service.UserService;
+using NB.Service.UserService.Dto;
+using NB.Service.WarehouseService;
+using NB.Service.WarehouseService.Dto;
 using Xunit;
 
 namespace NB.Test.Controllers
@@ -1501,6 +1505,356 @@ namespace NB.Test.Controllers
             Assert.False(response.Success);
             Assert.Contains("Có lỗi xảy ra khi cập nhật đơn sản xuất: db", response.Error?.Message);
             Assert.Equal(500, response.StatusCode);
+        }
+
+        #endregion
+
+        #region GetData Tests
+
+        /// <summary>
+        /// TGD01: GetData khi không có đơn sản xuất
+        ///
+        /// PRECONDITION:
+        /// - Service trả về PagedList không chứa phần tử nào
+        ///
+        /// INPUT:
+        /// - search: new ProductionOrderSearch()
+        ///
+        /// EXPECTED OUTPUT:
+        /// - OkObjectResult chứa ApiResponse.Ok với PagedList rỗng
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TGD01_GetData_WithNoItems_ReturnsOk()
+        {
+            // Arrange - INPUT: search tối thiểu
+            var search = new ProductionOrderSearch();
+            var pagedResult = PagedList<ProductionOrderDto>.CreateFromList(new List<ProductionOrderDto>(), search);
+            _productionOrderServiceMock
+                .Setup(s => s.GetData(It.IsAny<ProductionOrderSearch>()))
+                .ReturnsAsync(pagedResult);
+
+            // Act
+            var result = await _controller.GetData(search);
+
+            // Assert - EXPECTED OUTPUT: OkObjectResult với PagedList rỗng
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<PagedList<ProductionOrderDto>>>(okResult.Value);
+
+            Assert.True(response.Success);
+            Assert.NotNull(response.Data);
+            Assert.Same(pagedResult, response.Data);
+            Assert.Empty(response.Data.Items);
+        }
+
+        /// <summary>
+        /// TGD02: GetData khi có đơn sản xuất và cần gắn StatusName
+        ///
+        /// PRECONDITION:
+        /// - Service trả về danh sách có Status
+        ///
+        /// INPUT:
+        /// - search: ProductionOrderSearch tối thiểu
+        ///
+        /// EXPECTED OUTPUT:
+        /// - OkObjectResult với StatusName khớp mô tả enum
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TGD02_GetData_WithItems_PopulatesStatusName()
+        {
+            // Arrange - INPUT: search tối thiểu với 2 đơn
+            var search = new ProductionOrderSearch();
+            const string existingLabel = "Preexisting";
+            var sourceItems = new List<ProductionOrderDto>
+            {
+                new() { Id = 1, Status = (int)ProductionOrderStatus.Finished },
+                new() { Id = 2, Status = null, StatusName = existingLabel }
+            };
+            var pagedResult = PagedList<ProductionOrderDto>.CreateFromList(sourceItems, search);
+            _productionOrderServiceMock
+                .Setup(s => s.GetData(It.IsAny<ProductionOrderSearch>()))
+                .ReturnsAsync(pagedResult);
+
+            // Act
+            var result = await _controller.GetData(search);
+
+            // Assert - EXPECTED OUTPUT: OkObjectResult với StatusName được gán đúng
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<PagedList<ProductionOrderDto>>>(okResult.Value);
+
+            Assert.True(response.Success);
+            Assert.NotNull(response.Data);
+            Assert.Equal(2, response.Data.Items.Count);
+            Assert.Equal(ProductionOrderStatus.Finished.GetDescription(), response.Data.Items[0].StatusName);
+            Assert.Equal(existingLabel, response.Data.Items[1].StatusName);
+        }
+
+        /// <summary>
+        /// TGD03: GetData khi service ném exception
+        ///
+        /// PRECONDITION:
+        /// - _productionOrderService.GetData ném exception
+        ///
+        /// INPUT:
+        /// - search: ProductionOrderSearch mặc định
+        ///
+        /// EXPECTED OUTPUT:
+        /// - BadRequestObjectResult với ApiResponse.Fail("Có lỗi xảy ra khi lấy dữ liệu")
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TGD03_GetData_WhenServiceThrows_ReturnsBadRequest()
+        {
+            // Arrange - INPUT: search tối thiểu
+            var search = new ProductionOrderSearch();
+            _productionOrderServiceMock
+                .Setup(s => s.GetData(It.IsAny<ProductionOrderSearch>()))
+                .ThrowsAsync(new InvalidOperationException("Service failure"));
+
+            // Act
+            var result = await _controller.GetData(search);
+
+            // Assert - EXPECTED OUTPUT: BadRequestObjectResult với ApiResponse.Fail
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<PagedList<ProductionOrderDto>>>(badRequest.Value);
+
+            Assert.False(response.Success);
+            Assert.Equal("Có lỗi xảy ra khi lấy dữ liệu", response.Error?.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        #endregion
+
+        #region GetDetail Tests
+
+        /// <summary>
+        /// TGDL01: GetDetail khi ModelState không hợp lệ
+        ///
+        /// PRECONDITION:
+        /// - ModelState chứa lỗi
+        ///
+        /// INPUT:
+        /// - Id = 1 (giá trị hợp lệ nhưng ModelState invalid)
+        ///
+        /// EXPECTED OUTPUT:
+        /// - BadRequest chứa ApiResponse.Fail("Dữ liệu không hợp lệ")
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TGDL01_GetDetail_ModelStateInvalid_ReturnsBadRequest()
+        {
+            _controller.ModelState.AddModelError("test", "invalid");
+
+            try
+            {
+                var result = await _controller.GetDetail(1);
+
+                var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+                var response = Assert.IsType<ApiResponse<FullProductionOrderVM>>(badRequest.Value);
+
+                Assert.False(response.Success);
+                Assert.Equal("Dữ liệu không hợp lệ", response.Error?.Message);
+                Assert.Equal(400, response.StatusCode);
+            }
+            finally
+            {
+                _controller.ModelState.Clear();
+            }
+        }
+
+        /// <summary>
+        /// TGDL02: GetDetail khi Id không hợp lệ (<= 0)
+        ///
+        /// PRECONDITION:
+        /// - ModelState hợp lệ
+        /// - Id = 0
+        ///
+        /// INPUT:
+        /// - Id = 0
+        ///
+        /// EXPECTED OUTPUT:
+        /// - BadRequest chứa ApiResponse.Fail("Id không hợp lệ")
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TGDL02_GetDetail_InvalidId_ReturnsBadRequest()
+        {
+            _controller.ModelState.Clear();
+
+            var result = await _controller.GetDetail(0);
+
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<FullProductionOrderVM>>(badRequest.Value);
+
+            Assert.False(response.Success);
+            Assert.Equal("Id không hợp lệ", response.Error?.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TGDL03: GetDetail khi đơn sản xuất không tồn tại
+        ///
+        /// PRECONDITION:
+        /// - ModelState hợp lệ
+        /// - _productionOrderService.GetByIdAsync trả về null
+        ///
+        /// INPUT:
+        /// - Id = 5
+        ///
+        /// EXPECTED OUTPUT:
+        /// - NotFound chứa ApiResponse.Fail("Không tìm thấy đơn sản xuất.")
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TGDL03_GetDetail_NotFound_ReturnsNotFound()
+        {
+            const int productionOrderId = 5;
+            _controller.ModelState.Clear();
+
+            _productionOrderServiceMock
+                .Setup(s => s.GetByIdAsync(productionOrderId))
+                .ReturnsAsync((ProductionOrder?)null);
+
+            var result = await _controller.GetDetail(productionOrderId);
+
+            var notFound = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<FullProductionOrderVM>>(notFound.Value);
+
+            Assert.False(response.Success);
+            Assert.Equal("Không tìm thấy đơn sản xuất.", response.Error?.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TGDL04: GetDetail thành công khi có đủ dữ liệu
+        ///
+        /// PRECONDITION:
+        /// - ModelState hợp lệ
+        /// - ProductionOrder tồn tại
+        /// - Các dịch vụ liên quan trả về dữ liệu cần thiết
+        ///
+        /// INPUT:
+        /// - Id = 7
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Ok với ApiResponse.Ok chứa FullProductionOrderVM
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TGDL04_GetDetail_WithValidId_ReturnsDetailedResponse()
+        {
+            const int productionOrderId = 7;
+            const int finishProductId = 10;
+            const int materialProductId = 20;
+
+            _controller.ModelState.Clear();
+
+            var productionOrder = CreateProductionOrder(productionOrderId, (int)ProductionOrderStatus.Pending);
+            productionOrder.ResponsibleId = 99;
+            productionOrder.Note = "Testing note";
+            productionOrder.StartDate = DateTime.Today.AddDays(-1);
+            productionOrder.CreatedAt = DateTime.Today.AddDays(-2);
+
+            var finishProducts = new[]
+            {
+                CreateFinishProduct(productionOrderId, finishProductId, 3)
+            };
+            finishProducts[0].Id = 101;
+            finishProducts[0].CreatedAt = DateTime.Today;
+
+            var materials = new[]
+            {
+                CreateMaterial(productionOrderId, materialProductId, 5)
+            };
+            materials[0].Id = 202;
+            materials[0].CreatedAt = DateTime.Today;
+            materials[0].LastUpdated = DateTime.Today.AddHours(-1);
+
+            SetupFinishproductQueryable(finishProducts);
+            SetupMaterialQueryable(materials);
+
+            _productionOrderServiceMock
+                .Setup(s => s.GetByIdAsync(productionOrderId))
+                .ReturnsAsync(productionOrder);
+
+            _userServiceMock
+                .Setup(u => u.GetByIdAsync(productionOrder.ResponsibleId.Value))
+                .ReturnsAsync(new UserDto { FullName = "Nguyen Van A" });
+
+            _productServiceMock
+                .Setup(p => p.GetByIds(It.IsAny<List<int>>()))
+                .ReturnsAsync(new List<ProductDto>
+                {
+                    new() { ProductId = finishProductId, ProductName = "Finish Product", ProductCode = "FP-01", WeightPerUnit = 1 },
+                    new() { ProductId = materialProductId, ProductName = "Material Product", ProductCode = "MP-01", WeightPerUnit = 2 }
+                });
+
+            _warehouseServiceMock
+                .Setup(w => w.GetByListWarehouseId(It.IsAny<List<int>>()))
+                .ReturnsAsync(new List<WarehouseDto?>
+                {
+                    new WarehouseDto { WarehouseId = 1, WarehouseName = "Finished Warehouse" },
+                    new WarehouseDto { WarehouseId = RawMaterialWarehouseId, WarehouseName = "Raw Warehouse" }
+                });
+
+            var result = await _controller.GetDetail(productionOrderId);
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<FullProductionOrderVM>>(ok.Value);
+
+            Assert.True(response.Success);
+            Assert.NotNull(response.Data);
+            Assert.Equal(productionOrderId, response.Data.Id);
+            Assert.Equal("Testing note", response.Data.Note);
+            Assert.Equal(ProductionOrderStatus.Pending.GetDescription(), response.Data.StatusName);
+            Assert.Equal("Nguyen Van A", response.Data.ResponsibleEmployeeFullName);
+            Assert.Single(response.Data.FinishProducts);
+            Assert.Equal("Finish Product", response.Data.FinishProducts[0].ProductName);
+            Assert.Single(response.Data.Materials);
+            Assert.Equal("Material Product", response.Data.Materials[0].ProductName);
+            Assert.Equal("Finished Warehouse", response.Data.FinishProducts[0].WarehouseName);
+            Assert.Equal("Raw Warehouse", response.Data.Materials[0].WarehouseName);
+        }
+
+        /// <summary>
+        /// TGDL05: GetDetail khi có exception từ service
+        ///
+        /// PRECONDITION:
+        /// - _productionOrderService.GetByIdAsync ném exception
+        ///
+        /// INPUT:
+        /// - Id = 7
+        ///
+        /// EXPECTED OUTPUT:
+        /// - BadRequest chứa ApiResponse.Fail("Có lỗi xảy ra khi lấy dữ liệu")
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TGDL05_GetDetail_WhenServiceThrows_ReturnsBadRequest()
+        {
+            _controller.ModelState.Clear();
+
+            _productionOrderServiceMock
+                .Setup(s => s.GetByIdAsync(It.IsAny<int>()))
+                .ThrowsAsync(new InvalidOperationException("boom"));
+
+            var result = await _controller.GetDetail(7);
+
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<FullProductionOrderVM>>(badRequest.Value);
+
+            Assert.False(response.Success);
+            Assert.Equal("Có lỗi xảy ra khi lấy dữ liệu", response.Error?.Message);
+            Assert.Equal(400, response.StatusCode);
         }
 
         #endregion
