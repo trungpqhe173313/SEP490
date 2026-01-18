@@ -27,10 +27,10 @@ namespace NB.Tests.Controllers
         private const int InvalidCategoryId = -1;
         private const int ZeroCategoryId = 0;
         private const int NonExistentCategoryId = 999;
-        private const string ValidCategoryName = "Electronics";
-        private const string ValidCategoryDescription = "Electronic devices and accessories";
+        private const string ValidCategoryName = "Animal Food";
+        private const string ValidCategoryDescription = "Food for animals";
         private const string ExistingCategoryName = "Existing Category";
-        private const string UpdatedCategoryName = "Updated Electronics";
+        private const string UpdatedCategoryName = "Updated Animal Food";
         private const string UpdatedCategoryDescription = "Updated description";
 
         public CategoryControllerTests()
