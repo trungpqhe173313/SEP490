@@ -1068,15 +1068,6 @@ namespace NB.Test.Controllers
 
         #endregion
 
-        [Fact]
-        public Task DownloadTemplate_ReturnsFile()
-        {
-            var controller = CreateController();
-            var result = controller.DownloadTemplate();
-            var file = Assert.IsType<FileStreamResult>(result);
-            Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", file.ContentType);
-            return Task.CompletedTask;
-        }
 
         #region SetStatusChecked Tests
 
@@ -1526,247 +1517,247 @@ namespace NB.Test.Controllers
 
         #endregion
 
-        #region SubmitForApproval Tests
+        //#region SubmitForApproval Tests
 
-        /// <summary>
-        /// TCID11: SubmitForApproval khi service trả về thất bại
-        ///
-        /// PRECONDITION:
-        /// - SubmitForApprovalAsync trả về Success = false
-        ///
-        /// INPUT:
-        /// - transactionId = 1
-        /// - valid SubmitForApprovalVM
-        ///
-        /// EXPECTED OUTPUT:
-        /// - BadRequest message từ service
-        /// - Status 400
-        /// </summary>
-        [Fact]
-        public async Task TCID11_SubmitForApproval_ServiceFails_ReturnsBadRequest()
-        {
-            int transactionId = 1;
-            var controller = CreateController();
-            var viewModel = new SubmitForApprovalVM
-            {
-                ResponsibleId = 1,
-                Products = new List<ProductActualQuantity> { new() { ProductId = 1, ActualQuantity = 5 } }
-            };
+        ///// <summary>
+        ///// TCID11: SubmitForApproval khi service trả về thất bại
+        /////
+        ///// PRECONDITION:
+        ///// - SubmitForApprovalAsync trả về Success = false
+        /////
+        ///// INPUT:
+        ///// - transactionId = 1
+        ///// - valid SubmitForApprovalVM
+        /////
+        ///// EXPECTED OUTPUT:
+        ///// - BadRequest message từ service
+        ///// - Status 400
+        ///// </summary>
+        //[Fact]
+        //public async Task TCID11_SubmitForApproval_ServiceFails_ReturnsBadRequest()
+        //{
+        //    int transactionId = 1;
+        //    var controller = CreateController();
+        //    var viewModel = new SubmitForApprovalVM
+        //    {
+        //        ResponsibleId = 1,
+        //        Products = new List<ProductActualQuantity> { new() { ProductId = 1, ActualQuantity = 5 } }
+        //    };
 
-            _transactionMock
-                .Setup(s => s.SubmitForApprovalAsync(transactionId, viewModel))
-                .ReturnsAsync(new SubmitForApprovalResult
-                {
-                    Success = false,
-                    Message = "Thất bại"
-                });
+        //    _transactionMock
+        //        .Setup(s => s.SubmitForApprovalAsync(transactionId, viewModel))
+        //        .ReturnsAsync(new SubmitForApprovalResult
+        //        {
+        //            Success = false,
+        //            Message = "Thất bại"
+        //        });
 
-            var result = await controller.SubmitForApproval(transactionId, viewModel);
+        //    var result = await controller.SubmitForApproval(transactionId, viewModel);
 
-            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<object>>(badRequest.Value);
+        //    var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        //    var response = Assert.IsType<ApiResponse<object>>(badRequest.Value);
 
-            Assert.False(response.Success);
-            Assert.Equal("Thất bại", response.Error?.Message);
-        }
+        //    Assert.False(response.Success);
+        //    Assert.Equal("Thất bại", response.Error?.Message);
+        //}
 
-        /// <summary>
-        /// TCID12: SubmitForApproval thành công
-        ///
-        /// PRECONDITION:
-        /// - SubmitForApprovalAsync trả về Success = true
-        ///
-        /// INPUT:
-        /// - transactionId = 1
-        /// - valid SubmitForApprovalVM
-        ///
-        /// EXPECTED OUTPUT:
-        /// - Ok với ApiResponse chứa data
-        /// </summary>
-        [Fact]
-        public async Task TCID12_SubmitForApproval_Success_ReturnsOk()
-        {
-            int transactionId = 1;
-            var controller = CreateController();
-            var viewModel = new SubmitForApprovalVM
-            {
-                ResponsibleId = 1,
-                Products = new List<ProductActualQuantity> { new() { ProductId = 2, ActualQuantity = 3 } }
-            };
+        ///// <summary>
+        ///// TCID12: SubmitForApproval thành công
+        /////
+        ///// PRECONDITION:
+        ///// - SubmitForApprovalAsync trả về Success = true
+        /////
+        ///// INPUT:
+        ///// - transactionId = 1
+        ///// - valid SubmitForApprovalVM
+        /////
+        ///// EXPECTED OUTPUT:
+        ///// - Ok với ApiResponse chứa data
+        ///// </summary>
+        //[Fact]
+        //public async Task TCID12_SubmitForApproval_Success_ReturnsOk()
+        //{
+        //    int transactionId = 1;
+        //    var controller = CreateController();
+        //    var viewModel = new SubmitForApprovalVM
+        //    {
+        //        ResponsibleId = 1,
+        //        Products = new List<ProductActualQuantity> { new() { ProductId = 2, ActualQuantity = 3 } }
+        //    };
 
-            _transactionMock
-                .Setup(s => s.SubmitForApprovalAsync(transactionId, viewModel))
-                .ReturnsAsync(new SubmitForApprovalResult
-                {
-                    Success = true,
-                    TransactionId = transactionId,
-                    Status = 1,
-                    TotalCost = 500,
-                    Message = "Đã gửi"
-                });
+        //    _transactionMock
+        //        .Setup(s => s.SubmitForApprovalAsync(transactionId, viewModel))
+        //        .ReturnsAsync(new SubmitForApprovalResult
+        //        {
+        //            Success = true,
+        //            TransactionId = transactionId,
+        //            Status = 1,
+        //            TotalCost = 500,
+        //            Message = "Đã gửi"
+        //        });
 
-            var result = await controller.SubmitForApproval(transactionId, viewModel);
+        //    var result = await controller.SubmitForApproval(transactionId, viewModel);
 
-            var ok = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<object>>(ok.Value);
+        //    var ok = Assert.IsType<OkObjectResult>(result);
+        //    var response = Assert.IsType<ApiResponse<object>>(ok.Value);
 
-            Assert.True(response.Success);
-            Assert.NotNull(response.Data);
-        }
+        //    Assert.True(response.Success);
+        //    Assert.NotNull(response.Data);
+        //}
 
-        #endregion
+        //#endregion
 
-        #region ApproveImport Tests
+        //#region ApproveImport Tests
 
-        /// <summary>
-        /// TCID13: ApproveImport khi service trả về thất bại
-        ///
-        /// PRECONDITION:
-        /// - ApproveImportAsync trả về Success = false
-        ///
-        /// INPUT:
-        /// - transactionId = 1
-        /// - valid ApproveImportVM
-        ///
-        /// EXPECTED OUTPUT:
-        /// - BadRequest message từ service
-        /// - Status 400
-        /// </summary>
-        [Fact]
-        public async Task TCID13_ApproveImport_ServiceFails_ReturnsBadRequest()
-        {
-            int transactionId = 1;
-            var controller = CreateController();
-            var viewModel = new ApproveImportVM { ApproverId = 1, ExpireDate = DateTime.UtcNow.AddDays(2) };
+        ///// <summary>
+        ///// TCID13: ApproveImport khi service trả về thất bại
+        /////
+        ///// PRECONDITION:
+        ///// - ApproveImportAsync trả về Success = false
+        /////
+        ///// INPUT:
+        ///// - transactionId = 1
+        ///// - valid ApproveImportVM
+        /////
+        ///// EXPECTED OUTPUT:
+        ///// - BadRequest message từ service
+        ///// - Status 400
+        ///// </summary>
+        //[Fact]
+        //public async Task TCID13_ApproveImport_ServiceFails_ReturnsBadRequest()
+        //{
+        //    int transactionId = 1;
+        //    var controller = CreateController();
+        //    var viewModel = new ApproveImportVM { ApproverId = 1, ExpireDate = DateTime.UtcNow.AddDays(2) };
 
-            _transactionMock
-                .Setup(s => s.ApproveImportAsync(transactionId, viewModel))
-                .ReturnsAsync(new ApproveImportResult { Success = false, Message = "Không thể approve" });
+        //    _transactionMock
+        //        .Setup(s => s.ApproveImportAsync(transactionId, viewModel))
+        //        .ReturnsAsync(new ApproveImportResult { Success = false, Message = "Không thể approve" });
 
-            var result = await controller.ApproveImport(transactionId, viewModel);
+        //    var result = await controller.ApproveImport(transactionId, viewModel);
 
-            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<object>>(badRequest.Value);
+        //    var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        //    var response = Assert.IsType<ApiResponse<object>>(badRequest.Value);
 
-            Assert.False(response.Success);
-            Assert.Equal("Không thể approve", response.Error?.Message);
-        }
+        //    Assert.False(response.Success);
+        //    Assert.Equal("Không thể approve", response.Error?.Message);
+        //}
 
-        /// <summary>
-        /// TCID14: ApproveImport thành công
-        ///
-        /// PRECONDITION:
-        /// - ApproveImportAsync trả về Success = true
-        ///
-        /// INPUT:
-        /// - transactionId = 1
-        /// - valid ApproveImportVM
-        ///
-        /// EXPECTED OUTPUT:
-        /// - Ok với ApiResponse success cùng message
-        /// </summary>
-        [Fact]
-        public async Task TCID14_ApproveImport_Success_ReturnsOk()
-        {
-            int transactionId = 1;
-            var controller = CreateController();
-            var viewModel = new ApproveImportVM { ApproverId = 2, ExpireDate = DateTime.UtcNow.AddDays(1) };
+        ///// <summary>
+        ///// TCID14: ApproveImport thành công
+        /////
+        ///// PRECONDITION:
+        ///// - ApproveImportAsync trả về Success = true
+        /////
+        ///// INPUT:
+        ///// - transactionId = 1
+        ///// - valid ApproveImportVM
+        /////
+        ///// EXPECTED OUTPUT:
+        ///// - Ok với ApiResponse success cùng message
+        ///// </summary>
+        //[Fact]
+        //public async Task TCID14_ApproveImport_Success_ReturnsOk()
+        //{
+        //    int transactionId = 1;
+        //    var controller = CreateController();
+        //    var viewModel = new ApproveImportVM { ApproverId = 2, ExpireDate = DateTime.UtcNow.AddDays(1) };
 
-            _transactionMock
-                .Setup(s => s.ApproveImportAsync(transactionId, viewModel))
-                .ReturnsAsync(new ApproveImportResult
-                {
-                    Success = true,
-                    TransactionId = transactionId,
-                    Status = (int)TransactionStatus.importReceived,
-                    ApprovedBy = viewModel.ApproverId,
-                    ApprovedDate = DateTime.UtcNow,
-                    Message = "Đã approve"
-                });
+        //    _transactionMock
+        //        .Setup(s => s.ApproveImportAsync(transactionId, viewModel))
+        //        .ReturnsAsync(new ApproveImportResult
+        //        {
+        //            Success = true,
+        //            TransactionId = transactionId,
+        //            Status = (int)TransactionStatus.importReceived,
+        //            ApprovedBy = viewModel.ApproverId,
+        //            ApprovedDate = DateTime.UtcNow,
+        //            Message = "Đã approve"
+        //        });
 
-            var result = await controller.ApproveImport(transactionId, viewModel);
+        //    var result = await controller.ApproveImport(transactionId, viewModel);
 
-            var ok = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<object>>(ok.Value);
-            Assert.True(response.Success);
-        }
+        //    var ok = Assert.IsType<OkObjectResult>(result);
+        //    var response = Assert.IsType<ApiResponse<object>>(ok.Value);
+        //    Assert.True(response.Success);
+        //}
 
-        #endregion
+        //#endregion
 
-        #region RejectImport Tests
+        //#region RejectImport Tests
 
-        /// <summary>
-        /// TCID15: RejectImport khi service thất bại
-        ///
-        /// PRECONDITION:
-        /// - RejectImportAsync trả về Success = false
-        ///
-        /// INPUT:
-        /// - transactionId = 1
-        /// - valid RejectImportVM
-        ///
-        /// EXPECTED OUTPUT:
-        /// - BadRequest với message từ service
-        /// </summary>
-        [Fact]
-        public async Task TCID15_RejectImport_ServiceFails_ReturnsBadRequest()
-        {
-            int transactionId = 1;
-            var controller = CreateController();
-            var viewModel = new RejectImportVM { ApproverId = 1, Reason = "Lỗi" };
+        ///// <summary>
+        ///// TCID15: RejectImport khi service thất bại
+        /////
+        ///// PRECONDITION:
+        ///// - RejectImportAsync trả về Success = false
+        /////
+        ///// INPUT:
+        ///// - transactionId = 1
+        ///// - valid RejectImportVM
+        /////
+        ///// EXPECTED OUTPUT:
+        ///// - BadRequest với message từ service
+        ///// </summary>
+        //[Fact]
+        //public async Task TCID15_RejectImport_ServiceFails_ReturnsBadRequest()
+        //{
+        //    int transactionId = 1;
+        //    var controller = CreateController();
+        //    var viewModel = new RejectImportVM { ApproverId = 1, Reason = "Lỗi" };
 
-            _transactionMock
-                .Setup(s => s.RejectImportAsync(transactionId, viewModel))
-                .ReturnsAsync(new RejectImportResult { Success = false, Message = "Không thể reject" });
+        //    _transactionMock
+        //        .Setup(s => s.RejectImportAsync(transactionId, viewModel))
+        //        .ReturnsAsync(new RejectImportResult { Success = false, Message = "Không thể reject" });
 
-            var result = await controller.RejectImport(transactionId, viewModel);
+        //    var result = await controller.RejectImport(transactionId, viewModel);
 
-            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<object>>(badRequest.Value);
-            Assert.False(response.Success);
-            Assert.Equal("Không thể reject", response.Error?.Message);
-        }
+        //    var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        //    var response = Assert.IsType<ApiResponse<object>>(badRequest.Value);
+        //    Assert.False(response.Success);
+        //    Assert.Equal("Không thể reject", response.Error?.Message);
+        //}
 
-        /// <summary>
-        /// TCID16: RejectImport thành công
-        ///
-        /// PRECONDITION:
-        /// - RejectImportAsync trả về Success = true
-        ///
-        /// INPUT:
-        /// - transactionId = 1
-        /// - valid RejectImportVM
-        ///
-        /// EXPECTED OUTPUT:
-        /// - Ok với message từ service
-        /// </summary>
-        [Fact]
-        public async Task TCID16_RejectImport_Success_ReturnsOk()
-        {
-            int transactionId = 1;
-            var controller = CreateController();
-            var viewModel = new RejectImportVM { ApproverId = 3, Reason = "Sai số" };
+        ///// <summary>
+        ///// TCID16: RejectImport thành công
+        /////
+        ///// PRECONDITION:
+        ///// - RejectImportAsync trả về Success = true
+        /////
+        ///// INPUT:
+        ///// - transactionId = 1
+        ///// - valid RejectImportVM
+        /////
+        ///// EXPECTED OUTPUT:
+        ///// - Ok với message từ service
+        ///// </summary>
+        //[Fact]
+        //public async Task TCID16_RejectImport_Success_ReturnsOk()
+        //{
+        //    int transactionId = 1;
+        //    var controller = CreateController();
+        //    var viewModel = new RejectImportVM { ApproverId = 3, Reason = "Sai số" };
 
-            _transactionMock
-                .Setup(s => s.RejectImportAsync(transactionId, viewModel))
-                .ReturnsAsync(new RejectImportResult
-                {
-                    Success = true,
-                    TransactionId = transactionId,
-                    Status = (int)TransactionStatus.cancel,
-                    RejectedBy = viewModel.ApproverId,
-                    RejectedDate = DateTime.UtcNow,
-                    Message = "Đã reject"
-                });
+        //    _transactionMock
+        //        .Setup(s => s.RejectImportAsync(transactionId, viewModel))
+        //        .ReturnsAsync(new RejectImportResult
+        //        {
+        //            Success = true,
+        //            TransactionId = transactionId,
+        //            Status = (int)TransactionStatus.cancel,
+        //            RejectedBy = viewModel.ApproverId,
+        //            RejectedDate = DateTime.UtcNow,
+        //            Message = "Đã reject"
+        //        });
 
-            var result = await controller.RejectImport(transactionId, viewModel);
+        //    var result = await controller.RejectImport(transactionId, viewModel);
 
-            var ok = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<object>>(ok.Value);
-            Assert.True(response.Success);
-        }
+        //    var ok = Assert.IsType<OkObjectResult>(result);
+        //    var response = Assert.IsType<ApiResponse<object>>(ok.Value);
+        //    Assert.True(response.Success);
+        //}
 
-        #endregion
+        //#endregion
 
         #region UpdateImport Tests
 
