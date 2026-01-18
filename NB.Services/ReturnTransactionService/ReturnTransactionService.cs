@@ -37,7 +37,8 @@ namespace NB.Service.ReturnTransactionService
                            WarehouseId = t.WarehouseId,
                            CustomerId = t.CustomerId,
                            SupplierId = t.SupplierId,
-                           Status = t.Status
+                           Status = t.Status,
+                           TransactionCode = t.TransactionCode
                        };
 
             // Filter theo Type nếu có (Import hoặc Export)
@@ -60,6 +61,14 @@ namespace NB.Service.ReturnTransactionService
                 query = query.Where(x => x.TransactionId == search.TransactionId.Value);
             }
 
+            // Filter theo TransactionCode nếu có
+            if (!string.IsNullOrEmpty(search.TransactionCode))
+            {
+                var keyword = search.TransactionCode.Trim();
+                query = query.Where(t =>
+                    EF.Functions.Collate(t.TransactionCode, "SQL_Latin1_General_CP1_CI_AI")
+                .Contains(keyword));
+            }
             // Order by CreatedAt descending
             query = query.OrderByDescending(x => x.CreatedAt);
 
