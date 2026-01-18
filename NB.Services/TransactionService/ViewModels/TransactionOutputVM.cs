@@ -27,5 +27,6 @@ namespace NB.Service.TransactionService.ViewModels
         public string? ResponsibleName { get; set; }
         public string? ResponsiblePhone { get; set; }
         public DateTime? ExpireDate { get; set; }
+        public string? TransactionCode { get; set; }
     }
 }
