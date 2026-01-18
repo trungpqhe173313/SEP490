@@ -895,6 +895,181 @@ namespace NB.Test.Controllers
 
         #endregion
 
+        #region ChangeToCancel Tests
+
+        /// <summary>
+        /// TCC01: ChangeToCancel với id không hợp lệ
+        ///
+        /// PRECONDITION:
+        /// - productionOrderId <= 0
+        ///
+        /// INPUT:
+        /// - productionOrderId = 0
+        ///
+        /// EXPECTED OUTPUT:
+        /// - BadRequest chứa ApiResponse.Fail("Id đơn sản xuất không hợp lệ", 400)
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCC01_ChangeToCancel_InvalidId_ReturnsBadRequest()
+        {
+            var result = await _controller.ChangeToCancel(0);
+
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequest.Value);
+
+            Assert.False(response.Success);
+            Assert.Equal("Id đơn sản xuất không hợp lệ", response.Error?.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCC02: ChangeToCancel khi đơn không tồn tại
+        ///
+        /// PRECONDITION:
+        /// - _productionOrderService.GetByIdAsync trả về null
+        ///
+        /// INPUT:
+        /// - productionOrderId = 1
+        ///
+        /// EXPECTED OUTPUT:
+        /// - NotFound chứa ApiResponse.Fail("Không tìm thấy đơn sản xuất", 404)
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TCC02_ChangeToCancel_NotFound_ReturnsNotFound()
+        {
+            const int productionOrderId = 1;
+            _productionOrderServiceMock
+                .Setup(s => s.GetByIdAsync(productionOrderId))
+                .ReturnsAsync((ProductionOrder?)null);
+
+            var result = await _controller.ChangeToCancel(productionOrderId);
+
+            var notFound = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(notFound.Value);
+
+            Assert.False(response.Success);
+            Assert.Equal("Không tìm thấy đơn sản xuất", response.Error?.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCC03: ChangeToCancel khi đơn không ở trạng thái Pending
+        ///
+        /// PRECONDITION:
+        /// - ProductionOrder.Status != Pending
+        ///
+        /// INPUT:
+        /// - productionOrderId = 2
+        ///
+        /// EXPECTED OUTPUT:
+        /// - BadRequest chứa ApiResponse.Fail("Chỉ có thể hủy đơn sản xuất khi đơn đang ở trạng thái Đang chờ xử lý (Pending)", 400)
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCC03_ChangeToCancel_StatusNotPending_ReturnsBadRequest()
+        {
+            const int productionOrderId = 2;
+            var productionOrder = CreateProductionOrder(productionOrderId, (int)ProductionOrderStatus.Processing);
+            _productionOrderServiceMock
+                .Setup(s => s.GetByIdAsync(productionOrderId))
+                .ReturnsAsync(productionOrder);
+
+            var result = await _controller.ChangeToCancel(productionOrderId);
+
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequest.Value);
+
+            Assert.False(response.Success);
+            Assert.Equal("Chỉ có thể hủy đơn sản xuất khi đơn đang ở trạng thái Đang chờ xử lý (Pending)", response.Error?.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TCC04: ChangeToCancel thành công
+        ///
+        /// PRECONDITION:
+        /// - ProductionOrder tồn tại với trạng thái Pending
+        /// - _productionOrderService.UpdateAsync không ném
+        ///
+        /// INPUT:
+        /// - productionOrderId = 3
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Ok chứa ApiResponse.Ok("Đơn sản xuất đã được hủy")
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TCC04_ChangeToCancel_Success_ReturnsOk()
+        {
+            const int productionOrderId = 3;
+            var productionOrder = CreateProductionOrder(productionOrderId, (int)ProductionOrderStatus.Pending);
+            ProductionOrder? updatedOrder = null;
+
+            _productionOrderServiceMock
+                .Setup(s => s.GetByIdAsync(productionOrderId))
+                .ReturnsAsync(productionOrder);
+
+            _productionOrderServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<ProductionOrder>()))
+                .Callback<ProductionOrder>(order => updatedOrder = order)
+                .Returns(Task.CompletedTask);
+
+            var result = await _controller.ChangeToCancel(productionOrderId);
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(ok.Value);
+
+            Assert.True(response.Success);
+            Assert.Equal("Đơn sản xuất đã được hủy", response.Data);
+            Assert.Equal((int)ProductionOrderStatus.Cancel, updatedOrder?.Status);
+        }
+
+        /// <summary>
+        /// TCC05: ChangeToCancel khi UpdateAsync ném exception
+        ///
+        /// PRECONDITION:
+        /// - _productionOrderService.UpdateAsync ném InvalidOperationException
+        ///
+        /// INPUT:
+        /// - productionOrderId = 4
+        ///
+        /// EXPECTED OUTPUT:
+        /// - BadRequest chứa ApiResponse.Fail("Có lỗi xảy ra khi hủy đơn sản xuất")
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TCC05_ChangeToCancel_ExceptionThrown_ReturnsBadRequest()
+        {
+            const int productionOrderId = 4;
+            var productionOrder = CreateProductionOrder(productionOrderId, (int)ProductionOrderStatus.Pending);
+
+            _productionOrderServiceMock
+                .Setup(s => s.GetByIdAsync(productionOrderId))
+                .ReturnsAsync(productionOrder);
+
+            _productionOrderServiceMock
+                .Setup(s => s.UpdateAsync(It.IsAny<ProductionOrder>()))
+                .ThrowsAsync(new InvalidOperationException("db"));
+
+            var result = await _controller.ChangeToCancel(productionOrderId);
+
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequest.Value);
+
+            Assert.False(response.Success);
+            Assert.Equal("Có lỗi xảy ra khi hủy đơn sản xuất", response.Error?.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        #endregion
+
         #region ChangeToFinished Tests
 
         /// <summary>
