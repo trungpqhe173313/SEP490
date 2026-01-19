@@ -24,7 +24,7 @@ using NB.Service.UserService;
 using NB.Service.UserService.Dto;
 using Xunit;
 
-namespace NB.Test.Controllers
+namespace NB.Tests.Controllers
 {
     public class ContractControllerTest
     {

@@ -10,7 +10,7 @@ using NB.Service.StockAdjustmentService;
 using NB.Service.StockAdjustmentService.ViewModels;
 using Xunit;
 
-namespace NB.Test.Controllers
+namespace NB.Tests.Controllers
 {
     public class StockAdjustmentControllerTest
     {
