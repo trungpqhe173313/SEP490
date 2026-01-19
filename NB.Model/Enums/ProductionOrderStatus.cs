@@ -19,7 +19,7 @@ namespace NB.Model.Enums
         Cancel,
         [Description("Chờ duyệt")]
         WaitingApproval,
-        [Description("Từ chối")]
+        [Description("Kiểm lại")]
         Rejected,
     }
 }

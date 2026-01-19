@@ -166,7 +166,7 @@ namespace NB.Service.WorklogService
                 .AnyAsync(ur => ur.UserId == dto.EmployeeId && ur.RoleId == 3);
             if (!hasEmployeeRole)
             {
-                throw new Exception("User này không phải là nhân viên (Employee)");
+                throw new Exception("Người dùng này không phải là nhân viên ");
             }
 
             var workDateValue = dto.WorkDate ?? DateTime.Now;
@@ -175,7 +175,7 @@ namespace NB.Service.WorklogService
             var hasPayroll = await HasPayrollForDateAsync(dto.EmployeeId, workDateValue);
             if (hasPayroll)
             {
-                throw new Exception("Không thể tạo worklog vì đã có bảng lương cho nhân viên trong khoảng thời gian này");
+                throw new Exception("Không thể tạo chấm công vì đã có bảng lương cho nhân viên trong khoảng thời gian này");
             }
 
             var startOfDay = workDateValue.Date;
