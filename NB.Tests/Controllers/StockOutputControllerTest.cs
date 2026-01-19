@@ -1116,7 +1116,7 @@ namespace NB.Tests.Controllers
         /// - or: OrderRequest với Quantity > Quantity trong inventory
         /// 
         /// EXPECTED OUTPUT:
-        /// - Return: BadRequest với message "Sản phẩm '{productName}' trong kho '{warehouseName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu."
+        /// - Return: BadRequest với message "Số lượng tồn kho không đủ"
         /// - Type: A (Abnormal)
         /// - Status: 400 Bad Request
         /// </summary>
@@ -1176,15 +1176,17 @@ namespace NB.Tests.Controllers
             // Act
             var result = await _controller.CreateOrder(userId, orderRequest);
 
-            // Assert - EXPECTED OUTPUT: BadRequest với message chứa "chỉ còn" và "không đủ"
+            // Assert - EXPECTED OUTPUT: BadRequest với message chứa "Số lượng tồn kho không đủ"
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<InventoryDto>>(badRequestResult.Value);
+            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
             
             Assert.False(response.Success);
             Assert.NotNull(response.Error);
-            Assert.Contains("chỉ còn", response.Error.Message);
-            Assert.Contains("không đủ", response.Error.Message);
+            Assert.Equal("Số lượng tồn kho không đủ", response.Error.Message);
             Assert.Equal(400, response.StatusCode);
+            Assert.NotNull(response.Error.Messages);
+            var expectedDetail = $"- {productDto.ProductName}: còn {(int)Math.Floor(inventoryQuantity)}";
+            Assert.Contains(expectedDetail, response.Error.Messages);
         }
 
         /// <summary>
@@ -1732,15 +1734,17 @@ namespace NB.Tests.Controllers
             // Act
             var result = await _controller.UpdateTransactionInDraftStatus(transactionId, orderRequest);
 
-            // Assert - EXPECTED OUTPUT: BadRequest với message chứa "chỉ còn" và "không đủ"
+            // Assert - EXPECTED OUTPUT: BadRequest với message "Số lượng tồn kho không đủ" và danh sách chi tiết
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<InventoryDto>>(badRequestResult.Value);
+            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
             
             Assert.False(response.Success);
             Assert.NotNull(response.Error);
-            Assert.Contains("chỉ còn", response.Error.Message);
-            Assert.Contains("không đủ", response.Error.Message);
+            Assert.Equal("Số lượng tồn kho không đủ", response.Error.Message);
             Assert.Equal(400, response.StatusCode);
+            Assert.NotNull(response.Error.Messages);
+            var expectedDetail = $"- {productDto.ProductName}: còn {(int)Math.Floor(5m)}";
+            Assert.Contains(expectedDetail, response.Error.Messages);
         }
 
         /// <summary>
@@ -2205,7 +2209,7 @@ namespace NB.Tests.Controllers
         /// - request.ResponsibleId hợp lệ
         ///
         /// EXPECTED OUTPUT:
-        /// - Return: BadRequest với message "Không tìm thấy sản phẩm '{productName}' trong kho '{warehouseName}'"
+        /// - Return: BadRequest với message "Số lượng tồn kho không đủ"
         /// - Type: A (Abnormal)
         /// - Status: 400 Bad Request
         /// </summary>
@@ -2250,12 +2254,14 @@ namespace NB.Tests.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<InventoryDto>>(badRequestResult.Value);
+            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
 
             Assert.False(response.Success);
             Assert.NotNull(response.Error);
-            Assert.Equal($"Không tìm thấy sản phẩm '{productName}' trong kho '{warehouseDto.WarehouseName}'", response.Error.Message);
+            Assert.Equal("Số lượng tồn kho không đủ", response.Error.Message);
             Assert.Equal(400, response.StatusCode);
+            Assert.NotNull(response.Error.Messages);
+            Assert.Contains($"{productName}: còn 0", response.Error.Messages);
         }
 
         /// <summary>
@@ -2270,7 +2276,7 @@ namespace NB.Tests.Controllers
         /// - transactionId: 12
         ///
         /// EXPECTED OUTPUT:
-        /// - Return: BadRequest với message "Sản phẩm '{productName}' trong kho '{warehouseName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu."
+        /// - Return: BadRequest với message "Số lượng tồn kho không đủ"
         /// - Type: A (Abnormal)
         /// - Status: 400 Bad Request
         /// </summary>
@@ -2308,12 +2314,11 @@ namespace NB.Tests.Controllers
 
             // Assert - EXPECTED OUTPUT: BadRequest với message chứa "chỉ còn" và "không đủ"
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<InventoryDto>>(badRequestResult.Value);
+            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
             
             Assert.False(response.Success);
             Assert.NotNull(response.Error);
-            Assert.Contains("chỉ còn", response.Error.Message);
-            Assert.Contains("không đủ", response.Error.Message);
+            Assert.Contains("Số lượng tồn kho không đủ", response.Error.Message);
             Assert.Equal(400, response.StatusCode);
         }
 

@@ -599,30 +599,42 @@ namespace NB.API.Controllers
 
             // Lấy tất cả inventory theo danh sách sản phẩm và kho để kiểm tra xem lượng hàng hóa trong kho còn đủ không
             var listInventory = await _inventoryService.GetByWarehouseAndProductIds(transactionWarehouseId, listProductOrder.Select(po => po.ProductId).ToList());
+            var shortageMessages = new List<string>();
 
             foreach (var po in listProductOrder)
             {
                 var orderQty = po.Quantity;
                 var inven = listInventory.FirstOrDefault(p => p.ProductId == po.ProductId && p.WarehouseId == transactionWarehouseId);
+                var productCheck = await _productService.GetByIdAsync(po.ProductId);
+                var productName = productCheck?.ProductName ?? $"Sản phẩm {po.ProductId}";
 
                 if (inven == null)
                 {
-                    var productCheck = await _productService.GetByIdAsync(po.ProductId);
-                    var productName = productCheck?.ProductName ?? $"Sản phẩm {po.ProductId}";
-                    return BadRequest(ApiResponse<InventoryDto>.Fail(
-                        $"Không tìm thấy sản phẩm '{productName}' trong kho '{transactionWarehouse.WarehouseName}'" ));
+                    shortageMessages.Add($"{productName}: còn 0");
+                    continue;
                 }
 
                 var invenQty = inven.Quantity ?? 0;
 
                 if (orderQty > invenQty)
                 {
-                    var productCheck = await _productService.GetByIdAsync(po.ProductId);
-                    var productName = productCheck?.ProductName ?? $"Sản phẩm {po.ProductId}";
-                    return BadRequest(ApiResponse<InventoryDto>.Fail(
-                        $"Sản phẩm '{productName}' trong kho '{transactionWarehouse.WarehouseName}' chỉ còn {invenQty}, không đủ {orderQty} yêu cầu.",
-                        400));
+                    var availableQuantity = (int)Math.Floor(invenQty);
+                    shortageMessages.Add($"- {productName}: còn {availableQuantity}");
                 }
+            }
+
+            if (shortageMessages.Any())
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    StatusCode = 400,
+                    Error = new ApiError
+                    {
+                        Message = "Số lượng tồn kho không đủ",
+                        Messages = shortageMessages
+                    }
+                });
             }
 
             try
@@ -1758,6 +1770,5 @@ namespace NB.API.Controllers
                 return BadRequest(ApiResponse<string>.Fail("Có lỗi xảy ra khi xử lý trả hàng"));
             }
         }
-
     }
 }
