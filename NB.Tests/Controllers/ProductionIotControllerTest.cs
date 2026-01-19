@@ -9,7 +9,7 @@ using NB.Service.ProductionIotService.Dto;
 using NB.Services.ProductionIotService;
 using Xunit;
 
-namespace NB.Test.Controllers
+namespace NB.Tests.Controllers
 {
     public class ProductionIotControllerTest
     {

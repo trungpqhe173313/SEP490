@@ -13,7 +13,7 @@ using NB.Service.PayrollService;
 using NB.Service.PayrollService.Dto;
 using Xunit;
 
-namespace NB.Test.Controllers
+namespace NB.Tests.Controllers
 {
     public class PayrollControllerTest
     {

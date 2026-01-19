@@ -41,7 +41,7 @@ using NB.Service.WarehouseService.Dto;
 using Xunit;
 using NB.Test.Helpers;
 
-namespace NB.Test.Controllers
+namespace NB.Tests.Controllers
 {
     public class StockOutputControllerTest
     {

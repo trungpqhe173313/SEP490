@@ -50,7 +50,7 @@ using NB.Service.Core;
 using NB.Repository.Common;
 using OfficeOpenXml;
 
-namespace NB.Test.Controllers
+namespace NB.Tests.Controllers
 {
     public class StockInputControllerTests
     {
