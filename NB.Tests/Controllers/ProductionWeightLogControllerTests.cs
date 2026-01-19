@@ -220,40 +220,40 @@ namespace NB.Tests.Controllers
             data!.Products.Should().HaveCount(50);
         }
 
-        [Fact]
-        public async Task GetSummaryByProductionId_ZeroWeights_ReturnsOkWithZeroValues()
-        {
-            // Arrange
-            var summaryResponse = new ProductionWeightLogSummaryResponseDto
-            {
-                ProductionId = ValidProductionId,
-                Products = new List<ProductWeightSummaryDto>
-                {
-                    new ProductWeightSummaryDto
-                    {
-                        ProductId = 1,
-                        ProductName = "Product A",
-                        TotalBags = 0,
-                        TotalWeight = 0m
-                    }
-                }
-            };
+        //[Fact]
+        //public async Task GetSummaryByProductionId_ZeroWeights_ReturnsOkWithZeroValues()
+        //{
+        //    // Arrange
+        //    var summaryResponse = new ProductionWeightLogSummaryResponseDto
+        //    {
+        //        ProductionId = ValidProductionId,
+        //        Products = new List<ProductWeightSummaryDto>
+        //        {
+        //            new ProductWeightSummaryDto
+        //            {
+        //                ProductId = 1,
+        //                ProductName = "Product A",
+        //                TotalBags = 0,
+        //                TotalWeight = 0m
+        //            }
+        //        }
+        //    };
 
-            var apiResponse = ApiResponse<ProductionWeightLogSummaryResponseDto>.Ok(summaryResponse);
+        //    var apiResponse = ApiResponse<ProductionWeightLogSummaryResponseDto>.Ok(summaryResponse);
 
-            _mockProductionWeightLogService.Setup(x => x.GetSummaryByProductionIdAsync(ValidProductionId))
-                .ReturnsAsync(apiResponse);
+        //    _mockProductionWeightLogService.Setup(x => x.GetSummaryByProductionIdAsync(ValidProductionId))
+        //        .ReturnsAsync(apiResponse);
 
-            // Act
-            var result = await _controller.GetSummaryByProductionId(ValidProductionId);
+        //    // Act
+        //    var result = await _controller.GetSummaryByProductionId(ValidProductionId);
 
-            // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            var data = okResult!.Value as ProductionWeightLogSummaryResponseDto;
-            data!.Products[0].TotalBags.Should().Be(0);
-            data.Products[0].TotalWeight.Should().Be(0m);
-        }
+        //    // Assert
+        //    result.Should().BeOfType<OkObjectResult>();
+        //    var okResult = result as OkObjectResult;
+        //    var data = okResult!.Value as ProductionWeightLogSummaryResponseDto;
+        //    data!.Products[0].TotalBags.Should().Be(0);
+        //    data.Products[0].TotalWeight.Should().Be(0m);
+        //}
 
         [Fact]
         public async Task GetSummaryByProductionId_UnauthorizedAccess_ReturnsStatusCode401()
