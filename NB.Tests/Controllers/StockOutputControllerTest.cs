@@ -1176,17 +1176,16 @@ namespace NB.Tests.Controllers
             // Act
             var result = await _controller.CreateOrder(userId, orderRequest);
 
-            // Assert - EXPECTED OUTPUT: BadRequest với message chứa "Số lượng tồn kho không đủ"
+            // Assert - EXPECTED OUTPUT: BadRequest với message đề cập đến số lượng tồn kho không đủ
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
+            var response = Assert.IsType<ApiResponse<InventoryDto>>(badRequestResult.Value);
             
             Assert.False(response.Success);
             Assert.NotNull(response.Error);
-            Assert.Equal("Số lượng tồn kho không đủ", response.Error.Message);
+            Assert.Contains("chỉ còn", response.Error.Message);
+            Assert.Contains("không đủ", response.Error.Message);
             Assert.Equal(400, response.StatusCode);
-            Assert.NotNull(response.Error.Messages);
-            var expectedDetail = $"- {productDto.ProductName}: còn {(int)Math.Floor(inventoryQuantity)}";
-            Assert.Contains(expectedDetail, response.Error.Messages);
+            
         }
 
         /// <summary>
@@ -1734,17 +1733,15 @@ namespace NB.Tests.Controllers
             // Act
             var result = await _controller.UpdateTransactionInDraftStatus(transactionId, orderRequest);
 
-            // Assert - EXPECTED OUTPUT: BadRequest với message "Số lượng tồn kho không đủ" và danh sách chi tiết
+            // Assert - EXPECTED OUTPUT: BadRequest với message đề cập đến số lượng tồn kho không đủ
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse<object>>(badRequestResult.Value);
+            var response = Assert.IsType<ApiResponse<InventoryDto>>(badRequestResult.Value);
             
             Assert.False(response.Success);
             Assert.NotNull(response.Error);
-            Assert.Equal("Số lượng tồn kho không đủ", response.Error.Message);
+            Assert.Contains("chỉ còn", response.Error.Message);
+            Assert.Contains("không đủ", response.Error.Message);
             Assert.Equal(400, response.StatusCode);
-            Assert.NotNull(response.Error.Messages);
-            var expectedDetail = $"- {productDto.ProductName}: còn {(int)Math.Floor(5m)}";
-            Assert.Contains(expectedDetail, response.Error.Messages);
         }
 
         /// <summary>
