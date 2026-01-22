@@ -412,6 +412,138 @@ namespace NB.Tests.Controllers
 
         #endregion
 
+        #region GetRawMaterialInventoryQuantity Tests
+
+        /// <summary>
+        /// TGRM01: GetRawMaterialInventoryQuantity với request null
+        ///
+        /// PRECONDITION:
+        /// - Request = null
+        ///
+        /// INPUT:
+        /// - request = null
+        ///
+        /// EXPECTED OUTPUT:
+        /// - BadRequest chứa ApiResponse.Fail("ID sản phẩm không hợp lệ", 400)
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TGRM01_GetRawMaterialInventoryQuantity_RequestNull_ReturnsBadRequest()
+        {
+            var result = await _controller.GetRawMaterialInventoryQuantity(null!);
+
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<int>>(badRequest.Value);
+
+            Assert.False(response.Success);
+            Assert.Equal("ID sản phẩm không hợp lệ", response.Error?.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TGRM02: GetRawMaterialInventoryQuantity với ProductId không hợp lệ
+        ///
+        /// PRECONDITION:
+        /// - Request.ProductId <= 0
+        ///
+        /// INPUT:
+        /// - request.ProductId = 0
+        ///
+        /// EXPECTED OUTPUT:
+        /// - BadRequest chứa ApiResponse.Fail("ID sản phẩm không hợp lệ", 400)
+        /// - Type: A (Abnormal)
+        /// - Status: 400 Bad Request
+        /// </summary>
+        [Fact]
+        public async Task TGRM02_GetRawMaterialInventoryQuantity_InvalidProductId_ReturnsBadRequest()
+        {
+            var request = new ProductIdRequest { ProductId = 0 };
+
+            var result = await _controller.GetRawMaterialInventoryQuantity(request);
+
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<int>>(badRequest.Value);
+
+            Assert.False(response.Success);
+            Assert.Equal("ID sản phẩm không hợp lệ", response.Error?.Message);
+            Assert.Equal(400, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TGRM03: GetRawMaterialInventoryQuantity khi sản phẩm không tồn tại
+        ///
+        /// PRECONDITION:
+        /// - ProductService.GetByIdAsync trả về null
+        ///
+        /// INPUT:
+        /// - request.ProductId = 501
+        ///
+        /// EXPECTED OUTPUT:
+        /// - NotFound chứa ApiResponse.Fail("Sản phẩm không tồn tại", 404)
+        /// - Type: A (Abnormal)
+        /// - Status: 404 Not Found
+        /// </summary>
+        [Fact]
+        public async Task TGRM03_GetRawMaterialInventoryQuantity_ProductNotFound_ReturnsNotFound()
+        {
+            var request = new ProductIdRequest { ProductId = 501 };
+
+            _productServiceMock
+                .Setup(p => p.GetByIdAsync(request.ProductId))
+                .ReturnsAsync((ProductDto?)null);
+
+            var result = await _controller.GetRawMaterialInventoryQuantity(request);
+
+            var notFound = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<int>>(notFound.Value);
+
+            Assert.False(response.Success);
+            Assert.Equal("Sản phẩm không tồn tại", response.Error?.Message);
+            Assert.Equal(404, response.StatusCode);
+        }
+
+        /// <summary>
+        /// TGRM04: GetRawMaterialInventoryQuantity thành công
+        ///
+        /// PRECONDITION:
+        /// - Product tồn tại
+        /// - InventoryService trả về quantity
+        ///
+        /// INPUT:
+        /// - request.ProductId = 502
+        ///
+        /// EXPECTED OUTPUT:
+        /// - Ok chứa ApiResponse.Ok(quantity)
+        /// - Type: N (Normal)
+        /// - Status: 200 OK
+        /// </summary>
+        [Fact]
+        public async Task TGRM04_GetRawMaterialInventoryQuantity_Success_ReturnsQuantity()
+        {
+            const int productId = 502;
+            const int quantity = 42;
+            var request = new ProductIdRequest { ProductId = productId };
+
+            _productServiceMock
+                .Setup(p => p.GetByIdAsync(productId))
+                .ReturnsAsync(new ProductDto { ProductId = productId });
+
+            _inventoryServiceMock
+                .Setup(i => i.GetInventoryQuantity(RawMaterialWarehouseId, productId))
+                .ReturnsAsync(quantity);
+
+            var result = await _controller.GetRawMaterialInventoryQuantity(request);
+
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<int>>(okResult.Value);
+
+            Assert.True(response.Success);
+            Assert.Equal(quantity, response.Data);
+        }
+
+        #endregion
+
         #region ChangeToProcessing Tests
 
         /// <summary>
