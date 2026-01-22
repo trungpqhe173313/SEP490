@@ -2491,7 +2491,7 @@ namespace NB.Tests.Controllers
 
             Assert.False(response.Success);
             Assert.NotNull(response.Error);
-            Assert.Equal("Chỉ được hủy giao dịch ở trạng thái đang kiểm.", response.Error.Message);
+            Assert.Equal("Chỉ được hủy giao dịch ở trạng thái đang kiểm hoặc chờ phê duyệt kho.", response.Error.Message);
             Assert.Equal(400, response.StatusCode);
         }
 
