@@ -593,6 +593,12 @@ namespace NB.Service.ProductionOrderService
                 // Cập nhật trạng thái đơn sản xuất sang WaitingApproval
                 productionOrder.Status = (int)ProductionOrderStatus.WaitingApproval;
 
+                // Cập nhật ghi chú nếu có
+                if (!string.IsNullOrWhiteSpace(request.Note))
+                {
+                    productionOrder.Note = request.Note;
+                }
+
                 // Lưu thay đổi
                 await UpdateAsync(productionOrder);
 

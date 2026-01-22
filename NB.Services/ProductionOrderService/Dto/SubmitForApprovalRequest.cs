@@ -13,5 +13,10 @@ namespace NB.Service.ProductionOrderService.Dto
         /// </summary>
         [Required(ErrorMessage = "Danh sách thành phẩm là bắt buộc")]
         public List<FinishProductQuantity> FinishProductQuantities { get; set; } = new List<FinishProductQuantity>();
+
+        /// <summary>
+        /// Ghi chú khi gửi đơn để phê duyệt
+        /// </summary>
+        public string? Note { get; set; }
     }
 }

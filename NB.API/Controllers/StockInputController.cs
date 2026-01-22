@@ -915,9 +915,9 @@ namespace NB.API.Controllers
                 {
                     return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Giao dịch không phải là nhập kho", 400));
                 }
-                if(transaction.Status != (int)TransactionStatus.importChecking)
+                if(transaction.Status != (int)TransactionStatus.importChecking && transaction.Status != (int)TransactionStatus.pendingWarehouseApproval)
                 {
-                    return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Chỉ được hủy giao dịch ở trạng thái đang kiểm.", 400));
+                    return BadRequest(ApiResponse<PagedList<SupplierDto>>.Fail("Chỉ được hủy giao dịch ở trạng thái đang kiểm hoặc chờ phê duyệt kho.", 400));
                 }
 
                 transaction.Status = (int)TransactionStatus.importCancelled; // Đã hủy
