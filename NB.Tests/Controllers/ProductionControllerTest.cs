@@ -1962,7 +1962,7 @@ namespace NB.Tests.Controllers
                 var result = await _controller.GetDetail(1);
 
                 var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-                var response = Assert.IsType<ApiResponse<FullProductionOrderVM>>(badRequest.Value);
+                var response = Assert.IsType<ApiResponse<object>>(badRequest.Value);
 
                 Assert.False(response.Success);
                 Assert.Equal("Dữ liệu không hợp lệ", response.Error?.Message);
