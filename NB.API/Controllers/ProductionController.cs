@@ -337,7 +337,7 @@ namespace NB.API.Controllers
         /// </summary>
         [HttpPut("ChangeToFinished/{productionOrderId}")]
         [Authorize(Roles = "Manager")]
-        public async Task<IActionResult> ChangeToFinished(int productionOrderId)
+        public async Task<IActionResult> ChangeToFinished(int productionOrderId, [FromBody] ChangeToFinishedRequest? request = null)
         {
             if (productionOrderId <= 0)
             {
@@ -442,6 +442,13 @@ namespace NB.API.Controllers
                 // Cập nhật trạng thái đơn sản xuất
                 productionOrder.Status = (int)ProductionOrderStatus.Finished;
                 productionOrder.EndDate = DateTime.Now;
+                
+                // Cập nhật Note nếu có
+                if (request?.Note != null)
+                {
+                    productionOrder.Note = request.Note;
+                }
+                
                 await _productionOrderService.UpdateAsync(productionOrder);
 
                 // Clear CurrentProductionId khỏi các thiết bị IoT đang gắn với đơn này
