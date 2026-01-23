@@ -51,6 +51,8 @@ namespace NB.Service.TransactionService.Dto
         public decimal UnitPrice { get; set; }
         public decimal TotalPrice { get; set; } // = Quantity * UnitPrice
         public decimal? TotalWeight { get; set; } // = Quantity * WeightPerUnit (tấn)
+
+        public decimal? WeightPerUnit { get; set; } // (tấn)
     }
 
     public class ImportWeightSummaryDto
