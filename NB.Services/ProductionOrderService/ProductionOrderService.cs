@@ -647,7 +647,7 @@ namespace NB.Service.ProductionOrderService
                 }
 
                 // Cập nhật trạng thái và ghi chú
-                productionOrder.Status = (int)ProductionOrderStatus.Rejected;
+                productionOrder.Status = (int)ProductionOrderStatus.Processing;
                 productionOrder.Note = request.Note;
 
                 await UpdateAsync(productionOrder);
