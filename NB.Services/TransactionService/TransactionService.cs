@@ -370,6 +370,7 @@ namespace NB.Service.TransactionService
             {
                 ProductId = td.ProductId,
                 ProductName = td.Product?.ProductName ?? "N/A",
+                WeightPerUnit = td.Product?.WeightPerUnit,
                 Quantity = td.Quantity,
                 UnitPrice = td.UnitPrice,
                 TotalPrice = td.Quantity * td.UnitPrice,
