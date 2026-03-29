@@ -1,0 +1,89 @@
+@startuml
+title Sequence Diagram - Create Customer (Happy Path)
+autonumber
+
+actor "Warehouse Manager" as User
+participant "UI Service" as UI
+participant ":CustomerController" as Ctrl
+participant ":UserService" as UserSvc
+participant ":CloudinaryService" as CloudSvc
+participant ":RoleService" as RoleSvc
+participant ":UserRoleService" as UserRoleSvc
+participant ":UserRepository" as Repo
+database "Database" as DB
+
+User -> UI : Nhập thông tin khách hàng và nhấn "Lưu"
+UI -> Ctrl : POST /api/customers/CreateCustomer\n(UserCreateVM)
+activate Ctrl
+
+Ctrl -> UserSvc : GetByEmail(model.Email)
+activate UserSvc
+UserSvc -> DB : Query User by Email
+activate DB
+DB --> UserSvc : null (Unique)
+deactivate DB
+UserSvc --> Ctrl : null
+deactivate UserSvc
+
+Ctrl -> UserSvc : GetByUsername(model.Username)
+activate UserSvc
+UserSvc -> DB : Query User by Username
+activate DB
+DB --> UserSvc : null (Unique)
+deactivate DB
+UserSvc --> Ctrl : null
+deactivate UserSvc
+
+alt Image Provided
+    Ctrl -> CloudSvc : UploadImageAsync(model.Image)
+    activate CloudSvc
+    CloudSvc --> Ctrl : uploadedImageUrl
+    deactivate CloudSvc
+end
+
+Ctrl -> Ctrl : Map UserCreateVM to User Entity
+Ctrl -> Ctrl : Set Password="123", IsActive=true, CreatedAt=Now, Image=Url
+
+Ctrl -> UserSvc : CreateAsync(entity)
+activate UserSvc
+UserSvc -> Repo : Add(entity)
+activate Repo
+Repo --> UserSvc : entity
+deactivate Repo
+UserSvc -> Repo : SaveAsync()
+activate Repo
+Repo -> DB : Insert User
+activate DB
+DB --> Repo : Success
+deactivate DB
+Repo --> UserSvc : Task Completed
+deactivate Repo
+UserSvc --> Ctrl : Task Completed
+deactivate UserSvc
+
+Ctrl -> RoleSvc : GetByRoleName("Customer")
+activate RoleSvc
+RoleSvc -> DB : Query Role
+activate DB
+DB --> RoleSvc : RoleDto
+deactivate DB
+RoleSvc --> Ctrl : RoleDto
+deactivate RoleSvc
+
+Ctrl -> Ctrl : Create UserRole Entity (UserId, RoleId)
+
+Ctrl -> UserRoleSvc : CreateAsync(userRoleEntity)
+activate UserRoleSvc
+UserRoleSvc -> DB : Insert UserRole
+activate DB
+DB --> UserRoleSvc : Success
+deactivate DB
+UserRoleSvc --> Ctrl : Success
+deactivate UserRoleSvc
+
+Ctrl --> UI : Ok(ApiResponse<User>)
+deactivate Ctrl
+
+UI --> User : Hiển thị thông báo "Tạo khách hàng thành công"
+
+@enduml

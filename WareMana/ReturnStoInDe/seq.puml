@@ -1,0 +1,78 @@
+@startuml
+title Sequence Diagram - Return Stock Input Details
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":ReturnOrderController" as Controller
+participant ":ReturnTransactionService" as ReturnService
+participant ":TransactionService" as TranService
+participant ":ReturnTransactionDetailService" as ReturnDetailService
+participant ":SupplierService" as SupplierService
+participant ":ProductService" as ProductService
+participant "Database" as DB
+
+' Step 1: User Request
+Manager -> Controller: GET /api/returnorder/GetDetail/{returnTransactionId}
+activate Controller
+
+' Step 2: Get Return Transaction
+Controller -> ReturnService: GetByIdAsync(returnTransactionId)
+activate ReturnService
+ReturnService -> DB: Query ReturnTransaction
+activate DB
+DB --> ReturnService: ReturnTransaction Entity
+deactivate DB
+ReturnService --> Controller: returnTransaction
+deactivate ReturnService
+
+' Step 3: Get Original Transaction
+Controller -> TranService: GetByTransactionId(returnTransaction.TransactionId)
+activate TranService
+TranService -> DB: Query Transaction
+activate DB
+DB --> TranService: TransactionDto
+deactivate DB
+TranService --> Controller: transaction
+deactivate TranService
+
+' Step 4: Get Return Details
+Controller -> ReturnDetailService: GetByReturnTransactionId(returnTransactionId)
+activate ReturnDetailService
+ReturnDetailService -> DB: Query ReturnDetails
+activate DB
+DB --> ReturnDetailService: List<ReturnTransactionDetail>
+deactivate DB
+ReturnDetailService --> Controller: returnDetails
+deactivate ReturnDetailService
+
+' Step 5: Enrich Data (Supplier Info)
+alt TransactionType == "Import"
+    Controller -> SupplierService: GetBySupplierId(transaction.SupplierId)
+    activate SupplierService
+    SupplierService -> DB: Query Supplier
+    activate DB
+    DB --> SupplierService: SupplierDto
+    deactivate DB
+    SupplierService --> Controller: supplier
+    deactivate SupplierService
+    Controller -> Controller: Map Supplier Info
+end
+
+' Step 6: Enrich Data (Product Info)
+loop For each detail in returnDetails
+    Controller -> ProductService: GetById(detail.ProductId)
+    activate ProductService
+    ProductService -> DB: Query Product
+    activate DB
+    DB --> ProductService: ProductDto
+    deactivate DB
+    ProductService --> Controller: product
+    deactivate ProductService
+    Controller -> Controller: Map Product Name
+end
+
+' Step 7: Response
+Controller --> Manager: Ok(ReturnOrderDetailDto)
+deactivate Controller
+
+@enduml

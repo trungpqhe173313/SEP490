@@ -1,0 +1,57 @@
+@startuml
+title Sequence Diagram - View Customer List (Happy Path)
+autonumber
+
+actor "Warehouse Manager" as User
+participant "UI Service" as UI
+participant "CustomerController" as Ctrl
+participant "UserService" as UserSvc
+participant "RoleService" as RoleSvc
+participant "UserRoleService" as UserRoleSvc
+participant "UserRepository" as Repo
+database "Database" as DB
+
+User -> UI : Nhập điều kiện tìm kiếm và nhấn "Tìm kiếm"
+UI -> Ctrl : POST /api/customers/GetData\n(UserSearch)
+activate Ctrl
+
+Ctrl -> UserSvc : GetAllUser(search)
+activate UserSvc
+UserSvc -> Repo : GetQueryable()
+activate Repo
+Repo --> UserSvc : IQueryable<User>
+deactivate Repo
+UserSvc -> DB : Execute Query (Filter by Name, Email...)
+activate DB
+DB --> UserSvc : List<UserDto>
+deactivate DB
+UserSvc --> Ctrl : listUser
+deactivate UserSvc
+
+Ctrl -> RoleSvc : GetByRoleName("Customer")
+activate RoleSvc
+RoleSvc -> DB : Query Role
+activate DB
+DB --> RoleSvc : RoleDto (RoleId)
+deactivate DB
+RoleSvc --> Ctrl : role
+deactivate RoleSvc
+
+Ctrl -> UserRoleSvc : GetByRoleId(role.RoleId)
+activate UserRoleSvc
+UserRoleSvc -> DB : Query UserRole
+activate DB
+DB --> UserRoleSvc : List<UserRole>
+deactivate DB
+UserRoleSvc --> Ctrl : userRoleList
+deactivate UserRoleSvc
+
+Ctrl -> Ctrl : Filter listUser by userRoleList (Join Logic)
+Ctrl -> Ctrl : Create PagedList<UserDto>
+
+Ctrl --> UI : Ok(ApiResponse<PagedList<UserDto>>)
+deactivate Ctrl
+
+UI --> User : Hiển thị danh sách khách hàng
+
+@enduml

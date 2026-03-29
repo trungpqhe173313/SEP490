@@ -1,0 +1,26 @@
+@startuml
+
+
+actor "Admin" as Admin
+boundary "UI (Web/App)" as UI
+participant "SupplierController" as Ctrl
+participant "SupplierService" as Svc
+database "DB (NutriBarnContext)" as DB
+
+Admin -> UI : 1. Nhấn vào một nhà cung cấp trong danh sách
+
+UI -> Ctrl : 2.1 GET /api/suppliers/GetById/{id}
+
+Ctrl -> Svc : 2.2 GetById(id)
+
+Svc -> DB : 2.3 Execute SELECT query (WHERE SupplierId = id)
+
+DB --> Svc : 2.4 Trả về dữ liệu SupplierDto
+
+Svc --> Ctrl : 2.5 Trả về SupplierDto
+
+Ctrl --> UI : 3.1 200 OK (ApiResponse chứa chi tiết nhà cung cấp)
+
+UI --> Admin : 3.2 Hiển thị trang chi tiết của nhà cung cấp đã chọn
+
+@enduml

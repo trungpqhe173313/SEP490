@@ -1,0 +1,72 @@
+@startuml
+title Sequence Diagram - Download Stock Input Template
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":StockInputController" as Controller
+participant ":ExcelTemplateGenerator" as Generator
+participant ":MemoryStream" as Stream
+participant ":ExcelPackage" as Excel
+participant ":ExcelWorksheet" as Sheet
+
+' Step 1: User Request
+Manager -> Controller: GET /api/stockinput/DownloadTemplate
+activate Controller
+
+' Step 2: Controller delegates to Generator
+Controller -> Generator: GenerateStockInputTemplate()
+activate Generator
+
+' Step 3: Initialize Stream
+Generator -> Stream: new MemoryStream()
+activate Stream
+Stream --> Generator: stream
+deactivate Stream
+
+' Step 4: Initialize Excel Package
+create Excel
+Generator -> Excel: new ExcelPackage(stream)
+activate Excel
+
+' Step 5: Create Main Data Sheet
+Generator -> Excel: Workbook.Worksheets.Add("Nhập kho")
+Excel --> Generator: mainSheet
+
+' Step 6: Build Main Sheet Content
+Generator -> Sheet: Set Headers (WarehouseName, SupplierName, ExpireDate...)
+activate Sheet
+Generator -> Sheet: Set Descriptions (Row 2)
+Generator -> Sheet: Set Sample Data (Row 3, 4, 5)
+Generator -> Sheet: Apply Styles (Colors, Borders, AutoFit)
+deactivate Sheet
+
+' Step 7: Create Instruction Sheet
+Generator -> Excel: Workbook.Worksheets.Add("Hướng Dẫn")
+Excel --> Generator: instructionSheet
+
+' Step 8: Build Instruction Content
+Generator -> Sheet: Set Title "HƯỚNG DẪN IMPORT NHẬP KHO"
+activate Sheet
+Generator -> Sheet: Set Detailed Instructions (Structure, Required Fields, Notes)
+deactivate Sheet
+
+' Step 9: Finalize File
+Generator -> Excel: Save()
+Generator -> Excel: Dispose()
+destroy Excel
+
+' Step 10: Prepare Stream for Return
+Generator -> Stream: Position = 0
+activate Stream
+Stream --> Generator: stream
+deactivate Stream
+
+' Step 11: Return Stream to Controller
+Generator --> Controller: stream
+deactivate Generator
+
+' Step 12: Return File to User
+Controller --> Manager: File(stream, "application/vnd.openxmlformats...", "StockInput_Import_Template_....xlsx")
+deactivate Controller
+
+@enduml

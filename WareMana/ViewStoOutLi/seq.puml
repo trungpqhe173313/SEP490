@@ -1,0 +1,41 @@
+@startuml
+autonumber
+actor "Warehouse Manager" as WM
+participant "Screen" as UI
+participant ":StockOutputController" as SIC
+participant ":ITransactionService" as TS
+participant ":IWarehouseService" as WS
+participant ":IUserService" as US
+
+' --- Workflow ---
+
+WM -> UI : Views Stock Output page 
+activate UI
+UI -> SIC : POST /api/stockoutput/GetData(search)
+activate SIC
+
+' --- Data Retrieval ---
+SIC -> TS : GetDataForExport(search)
+activate TS
+TS --> SIC : Return PagedList<TransactionDto>
+deactivate TS
+
+SIC -> WS : GetByListWarehouseId(warehouseIds)
+activate WS
+WS --> SIC : Return List<WarehouseDto>
+deactivate WS
+
+SIC -> US : GetAll()
+activate US
+US --> SIC : Return List<UserDto>
+deactivate US
+
+' --- Data Processing & Response ---
+SIC -> SIC : Enrich transactions with WarehouseName and FullName
+SIC --> UI : Return enriched PagedList
+deactivate SIC
+
+UI --> WM : Display list of stock outputs
+deactivate UI
+
+@enduml

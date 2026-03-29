@@ -1,0 +1,67 @@
+@startuml
+title Sequence Diagram - Search Stock Output
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":StockOutputController" as Controller
+participant ":TransactionService" as TranService
+participant ":WarehouseService" as WarehouseService
+participant ":UserService" as UserService
+participant "Database" as DB
+
+' Step 1: User Request
+Manager -> Controller: POST /api/stockoutput/GetData(search)
+activate Controller
+
+' Step 2: Set Search Type
+Controller -> Controller: search.Type = "Export"
+
+' Step 3: Get Raw Data
+Controller -> TranService: GetDataForExport(search)
+activate TranService
+TranService -> DB: Query Transactions (Filter by Type='Export', Date, Status...)
+activate DB
+DB --> TranService: List<Transaction>
+deactivate DB
+TranService --> Controller: PagedList<TransactionDto>
+deactivate TranService
+
+' Step 4: Bulk Fetch Related Data (Optimization)
+Controller -> Controller: Extract listWarehouseId
+Controller -> WarehouseService: GetByListWarehouseId(listWarehouseId)
+activate WarehouseService
+WarehouseService -> DB: Query Warehouses
+activate DB
+DB --> WarehouseService: List<Warehouse>
+deactivate DB
+WarehouseService --> Controller: listWareHouse
+deactivate WarehouseService
+
+Controller -> UserService: GetAll()
+activate UserService
+UserService -> DB: Query Users
+activate DB
+DB --> UserService: List<User>
+deactivate DB
+UserService --> Controller: listUser
+deactivate UserService
+
+' Step 5: Enrich Data Loop
+loop For each TransactionDto in result
+    ' Map Customer Name
+    Controller -> Controller: Find User in listUser
+    Controller -> Controller: t.FullName = user.FullName
+
+    ' Map Warehouse Name
+    Controller -> Controller: Find Warehouse in listWareHouse
+    Controller -> Controller: t.WarehouseName = warehouse.WarehouseName
+
+    ' Map Status Name
+    Controller -> Controller: t.StatusName = status.GetDescription()
+end
+
+' Step 6: Response
+Controller --> Manager: Ok(PagedList<TransactionDto>)
+deactivate Controller
+
+@enduml

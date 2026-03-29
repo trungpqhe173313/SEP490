@@ -1,0 +1,70 @@
+@startuml
+title Sequence Diagram - View Stock Batch
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":StockInputController" as Controller
+participant ":StockBatchService" as BatchService
+participant ":TransactionDetailService" as DetailService
+participant ":ProductService" as ProductService
+participant "Database" as DB
+
+' Step 1: User Request
+Manager -> Controller: POST /api/stockinput/GetStockBatch(search)
+activate Controller
+
+' Step 2: Get Batches
+Controller -> BatchService: GetData(search)
+activate BatchService
+BatchService -> DB: Query StockBatches
+activate DB
+DB --> BatchService: PagedList<StockBatchDto>
+deactivate DB
+BatchService --> Controller: pagedResult
+deactivate BatchService
+
+' Step 3: Check for Empty Result
+alt No Batches Found
+    Controller --> Manager: NotFound("Không tìm thấy lô hàng nào")
+end
+
+' Step 4: Get Transaction Details (for UnitPrice)
+Controller -> DetailService: GetByTransactionId(search.TransactionId)
+activate DetailService
+DetailService -> DB: Query TransactionDetails
+activate DB
+DB --> DetailService: List<TransactionDetailDto>
+deactivate DB
+DetailService --> Controller: transactionDetails
+deactivate DetailService
+
+' Step 5: Create UnitPrice Map
+Controller -> Controller: unitPriceMap = details.ToDictionary(ProductId, UnitPrice)
+
+' Step 6: Enrich Data Loop
+loop For each StockBatchDto in result
+    ' Map UnitPrice
+    Controller -> Controller: item.UnitPrice = unitPriceMap[item.ProductId]
+
+    ' Get WeightPerUnit
+    Controller -> ProductService: GetById(item.ProductId)
+    activate ProductService
+    ProductService -> DB: Query Product
+    activate DB
+    DB --> ProductService: ProductDto
+    deactivate DB
+    ProductService --> Controller: product
+    deactivate ProductService
+    
+    Controller -> Controller: item.WeightPerUnit = product.WeightPerUnit
+
+    ' Map Status & IsActive Strings
+    Controller -> Controller: Map Status (0->Hết hàng, 1->Còn hàng...)
+    Controller -> Controller: Map IsActive (true->Hoạt động...)
+end
+
+' Step 7: Response
+Controller --> Manager: Ok(PagedList<StockOutputVM>)
+deactivate Controller
+
+@enduml

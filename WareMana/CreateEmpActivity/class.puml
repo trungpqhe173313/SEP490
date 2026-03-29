@@ -1,0 +1,92 @@
+@startuml
+title Class Diagram - Create Employee Activity Day (Worklog)
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class WorklogController <<Controller>> {
+  - _worklogService: IWorklogService
+  - _logger: ILogger<WorklogController>
+  + CreateWorklog(dto: CreateWorklogBatchDto): Task<IActionResult>
+}
+
+interface IWorklogService {
+  + CreateWorklogBatchAsync(dto: CreateWorklogBatchDto): Task<CreateWorklogBatchResponseVM>
+}
+
+class WorklogService <<Service>> {
+  - _jobRepository: IRepository<Job>
+  - _userRepository: IRepository<User>
+  - _userRoleRepository: IRepository<UserRole>
+  + CreateWorklogBatchAsync(dto: CreateWorklogBatchDto): Task<CreateWorklogBatchResponseVM>
+}
+
+class "Service<Worklog>" as BaseService {
+  - _repository: IRepository<Worklog>
+  + CreateAsync(entity: Worklog): Task
+}
+
+interface "IRepository<T>" as IRepository {
+  + GetQueryable(): IQueryable<T>
+  + Add(entity: T): T
+  + SaveAsync(): Task
+}
+
+class CreateWorklogBatchDto {
+  + EmployeeId: int
+  + WorkDate: DateTime?
+  + Jobs: List<WorklogJobItemDto>
+}
+
+class WorklogJobItemDto {
+  + JobId: int
+  + Quantity: decimal?
+  + Note: string?
+}
+
+class Worklog {
+  + Id: int
+  + EmployeeId: int
+  + JobId: int
+  + Quantity: decimal
+  + Rate: decimal
+  + WorkDate: DateTime
+  + IsActive: boolean
+}
+
+class Job {
+  + Id: int
+  + JobName: string
+  + PayType: string
+  + Rate: decimal
+  + IsActive: boolean
+}
+
+class User {
+  + UserId: int
+  + FullName: string
+}
+
+' Relationships
+UIService ..> WorklogController : calls API
+UIService ..> CreateWorklogBatchDto : sends
+WorklogController ..> ApiResponse : returns
+WorklogController --> IWorklogService : uses
+WorklogController ..> CreateWorklogBatchDto : receives
+IWorklogService <|.. WorklogService
+WorklogService --|> BaseService
+WorklogService --> IRepository : uses (User, Job, UserRole)
+BaseService --> IRepository : uses (Worklog)
+CreateWorklogBatchDto *-- WorklogJobItemDto : contains
+WorklogService ..> Worklog : creates
+WorklogService ..> Job : reads
+WorklogService ..> User : reads
+
+@enduml

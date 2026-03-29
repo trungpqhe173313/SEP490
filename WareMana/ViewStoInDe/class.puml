@@ -1,0 +1,25 @@
+@startuml
+
+class StockInputController {
+  + GetById(int id)
+}
+interface IStockInputService {
+  + GetByIdAsync(int id)
+}
+entity StockInput {
+  + Id: int
+  + Supplier: Supplier
+  + Warehouse: Warehouse
+  + Details: List<StockInputDetail>
+}
+entity StockInputDetail {
+  + Product: Product
+  + Quantity: int
+}
+class "ApiResponse<StockInput>"
+
+StockInputController ..> IStockInputService
+IStockInputService ..> "ApiResponse<StockInput>" : returns
+IStockInputService ..> StockInput : uses
+StockInput "1" -- "many" StockInputDetail
+@enduml

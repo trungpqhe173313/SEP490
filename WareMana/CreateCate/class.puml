@@ -1,0 +1,60 @@
+@startuml
+title Create Category - Class Diagram
+
+' Controllers
+class CategoryController <<controller>> {
+  - _categoryService: ICategoryService
+  .. Methods ..
+  + CreateCategory(model: CategoryCreateVM): Task<IActionResult>
+}
+
+' Services
+interface ICategoryService {
+  + GetByName(name: string): Task<CategoryDto>
+  + CreateAsync(entity: CategoryDto): Task
+}
+class CategoryService <<service>> {
+  .. Methods ..
+  + GetByName(name: string): Task<CategoryDto>
+}
+class "Service" as ServiceCategory <<base>> {
+  - _repository: IRepositoryCategory
+  .. Methods ..
+  + CreateAsync(entity: Category): Task
+}
+
+' Repositories
+interface "IRepository" as IRepositoryCategory {
+  + Add(entity: Category): Category
+  + SaveAsync(): Task
+}
+class "Repository" as RepositoryCategory {
+  - _dbset: DbSet
+  .. Methods ..
+  + Add(entity: Category): Category
+  + SaveAsync(): Task
+}
+
+' DTOs / Entities
+class Category {
+  + CategoryId: int
+  + CategoryName: string
+  + Description: string
+}
+class CategoryDto
+CategoryDto --|> Category
+
+class CategoryCreateVM {
+  + CategoryName: string
+  + Description: string
+  + CreatedAt: DateTime
+}
+
+' Relationships
+CategoryController --> ICategoryService : uses
+CategoryService ..|> ICategoryService
+CategoryService --|> ServiceCategory
+ServiceCategory --> IRepositoryCategory : uses
+RepositoryCategory ..|> IRepositoryCategory
+
+@enduml

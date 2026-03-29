@@ -1,0 +1,37 @@
+@startuml
+
+class ProductController <<controller>> {
+  - _productService: IProductService
+  + GetData(search: ProductSearch): Task<IActionResult>
+}
+
+interface IProductService {
+  + GetData(search: ProductSearch): Task<PagedList<ProductDto>>
+}
+class ProductService <<service>> {
+  + GetData(search: ProductSearch): Task<PagedList<ProductDto>>
+}
+class "Service<Product>" as ServiceProduct <<base>> {
+  + GetQueryable(): IQueryable<Product>
+}
+
+class Product {
+  + ProductId: int
+  + ProductName: string
+  + CategoryId: int
+}
+class ProductDto {
+  + ProductId: int
+  + ProductName: string
+  + CategoryName: string
+}
+class ProductSearch {
+  + ProductName: string
+  + CategoryId: int?
+}
+
+ProductController --> IProductService : uses
+ProductService ..|> IProductService
+ProductService --|> ServiceProduct
+
+@enduml

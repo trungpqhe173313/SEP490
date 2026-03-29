@@ -1,0 +1,112 @@
+@startuml
+title Sequence Diagram - Edit Stock Output (Draft)
+autonumber
+
+actor "Warehouse Manager" as Manager
+participant ":StockOutputController" as Controller
+participant ":TransactionService" as TranService
+participant ":TransactionDetailService" as DetailService
+participant ":ProductService" as ProductService
+participant ":InventoryService" as InvService
+participant ":WarehouseService" as WarehouseService
+participant ":IMapper" as Mapper
+participant "Database" as DB
+
+' Step 1: User Request
+Manager -> Controller: PUT /api/stockoutput/UpdateTransactionInDraftStatus/{id}
+activate Controller
+
+' Step 2: Get Transaction
+Controller -> TranService: GetByTransactionId(transactionId)
+activate TranService
+TranService -> DB: Query Transaction
+activate DB
+DB --> TranService: Transaction Entity
+deactivate DB
+TranService --> Controller: transaction
+deactivate TranService
+
+' Step 3: Validate Transaction (Status must be Draft)
+alt Transaction Invalid (Not Found or Not Draft)
+    Controller --> Manager: BadRequest/NotFound
+end
+
+' Step 4: Get Warehouse Info
+Controller -> WarehouseService: GetByIdAsync(transaction.WarehouseId)
+activate WarehouseService
+WarehouseService --> Controller: warehouse
+deactivate WarehouseService
+
+' Step 5: Check Inventory Availability
+Controller -> InvService: GetByWarehouseAndProductIds(warehouseId, productIds)
+activate InvService
+InvService -> DB: Query Inventory
+activate DB
+DB --> InvService: List<Inventory>
+deactivate DB
+InvService --> Controller: listInventory
+deactivate InvService
+
+loop For each product in request
+    Controller -> Controller: Check if Quantity <= Inventory.Quantity
+    alt Not Enough Inventory
+        Controller --> Manager: BadRequest("Not enough stock")
+    end
+end
+
+' Step 6: Delete Old Details
+Controller -> DetailService: GetByTransactionId(transactionId)
+activate DetailService
+DetailService --> Controller: existingDetails
+deactivate DetailService
+
+Controller -> DetailService: DeleteRange(existingDetails)
+activate DetailService
+DetailService -> DB: Delete Rows
+activate DB
+DB --> DetailService: Success
+deactivate DB
+DetailService --> Controller: Task Complete
+deactivate DetailService
+
+' Step 7: Create New Details & Calculate Weight
+loop For each product in request
+    ' Map to Entity
+    Controller -> Mapper: Map(TransactionDetailCreateVM -> TransactionDetail)
+    activate Mapper
+    Mapper --> Controller: detailEntity
+    deactivate Mapper
+
+    ' Create Detail
+    Controller -> DetailService: CreateAsync(detailEntity)
+    activate DetailService
+    DetailService -> DB: Insert Row
+    activate DB
+    DB --> DetailService: Success
+    deactivate DB
+    DetailService --> Controller: Task Complete
+    deactivate DetailService
+
+    ' Calculate Weight
+    Controller -> ProductService: GetByIdAsync(productId)
+    activate ProductService
+    ProductService --> Controller: product
+    deactivate ProductService
+    Controller -> Controller: totalWeight += product.Weight * quantity
+end
+
+' Step 8: Update Transaction Header
+Controller -> TranService: UpdateAsync(transaction)
+activate TranService
+TranService -> DB: Update Transaction (TotalWeight, Cost, Note)
+activate DB
+DB --> TranService: Success
+deactivate DB
+TranService --> Controller: Task Complete
+deactivate TranService
+
+' Step 9: Response
+Controller --> Manager: Ok("Cập nhật đơn hàng thành công")
+deactivate Controller
+
+@enduml

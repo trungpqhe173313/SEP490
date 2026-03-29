@@ -1,0 +1,28 @@
+@startuml
+
+
+actor "Warehouse Manager" as WM
+participant "Screen" as UI
+participant ":PriceListController" as PLC
+participant ":PriceListService" as PLS
+
+WM -> UI : 1. Clicks "Create New" button
+activate UI
+UI -> UI : 2. Displays the creation form
+deactivate UI
+
+WM -> UI : 3 Clicks "Submit"
+activate UI
+UI -> PLC : 4.1 POST /api/pricelist/Create(dto)
+activate PLC
+
+PLC -> PLS : 4.2 CreateAsync(entity)
+activate PLS
+PLS --> PLC : 4.3 Confirmation
+deactivate PLS
+
+PLC --> UI : 4.4 Return success result
+deactivate PLC
+UI --> WM : 5 Display "Create successful" message
+deactivate UI
+@enduml

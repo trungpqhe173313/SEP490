@@ -1,0 +1,21 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+
+class PriceListController {
+    +Update(id: int, dto: PriceListDto)
+}
+interface IPriceListService {
+    +GetByIdAsync(id)
+    +UpdateAsync(entity)
+}
+class PriceList {
+    +Id: int
+    +Name: string
+    +Description: string
+    +IsActive: bool
+}
+
+PriceListController ..> IPriceListService : uses
+IPriceListService ..> PriceList : manages
+@enduml

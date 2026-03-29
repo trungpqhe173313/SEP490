@@ -1,0 +1,59 @@
+@startuml
+class ProductionController {
+    - _productionOrderService : IProductionOrderService
+    - _materialService : IMaterialService
+    - _finishproductService : IFinishproductService
+    - _inventoryService : IInventoryService
+    - _stockBatchService : IStockBatchService
+    + ChangeToProcessing(productionOrderId : int) : Task_IActionResult
+    + ChangeToFinished(productionOrderId : int, request : FinishProductionRequest?) : Task_IActionResult
+    + ChangeToCancel(productionOrderId : int) : Task_IActionResult
+}
+
+interface IProductionOrderService {
+    + GetByIdAsync(id : int) : Task_ProductionOrder
+    + UpdateAsync(entity : ProductionOrder) : Task
+}
+
+interface IMaterialService {
+    + GetQueryable() : IQueryable_Material
+}
+
+interface IFinishproductService {
+    + GetQueryable() : IQueryable_Finishproduct
+    + UpdateAsync(entity : Finishproduct) : Task
+}
+
+interface IInventoryService {
+    + GetByWarehouseAndProductId(warehouseId : int, productId : int) : Task_InventoryDto
+    + GetEntityByWarehouseAndProductIdAsync(warehouseId : int, productId : int) : Task_Inventory
+    + UpdateNoTracking(entity : Inventory) : Task
+    + CreateAsync(entity : Inventory) : Task
+}
+
+interface IStockBatchService {
+    + GetByProductIdForOrder(productIds : List_int) : Task_List_StockBatch
+    + GetByIdAsync(id : int) : Task_StockBatch
+    + UpdateNoTracking(entity : StockBatch) : Task
+    + CreateAsync(entity : StockBatch) : Task
+    + GetByName(name : string) : Task_StockBatch
+}
+
+class ProductionOrder {
+    + Id : int
+    + Status : int
+    + StartDate : DateTime?
+    + EndDate : DateTime?
+}
+
+class FinishProductionRequest {
+    + FinishProductQuantities : List_FinishProductQuantity
+}
+
+ProductionController --> IProductionOrderService
+ProductionController --> IMaterialService
+ProductionController --> IFinishproductService
+ProductionController --> IInventoryService
+ProductionController --> IStockBatchService
+ProductionController ..> FinishProductionRequest : Uses
+@enduml

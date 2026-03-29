@@ -1,0 +1,30 @@
+@startuml
+
+actor "Admin" as User
+boundary "UI (Web/App)" as UI
+participant "CustomerController" as Ctrl
+participant "CustomerService" as Svc
+participant "PagedList" as Paged
+database "DB (NutriBarnContext)" as DB
+
+User -> UI : 1. Mở màn hình danh sách Khách hàng
+UI -> Ctrl : 2.1 POST /api/customers/GetData
+
+Ctrl -> Svc : 2.2 GetData(search)
+
+Svc -> Svc : 2.3 Xây dựng IQueryable<CustomerDto>\nvới các mệnh đề .Where()
+
+Svc -> Paged : 2.4 CreateAsync(query, search)
+
+Paged -> DB : 2.5 Execute COUNT query (với điều kiện WHERE)
+DB --> Paged : 2.6 Trả về totalCount
+Paged -> DB : 2.7 Execute SELECT...SKIP...TAKE query (với WHERE)
+DB --> Paged : 2.8 Trả về List<CustomerDto> (chỉ dữ liệu trang hiện tại)
+
+Paged --> Svc : 2.9 Trả về PagedList<CustomerDto>
+Svc --> Ctrl : 2.10 Trả về PagedList<CustomerDto>
+
+Ctrl --> UI : 3.1 200 OK (ApiResponse chứa kết quả đã lọc và phân trang)
+UI --> User : 3.2 Hiển thị danh sách khách hàng đã được lọc và phân trang
+
+@enduml

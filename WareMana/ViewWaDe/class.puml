@@ -1,0 +1,37 @@
+@startuml
+
+class WarehouseController {
+  - IWarehouseService _warehouseService
+  + GetById(int id): Task<ApiResponse<Warehouse>>
+}
+
+interface IWarehouseService {
+  + GetById(int id): Task<ApiResponse<Warehouse>>
+}
+
+class WarehouseService {
+  - IRepository<Warehouse> _repository
+  + GetById(int id): Task<ApiResponse<Warehouse>>
+}
+
+class "Repository" as WarehouseRepository {
+  + GetByIdAsync(int id): Task<Warehouse>
+}
+
+class Warehouse {
+  + Id: int
+  + Name: string
+  + Address: string
+  + IsActive: bool
+}
+
+class "ApiResponse" as ApiResponse
+
+WarehouseController ..> IWarehouseService
+WarehouseService .up.|> IWarehouseService
+WarehouseService ..> WarehouseRepository
+
+IWarehouseService ..> ApiResponse : returns >
+IWarehouseService ..> Warehouse : returns in >
+WarehouseRepository ..> Warehouse : returns >
+@enduml

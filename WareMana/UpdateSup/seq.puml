@@ -1,0 +1,73 @@
+@startuml
+title Sequence Diagram - Update Supplier (Happy Path)
+autonumber
+
+actor "Warehouse Manager" as User
+participant "UI Service" as UI
+participant "SupplierController" as Ctrl
+participant "SupplierService" as Svc
+participant "SupplierRepository" as Repo
+database "Database" as DB
+
+User -> UI : Chỉnh sửa thông tin nhà cung cấp và nhấn "Lưu"
+UI -> Ctrl : PUT /api/suppliers/UpdateSupplier/{id}\n(SupplierEditVM)
+activate Ctrl
+
+Ctrl -> Svc : GetBySupplierId(id)
+activate Svc
+Svc -> DB : Query Supplier by Id
+activate DB
+DB --> Svc : Supplier Entity
+deactivate DB
+Svc --> Ctrl : Supplier Entity
+deactivate Svc
+
+alt Email Changed
+    Ctrl -> Svc : GetByEmail(model.Email)
+    activate Svc
+    Svc -> DB : Query Supplier by Email
+    activate DB
+    DB --> Svc : null (Unique)
+    deactivate DB
+    Svc --> Ctrl : null
+    deactivate Svc
+end
+
+alt Phone Changed
+    Ctrl -> Svc : GetByPhone(model.Phone)
+    activate Svc
+    Svc -> DB : Query Supplier by Phone
+    activate DB
+    DB --> Svc : null (Unique)
+    deactivate DB
+    Svc --> Ctrl : null
+    deactivate Svc
+end
+
+Ctrl -> Ctrl : Map SupplierEditVM to Supplier Entity
+
+Ctrl -> Svc : UpdateAsync(entity)
+activate Svc
+Svc -> Repo : Update(entity)
+activate Repo
+Repo --> Svc : void
+deactivate Repo
+
+Svc -> Repo : SaveAsync()
+activate Repo
+Repo -> DB : Update Supplier
+activate DB
+DB --> Repo : Success
+deactivate DB
+Repo --> Svc : Task Completed
+deactivate Repo
+
+Svc --> Ctrl : Task Completed
+deactivate Svc
+
+Ctrl --> UI : Ok(ApiResponse<Supplier>)
+deactivate Ctrl
+
+UI --> User : Hiển thị thông báo "Cập nhật thành công"
+
+@enduml

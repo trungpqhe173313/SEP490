@@ -1,0 +1,46 @@
+@startuml
+
+actor "Admin" as Admin
+boundary "UI (Web/App)" as UI
+participant "CustomerController" as Ctrl
+participant "CustomerService" as Svc
+participant "Service<Customer> (base)" as BaseSvc
+participant "Repository<Customer>" as Repo
+database "DB (NutriBarnContext)" as DB
+
+Admin -> UI : 1. Nhấn nút "Chỉnh sửa" trên một khách hàng
+UI -> Ctrl : 2.1 GET /api/customers/GetById/{id} (Lấy dữ liệu để hiển thị)
+Ctrl --> UI : 2.2 Trả về dữ liệu khách hàng
+UI --> Admin : 2.3 Hiển thị form chỉnh sửa với thông tin đã có
+
+Admin -> UI : 3. Thay đổi thông tin và nhấn "Lưu"
+UI -> Ctrl : 4. PUT /api/customers/UpdateCustomer/{Id}\n(Body chứa: CustomerEditVM)
+
+
+Ctrl -> Svc : 4.1 GetById(Id)
+Svc -> DB : 4.2 Query Customer by Id
+DB --> Svc : 4.3 Trả về Customer?
+Svc --> Ctrl : 4.4 Trả về Customer?
+
+alt Khách hàng không tồn tại
+    Ctrl --> UI : 5.1b 400 BadRequest: "Không tìm thấy khách hàng"
+    UI --> Admin : 5.2b Hiển thị lỗi
+else Khách hàng tồn tại
+    
+    Ctrl -> Ctrl : 4.5 Cập nhật các thuộc tính của `customer` từ `CustomerEditVM`
+    
+    Ctrl -> Svc : 4.6 UpdateAsync(customer)
+    Svc -> BaseSvc : 4.7 UpdateAsync(customer)
+    BaseSvc -> Repo : 4.8 Update(customer) (Đánh dấu entity là Modified)
+    BaseSvc -> Repo : 4.9 SaveAsync()
+    Repo -> DB : 4.10 Execute UPDATE & SaveChanges
+    DB --> Repo : 4.11 OK
+    Repo --> BaseSvc : 4.12 OK
+    BaseSvc --> Svc : 4.13 OK
+    Svc --> Ctrl : 4.14 OK
+
+    Ctrl --> UI : 5.1 200 OK (ApiResponse chứa dữ liệu đã cập nhật)
+    UI --> Admin : 5.2 Hiển thị thông báo "Cập nhật thành công"
+end
+
+@enduml

@@ -1,0 +1,40 @@
+@startuml
+
+actor WarehouseManager
+participant ":WarehouseUI" as UI
+participant ":WarehouseController" as Controller
+participant ":IWarehouseService" as Service
+participant ":IRepository<Warehouse>" as Repo
+participant ":NutriBarnContext" as DbContext
+
+activate WarehouseManager
+WarehouseManager -> UI: 1. Nhập từ khóa và nhấn tìm kiếm
+activate UI
+UI -> Controller: 2.1 POST /api/Warehouse/get-data\n(body: WarehouseSearch with keyword)
+activate Controller
+Controller -> Service: 2.2 GetData(search)
+activate Service
+Service -> Repo: 2.3 GetQueryable()
+activate Repo
+Repo -> DbContext: 2.4 Tạo IQueryable<Warehouse>
+DbContext --> Repo: 2.5 IQueryable<Warehouse>
+deactivate DbContext
+Repo --> Service: 2.6 IQueryable<Warehouse>
+deactivate Repo
+
+Service -> Service: 2.7 Kiểm tra search.Keyword (có giá trị)
+Service -> Service: 2.8 Áp dụng điều kiện lọc (Where clause)\nvào IQueryable
+
+Service -> Repo: 2.9 Lấy dữ liệu đã lọc và phân trang từ DB\n(CreateAsync for PagedList)
+activate Repo
+Repo --> Service: 2.10 PagedList<Warehouse>
+deactivate Repo
+
+Service -> Controller: 2.11 ApiResponse<PagedList<Warehouse>>
+deactivate Service
+Controller -> UI: 2.12 200 OK (JSON data)
+deactivate Controller
+UI -> WarehouseManager: 3 Hiển thị kết quả tìm kiếm
+deactivate UI
+deactivate WarehouseManager
+@enduml

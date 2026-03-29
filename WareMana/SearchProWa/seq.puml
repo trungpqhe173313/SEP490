@@ -1,0 +1,30 @@
+@startuml
+autonumber
+actor "Warehouse Manager" as User
+boundary "UI" as UI
+participant ":ProductController" as Ctrl
+participant ":ProductService" as Svc
+participant ":PagedList" as Paged
+database "DB" as DB
+
+User -> UI : Nhập "Sản phẩm A" vào ô tìm kiếm\nvà nhấn "Tìm"
+
+UI -> Ctrl : POST /api/products/GetData\n(Body: { "productName": "Sản phẩm A", ... })
+
+Ctrl -> Svc : GetData(search)
+Svc -> Svc : Xây dựng IQueryable<ProductDto>\nvới .Where(p => p.ProductName.Contains(...))
+
+Svc -> Paged : CreateAsync(query, search)
+
+Paged -> DB : Execute COUNT query (với điều kiện WHERE)
+DB --> Paged : Trả về totalCount
+Paged -> DB : Execute SELECT...SKIP...TAKE query (với WHERE)
+DB --> Paged : Trả về List<ProductDto> (kết quả đã lọc)
+
+Paged --> Svc : Trả về PagedList<ProductDto>
+Svc --> Ctrl : Trả về PagedList<ProductDto>
+
+Ctrl --> UI : 200 OK (ApiResponse chứa kết quả tìm kiếm)
+UI --> User : Hiển thị danh sách sản phẩm khớp với tìm kiếm
+
+@enduml

@@ -1,0 +1,43 @@
+@startuml
+title Class Diagram - Change Status Stock Output
+
+class StockOutputController {
+    - _transactionService : ITransactionService
+    - _transactionDetailService : ITransactionDetailService
+    - _stockBatchService : IStockBatchService
+    - _inventoryService : IInventoryService
+    - _warehouseService : IWarehouseService
+    + UpdateToOrderStatus(transactionId: int) : Task<IActionResult>
+    + UpdateToDeliveringStatus(transactionId: int) : Task<IActionResult>
+    + UpdateToDoneStatus(transactionId: int) : Task<IActionResult>
+}
+
+interface ITransactionService {
+    + GetByTransactionId(id: int) : Task<TransactionDto>
+    + UpdateAsync(entity: Transaction) : Task
+}
+
+interface ITransactionDetailService {
+    + GetByTransactionId(id: int) : Task<List<TransactionDetailDto>>
+}
+
+interface IStockBatchService {
+    + GetByProductIdForOrder(ids: List<int>) : Task<List<StockBatchDto>>
+    + GetByIdAsync(id: int) : Task<StockBatch>
+    + UpdateAsync(entity: StockBatch) : Task
+}
+
+interface IInventoryService {
+    + GetByWarehouseAndProductIds(warehouseId: int, productIds: List<int>) : Task<List<InventoryDto>>
+    + GetEntityByWarehouseAndProductIdAsync(warehouseId: int, productId: int) : Task<Inventory>
+    + UpdateNoTracking(entity: Inventory) : Task
+}
+
+' Relationships
+StockOutputController --> ITransactionService
+StockOutputController --> ITransactionDetailService
+StockOutputController --> IStockBatchService
+StockOutputController --> IInventoryService
+StockOutputController --> IWarehouseService
+
+@enduml

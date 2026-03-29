@@ -1,0 +1,55 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+left to right direction
+
+' Controller
+class StockOutputController {
+    +GetData(search: TransactionSearch)
+}
+
+' Service Interfaces
+interface ITransactionService {
+    +GetDataForExport(search)
+}
+interface IWarehouseService {
+    +GetByListWarehouseId(ids)
+}
+interface IUserService {
+    +GetAll()
+}
+
+' Entity/DTO Classes
+class Transaction {
+    +TransactionId: int
+    +WarehouseId: int
+    +CustomerId: int
+    +Status: int
+    +Type: string
+}
+class Warehouse {
+    +WarehouseId: int
+    +WarehouseName: string
+}
+class User {
+    +UserId: int
+    +FullName: string
+}
+
+' --- Relations ---
+
+' Controller uses Services
+StockOutputController ..> ITransactionService : uses
+StockOutputController ..> IWarehouseService : uses
+StockOutputController ..> IUserService : uses
+
+' Services manage Entities
+ITransactionService ..> Transaction : manages
+IWarehouseService ..> Warehouse : manages
+IUserService ..> User : manages
+
+' Relationships between Entities
+Transaction -- Warehouse : belongs to
+Transaction -- User : belongs to (as customer)
+
+@enduml

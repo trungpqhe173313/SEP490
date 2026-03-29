@@ -1,0 +1,30 @@
+@startuml
+actor Admin
+participant "EmployeeController" as Controller
+participant "EmployeeService" as Service
+participant "Repository<Employee>" as Repo
+participant "NutriBarnContext" as Db
+participant "IMapper" as Mapper
+
+
+Admin -> Controller : POST /api/Employee/GetData(search)
+activate Controller
+Controller -> Service : GetData(search)
+activate Service
+Service -> Repo : QueryPaged(search)
+activate Repo
+Repo -> Db : Employees.Where(...).Skip(...).Take(...)
+activate Db
+Db --> Repo : List<Employee>
+deactivate Db
+Repo --> Service : List<Employee>
+deactivate Repo
+Service -> Mapper : Map<List<Employee>, List<EmployeeDto>>
+activate Mapper
+Mapper --> Service : List<EmployeeDto>
+deactivate Mapper
+Service --> Controller : ApiResponse<PagedList<EmployeeDto>>
+deactivate Service
+Controller --> Admin : 200 OK (paged list)
+deactivate Controller
+@enduml

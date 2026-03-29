@@ -1,0 +1,19 @@
+@startuml
+title Class Diagram - Delete Price List
+
+skinparam classAttributeIconSize 0
+
+class PriceListController {
+    +Delete(id: int)
+}
+interface IPriceListService {
+    +GetByIdAsync(id)
+    +DeleteAsync(entity)
+}
+class PriceList {
+    +Id: int
+}
+
+PriceListController ..> IPriceListService : uses
+IPriceListService ..> PriceList : manages
+@enduml

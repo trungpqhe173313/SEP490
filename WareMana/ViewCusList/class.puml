@@ -1,0 +1,102 @@
+@startuml
+title Class Diagram - View Customer List
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class CustomerController <<Controller>> {
+  - _userService: IUserService
+  - _userRoleService: IUserRoleService
+  - _roleService: IRoleService
+  - _logger: ILogger<EmployeeController>
+  + GetData(search: UserSearch): Task<IActionResult>
+}
+
+interface IUserService {
+  + GetAllUser(search: UserSearch): Task<List<UserDto>?>
+}
+
+interface IUserRoleService {
+  + GetByRoleId(roleId: int): Task<List<UserRole>?>
+}
+
+interface IRoleService {
+  + GetByRoleName(roleName: string): Task<RoleDto?>
+}
+
+class UserService <<Service>> {
+  + GetAllUser(search: UserSearch): Task<List<UserDto>?>
+}
+
+class "Service<User>" as BaseService {
+  - _repository: IRepository<User>
+  + GetQueryable(): IQueryable<User>
+}
+
+interface "IRepository<T>" as IRepository {
+  + GetQueryable(): IQueryable<T>
+}
+
+class UserSearch {
+  + FullName: string?
+  + Email: string?
+  + IsActive: boolean?
+  + PageIndex: int
+  + PageSize: int
+}
+
+class UserDto {
+  + UserId: int
+  + FullName: string
+  + Email: string
+  + RoleName: string
+  + IsActive: boolean
+}
+
+class User {
+  + UserId: int
+  + FullName: string
+  + Email: string
+  + IsActive: boolean
+}
+
+class UserRole {
+  + UserId: int
+  + RoleId: int
+}
+
+class RoleDto {
+  + RoleId: int
+  + RoleName: string
+}
+
+class "PagedList<T>" as PagedList {
+  + Items: List<T>
+  + PageIndex: int
+  + PageSize: int
+  + TotalCount: int
+}
+
+' Relationships
+UIService ..> CustomerController : calls API
+UIService ..> UserSearch : sends
+CustomerController ..> ApiResponse : returns
+CustomerController --> IUserService : uses
+CustomerController --> IUserRoleService : uses
+CustomerController --> IRoleService : uses
+CustomerController ..> UserSearch : receives
+IUserService <|.. UserService
+UserService --|> BaseService
+BaseService --> IRepository : uses (User)
+UserService ..> User : reads
+UserService ..> UserDto : returns
+CustomerController ..> PagedList : returns
+
+@enduml

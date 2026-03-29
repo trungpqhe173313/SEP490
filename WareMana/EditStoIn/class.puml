@@ -1,0 +1,50 @@
+@startuml
+title Class Diagram - Edit Stock Input
+
+class StockInputController {
+    - _transactionService : ITransactionService
+    - _transactionDetailService : ITransactionDetailService
+    - _productService : IProductService
+    - _inventoryService : IInventoryService
+    - _mapper : IMapper
+    + UpdateImport(transactionId: int, model: TransactionEditVM) : Task<IActionResult>
+}
+
+interface ITransactionService {
+    + GetByIdAsync(id: int) : Task<Transaction>
+    + UpdateAsync(entity: Transaction) : Task
+}
+
+interface ITransactionDetailService {
+    + GetByTransactionId(id: int) : Task<List<TransactionDetailDto>>
+    + DeleteRange(details: List<TransactionDetailDto>) : Task
+    + CreateAsync(entity: TransactionDetail) : Task
+}
+
+interface IProductService {
+    + GetById(id: int) : Task<ProductDto>
+}
+
+interface IInventoryService {
+    + GetByProductIdRetriveOneObject(id: int) : Task<Inventory>
+}
+
+class TransactionEditVM {
+    + ListProductOrder : List<ProductOrderVM>
+    + Note : string
+}
+
+class ProductOrderVM {
+    + ProductId : int
+    + Quantity : int?
+    + UnitPrice : decimal?
+}
+
+' Relationships
+StockInputController --> ITransactionService
+StockInputController --> ITransactionDetailService
+StockInputController --> IProductService
+StockInputController --> IInventoryService
+StockInputController ..> TransactionEditVM : uses
+
+@enduml

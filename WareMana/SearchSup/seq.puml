@@ -1,0 +1,42 @@
+@startuml
+title Sequence Diagram - Search Supplier (Happy Path)
+autonumber
+
+actor "Admin/Manager" as User
+participant "UI Service" as UI
+participant "SupplierController" as Ctrl
+participant "SupplierService" as Svc
+participant "SupplierRepository" as Repo
+database "Database" as DB
+
+User -> UI : Nhập từ khóa tìm kiếm (Tên, Email, SĐT...) và nhấn "Tìm kiếm"
+UI -> Ctrl : POST /api/suppliers/GetData\n(SupplierSearch)
+activate Ctrl
+
+Ctrl -> Svc : GetData(search)
+activate Svc
+
+Svc -> Repo : GetQueryable()
+activate Repo
+Repo --> Svc : IQueryable<Supplier>
+deactivate Repo
+
+Svc -> Svc : Build Query (Filter by Name, Email, Phone, IsActive)
+Svc -> Svc : Select new SupplierDto
+
+Svc -> DB : Execute Query (Pagination)
+activate DB
+DB --> Svc : List<SupplierDto> & TotalCount
+deactivate DB
+
+Svc -> Svc : Create PagedList<SupplierDto>
+
+Svc --> Ctrl : PagedList<SupplierDto>
+deactivate Svc
+
+Ctrl --> UI : Ok(ApiResponse<PagedList<SupplierDto>>)
+deactivate Ctrl
+
+UI --> User : Hiển thị kết quả tìm kiếm
+
+@enduml

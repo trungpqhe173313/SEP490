@@ -1,0 +1,65 @@
+@startuml
+title Class Diagram - View Supplier Details
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class SupplierController <<Controller>> {
+  - _supplierService: ISupplierService
+  - _logger: ILogger<Supplier>
+  + GetBySupplierId(id: int): Task<IActionResult>
+}
+
+interface ISupplierService {
+  + GetBySupplierId(id: int): Task<SupplierDto?>
+}
+
+class SupplierService <<Service>> {
+  + GetBySupplierId(id: int): Task<SupplierDto?>
+}
+
+class "Service<Supplier>" as BaseService {
+  - _repository: IRepository<Supplier>
+  + GetQueryable(): IQueryable<Supplier>
+}
+
+interface "IRepository<T>" as IRepository {
+  + GetQueryable(): IQueryable<T>
+}
+
+class SupplierDto {
+  + SupplierId: int
+  + SupplierName: string
+  + Phone: string
+  + Email: string
+  + IsActive: boolean
+  + CreatedAt: DateTime
+}
+
+class Supplier {
+  + SupplierId: int
+  + SupplierName: string
+  + Phone: string
+  + Email: string
+  + IsActive: boolean
+  + CreatedAt: DateTime
+}
+
+' Relationships
+UIService ..> SupplierController : calls API
+SupplierController ..> ApiResponse : returns
+SupplierController --> ISupplierService : uses
+ISupplierService <|.. SupplierService
+SupplierService --|> BaseService
+BaseService --> IRepository : uses (Supplier)
+SupplierService ..> Supplier : reads
+SupplierService ..> SupplierDto : returns
+
+@enduml

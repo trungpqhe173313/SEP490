@@ -1,0 +1,47 @@
+@startuml
+
+' Controllers
+class SupplierController <<controller>> {
+  - _supplierService: ISupplierService
+  .. Methods ..
+  + GetData(search: SupplierSearch): Task<IActionResult>
+}
+
+' Services
+interface ISupplierService {
+  + GetData(search: SupplierSearch): Task<PagedList<SupplierDto>>
+}
+class SupplierService <<service>> {
+  .. Methods ..
+  + GetData(search: SupplierSearch): Task<PagedList<SupplierDto>>
+}
+class "Service" as ServiceSupplier <<base>> {
+  - _repository: IRepositorySupplier
+  .. Methods ..
+  + GetQueryable(): IQueryable<Supplier>
+}
+
+' Repositories
+interface "IRepository" as IRepositorySupplier
+class "Repository" as RepositorySupplier
+
+' DTOs / Entities / Search
+class SearchBase {
+  + PageIndex: int
+  + PageSize: int
+}
+class SupplierSearch {
+  + SupplierName: string
+  + Email: string
+  + Phone: string
+}
+SupplierSearch --|> SearchBase
+
+' Relationships
+SupplierController --> ISupplierService : uses
+SupplierService ..|> ISupplierService
+SupplierService --|> ServiceSupplier
+ServiceSupplier --> IRepositorySupplier : uses
+RepositorySupplier ..|> IRepositorySupplier
+
+@enduml

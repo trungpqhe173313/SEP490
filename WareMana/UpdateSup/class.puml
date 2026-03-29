@@ -1,0 +1,78 @@
+@startuml
+title Class Diagram - Update Supplier
+
+class "UI Service" as UIService <<Client>> {
+}
+
+class "ApiResponse<T>" as ApiResponse {
+  + Succeeded: boolean
+  + Message: string
+  + Data: T
+  + Errors: string[]
+}
+
+class SupplierController <<Controller>> {
+  - _supplierService: ISupplierService
+  - _mapper: IMapper
+  - _logger: ILogger<Supplier>
+  + UpdateSupplier(id: int, model: SupplierEditVM): Task<IActionResult>
+}
+
+interface ISupplierService {
+  + GetBySupplierId(id: int): Task<SupplierDto?>
+  + GetByEmail(email: string): Task<SupplierDto?>
+  + GetByPhone(phone: string): Task<SupplierDto?>
+  + UpdateAsync(entity: Supplier): Task
+}
+
+class SupplierService <<Service>> {
+  + GetBySupplierId(id: int): Task<SupplierDto?>
+  + GetByEmail(email: string): Task<SupplierDto?>
+  + GetByPhone(phone: string): Task<SupplierDto?>
+}
+
+class "Service<Supplier>" as BaseService {
+  - _repository: IRepository<Supplier>
+  + UpdateAsync(entity: Supplier): Task
+}
+
+interface "IRepository<T>" as IRepository {
+  + Update(entity: T): void
+  + SaveAsync(): Task
+}
+
+class SupplierEditVM {
+  + SupplierName: string?
+  + Email: string?
+  + Phone: string?
+  + IsActive: boolean?
+}
+
+class Supplier {
+  + SupplierId: int
+  + SupplierName: string
+  + Phone: string
+  + Email: string
+  + IsActive: boolean
+}
+
+class SupplierDto {
+  + SupplierId: int
+  + SupplierName: string
+  + Phone: string
+  + Email: string
+}
+
+' Relationships
+UIService ..> SupplierController : calls API
+UIService ..> SupplierEditVM : sends
+SupplierController ..> ApiResponse : returns
+SupplierController --> ISupplierService : uses
+SupplierController ..> SupplierEditVM : receives
+ISupplierService <|.. SupplierService
+SupplierService --|> BaseService
+BaseService --> IRepository : uses (Supplier)
+SupplierService ..> Supplier : updates
+SupplierService ..> SupplierDto : returns
+
+@enduml
